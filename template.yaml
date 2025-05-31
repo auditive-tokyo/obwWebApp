@@ -8,12 +8,30 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 512
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+    Layers:
+      - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
+      # - arn:aws:lambda:ap-south-1:028816703777:layer:layer_for_obw:3 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
 
 Parameters:
   OpenAiApiKey:
     Type: String
     Description: "OpenAI API Key"
     NoEcho: true
+  TwilioAccountSid:
+    Type: String
+    Description: "Twilio Account SID"
+    NoEcho: true
+  TwilioAuthToken:
+    Type: String
+    Description: "Twilio Auth Token"
+    NoEcho: true
+  AiProcessingLambdaFunctionName:
+    Type: String
+    Description: "Name of the AI Processing Lambda function"
+    Default: "obw-ai-processing-function"
 
 Resources:
   LayerForObw:
@@ -24,25 +42,21 @@ Resources:
       ContentUri: layers/my_common_layer/
       CompatibleRuntimes:
         - python3.13
-      CompatibleArchitectures: # Lambda関数がこのアーキテクチャのレイヤーを期待する
-        - x86_64 # arm64 から x86_64 に変更
+      CompatibleArchitectures:
+        - x86_64
       LicenseInfo: 'Available under the MIT license.'
       RetentionPolicy: Retain
     Metadata:
       BuildMethod: python3.13
-      BuildArchitecture: x86_64 # arm64 から x86_64 に変更
+      BuildArchitecture: x86_64
 
-  ObwWebAppFunction:
+  ImmediateResponseFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: obw-ai-response-function
+      FunctionName: obw-immediate-response-function
       CodeUri: lambda_functions/
-      Handler: response.lambda_handler
-      Runtime: python3.13
-      Architectures: # Lambda関数自体もx86_64で実行
-        - x86_64 # arm64 から x86_64 に変更
-      Layers:
-        - !Ref LayerForObw
+      Handler: lambda_handler_immediate_response.lambda_handler
+      # Runtime, Architectures, Layers は Globals から継承
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
@@ -54,12 +68,31 @@ Resources:
             - Content-Type
       Environment:
         Variables:
+          AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AiProcessingLambdaFunctionName
+
+  AiProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Ref AiProcessingLambdaFunctionName
+      CodeUri: lambda_functions/
+      Handler: lambda_handler_ai_processing.lambda_handler
+      # Runtime, Architectures, Layers は Globals から継承
+      Environment:
+        Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
+          TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
+          TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
 
 Outputs:
-  ObwWebAppFunctionUrl:
-    Description: "URL for obwWebApp function"
-    Value: !GetAtt ObwWebAppFunctionUrl.FunctionUrl
-  ObwWebAppFunctionArn:
-    Description: "ARN for obwWebApp function"
-    Value: !GetAtt ObwWebAppFunction.Arn
+  ImmediateResponseFunctionUrl:
+    Description: "URL for Immediate Response function (Twilio Webhook URL)"
+    Value: !GetAtt ImmediateResponseFunctionUrl.FunctionUrl
+  ImmediateResponseFunctionArn:
+    Description: "ARN for Immediate Response function"
+    Value: !GetAtt ImmediateResponseFunction.Arn
+  AiProcessingFunctionArn:
+    Description: "ARN for AI Processing function"
+    Value: !GetAtt AiProcessingFunction.Arn

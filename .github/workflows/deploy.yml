@@ -35,10 +35,15 @@ jobs:
       - name: SAM Deploy
         env:
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
         run: |
           sam deploy \
             --stack-name obw-ai-lambda \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
-            --parameter-overrides OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET"
+            --parameter-overrides \
+              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
+              TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
+              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
