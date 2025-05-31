@@ -21,15 +21,16 @@ Resources:
     Properties:
       LayerName: layer_for_obw
       Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
-      ContentUri: layers/my_common_layer/ # <--- レイヤー専用のソースディレクトリを指定
+      ContentUri: layers/my_common_layer/
       CompatibleRuntimes:
         - python3.13
       CompatibleArchitectures:
         - arm64
       LicenseInfo: 'Available under the MIT license.'
       RetentionPolicy: Retain
-    Metadata: # <--- Metadataセクションを追加
-      BuildMethod: python3.13 # Pythonのバージョンに合わせて
+    Metadata:
+      BuildMethod: python3.13
+      BuildArchitecture: arm64 # <--- レイヤーをarm64でビルドするように明示
 
   ObwWebAppFunction:
     Type: AWS::Serverless::Function
