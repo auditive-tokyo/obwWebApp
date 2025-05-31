@@ -31,18 +31,14 @@ jobs:
 
       - name: SAM Build
         run: sam build --use-container
-        # working-directory: ${{ github.workspace }} # プロジェクトルートで実行
 
       - name: SAM Deploy
         env:
-          # OPENAI_API_KEY_SECRET という名前でGitHub Secretから読み込む
-          # GitHub Secretの名前は OPENAI_API_KEY とすることを推奨
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
         run: |
           sam deploy \
             --stack-name obw-ai-lambda \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
-            --no-confirm \
+            --no-confirm-changeset \
             --parameter-overrides OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET"
-        # working-directory: ${{ github.workspace }} # プロジェクトルートで実行
