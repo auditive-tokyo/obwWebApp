@@ -25,3 +25,10 @@ dist-ssr
 
 # docs
 docs/
+
+# security
+.env
+
+# misc
+venv/
+.aws-sam/

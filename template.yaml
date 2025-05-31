@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  obwWebApp
+  Sample SAM Template for obwWebApp
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Parameters:
+  OpenAiApiKey:
+    Type: String
+    Description: "OpenAI API Key"
+    NoEcho: true
+
+Resources:
+  LayerForObw:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: layer_for_obw
+      Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
+      ContentUri: layers/my_common_layer/ # <--- レイヤー専用のソースディレクトリを指定
+      CompatibleRuntimes:
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+      LicenseInfo: 'Available under the MIT license.'
+      RetentionPolicy: Retain
+    Metadata: # <--- Metadataセクションを追加
+      BuildMethod: python3.13 # Pythonのバージョンに合わせて
+
+  ObwWebAppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: obw-ai-response-function
+      CodeUri: lambda_functions/
+      Handler: response.lambda_handler
+      Runtime: python3.13
+      Architectures:
+        - arm64
+      Layers:
+        - !Ref LayerForObw
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - '*'
+          AllowMethods:
+            - POST
+          AllowHeaders:
+            - Content-Type
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+
+Outputs:
+  ObwWebAppFunctionUrl:
+    Description: "URL for obwWebApp function"
+    Value: !GetAtt ObwWebAppFunctionUrl.FunctionUrl
+  ObwWebAppFunctionArn:
+    Description: "ARN for obwWebApp function"
+    Value: !GetAtt ObwWebAppFunction.Arn
