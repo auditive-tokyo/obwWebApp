@@ -54,9 +54,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: obw-immediate-response-function
-      CodeUri: lambda_functions/
-      Handler: immediate-response.lambda_handler_immediate_response.lambda_handler
-      # Runtime, Architectures, Layers は Globals から継承
+      CodeUri: lambda_functions/immediate-response/
+      Handler: lambda_handler_immediate_response.lambda_handler
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
@@ -77,18 +76,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Ref AiProcessingLambdaFunctionName
-      CodeUri: lambda_functions/
-      Handler: ai_processing.lambda_handler_ai_processing.lambda_handler
+      CodeUri: lambda_functions/ai_processing/
+      Handler: lambda_handler_ai_processing.lambda_handler
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
           LAMBDA1_FUNCTION_URL: !GetAtt ImmediateResponseFunctionUrl.FunctionUrl
-      # このLambdaは直接外部から呼び出されないため FunctionUrlConfig は不要
-      # Lambda1からの呼び出し許可は、Lambda1側のPoliciesで設定済み (これは誤りで、AiProcessingFunctionがLambda1を呼び出すわけではない)
-      # AiProcessingFunctionがLambda1を呼び出すわけではないので、特別なポリシーは不要。
-      # Lambda1がAiProcessingFunctionを呼び出すポリシーはLambda1側に設定済み。
 
 Outputs:
   ImmediateResponseFunctionUrl:
