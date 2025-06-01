@@ -5,13 +5,25 @@ import boto3
 import os
 from twilio.twiml.voice_response import VoiceResponse
 
-# Lambda関数2の名前を環境変数から取得（またはハードコード）
-AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function') # 仮の名前
+# Lambda関数2の名前を環境変数から取得
+AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function')
 
 lambda_client = boto3.client('lambda')
 
 def lambda_handler(event, context):
     print(f"ImmediateResponse Lambda Event: {json.dumps(event)}")
+
+    # リクエストヘッダー全体をログに出力してOriginを確認
+    if 'headers' in event:
+        print(f"Request Headers: {json.dumps(event['headers'])}")
+        # Originヘッダーの存在を確認 (ヘッダー名は大文字・小文字を区別しない場合があるため、両方試すか、キーを小文字に統一してチェック)
+        origin_header = event['headers'].get('origin') or event['headers'].get('Origin')
+        if origin_header:
+            print(f"Received Origin header: {origin_header}")
+        else:
+            print("Origin header not found in request.")
+    else:
+        print("No headers found in event.")
 
     speech_result = None
     call_sid = None

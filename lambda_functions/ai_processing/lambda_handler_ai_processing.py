@@ -5,10 +5,8 @@ from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
 import openai
 import classification_service
 
-# Lambdaの環境変数からTwilioの認証情報を取得
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
-# Lambda関数1のFunction URLを環境変数から取得
 LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
 
 # 終話を示すキーワードのリスト（小文字）
@@ -77,11 +75,11 @@ def lambda_handler(event, context):
         # 2. AIの応答メッセージ部分の生成
         ai_response_segment = ""
         if urgency_result == "urgent":
-            ai_response_segment = "緊急のお問い合わせと判断しました。担当者にお繋ぎしますので、少々お待ちください。"
+            ai_response_segment = "緊急のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここで担当者にお繋ぎします。"
         elif urgency_result == "general":
             ai_response_segment = "一般のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここでデータベースの検索を行います。"
         else:
-            ai_response_segment = "お問い合わせ内容を分類できませんでした。" # より一般的なメッセージに
+            ai_response_segment = "お問い合わせ内容を解析できませんでした。"
 
         # 3. フォローアップのTwiML作成
         if not LAMBDA1_FUNCTION_URL:
@@ -99,7 +97,6 @@ def lambda_handler(event, context):
 
         response_twiml_obj = VoiceResponse()
         response_twiml_obj.say(ai_response_segment, language='ja-JP', voice='Polly.Tomoko-Neural')
-        response_twiml_obj.say("他にもご用件はございますか？", language='ja-JP', voice='Polly.Tomoko-Neural')
 
         gather = TwilioGather(
             input='speech',
@@ -109,11 +106,11 @@ def lambda_handler(event, context):
             timeout=7, # 発話がない場合のタイムアウト（秒）
             speechTimeout='auto' # 発話終了後の無音検知
         )
-        gather.say("ご用件を続けてどうぞ。", language='ja-JP', voice='Polly.Tomoko-Neural') # Gather内のプロンプト
+        gather.say("他にもご用件はございますか？", language='ja-JP', voice='Polly.Tomoko-Neural')
         response_twiml_obj.append(gather)
 
         # Gatherがタイムアウトした場合や、何も聞き取れなかった場合のフォールバック
-        response_twiml_obj.say("聞き取れませんでした。お電話ありがとうございました。", language='ja-JP', voice='Polly.Tomoko-Neural')
+        response_twiml_obj.say("タイムアウトしました。またご用件がございましたら、おかけ直しください。お電話ありがとうございました。", language='ja-JP', voice='Polly.Tomoko-Neural')
         response_twiml_obj.hangup()
 
         new_twiml = str(response_twiml_obj)

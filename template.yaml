@@ -55,7 +55,7 @@ Resources:
     Properties:
       FunctionName: obw-immediate-response-function
       CodeUri: lambda_functions/
-      Handler: lambda_handler_immediate_response.lambda_handler
+      Handler: immediate-response.lambda_handler_immediate_response.lambda_handler
       # Runtime, Architectures, Layers は Globals から継承
       FunctionUrlConfig:
         AuthType: NONE
@@ -78,7 +78,7 @@ Resources:
     Properties:
       FunctionName: !Ref AiProcessingLambdaFunctionName
       CodeUri: lambda_functions/
-      Handler: lambda_handler_ai_processing.lambda_handler
+      Handler: ai_processing.lambda_handler_ai_processing.lambda_handler
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
