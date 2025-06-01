@@ -99,7 +99,6 @@ def lambda_handler(event, context):
         twilio_response.say(initial_message, language="ja-JP", voice="Polly.Tomoko-Neural")
         gather = twilio_response.gather(
             input='speech',
-            language='ja-JP',
             method='POST',
             timeout=5,
             speechTimeout='auto',
