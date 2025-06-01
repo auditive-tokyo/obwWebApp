@@ -98,7 +98,12 @@ def lambda_handler(event, context):
         prompt_message = "ご用件をどうぞ。"
         twilio_response.say(initial_message, language="ja-JP", voice="Polly.Tomoko-Neural")
         gather = twilio_response.gather(
-            input='speech', language='ja-JP', method='POST', timeout=5, speechTimeout='auto'
+            input='speech',
+            language='ja-JP',
+            method='POST',
+            timeout=5,
+            speechTimeout='auto',
+            speechModel='deepgram-nova-3-multilingual'
         )
         gather.say(prompt_message, language="ja-JP", voice="Polly.Tomoko-Neural")
         # <Gather>が失敗した場合のフォールバック (これはTwilioの標準的な使い方として残す)
