@@ -94,7 +94,7 @@ def lambda_handler(event, context):
 
     else:
         # 初回呼び出し、またはSpeechResultが取得できなかった場合 (既存のロジック)
-        initial_message = "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。"
+        initial_message = "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。通信状態によっては最大で５秒程度のレスポンスの遅延がある場合がございます。ご了承ください。"
         prompt_message = "ご用件をどうぞ。"
         twilio_response.say(initial_message, language="ja-JP", voice="Polly.Tomoko-Neural")
         gather = twilio_response.gather(
