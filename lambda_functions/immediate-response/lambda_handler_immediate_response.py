@@ -102,6 +102,7 @@ def lambda_handler(event, context):
         gather1 = twilio_response.gather(
             input='speech',
             method='POST',
+            language='ja-JP',
             timeout=5,
             speechTimeout='auto',
             speechModel='deepgram-nova-2-ja'
@@ -113,6 +114,7 @@ def lambda_handler(event, context):
         gather2 = twilio_response.gather(
             input='speech',
             method='POST',
+            language='ja-JP',
             timeout=5,
             speechTimeout='auto',
             speechModel='deepgram-nova-2-ja'

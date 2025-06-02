@@ -47,3 +47,24 @@ jobs:
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+
+      - name: Get Immediate Response Function URL from Alias
+        id: get_function_url
+        run: |
+          # エイリアス "live" 経由の Function URL を取得します
+          FUNCTION_URL=$(aws lambda get-function-url-config --function-name obw-immediate-response-function:live --query 'FunctionUrl' --output text)
+          echo "Function URL is: ${FUNCTION_URL}"
+          echo "::set-output name=function_url::${FUNCTION_URL}"
+      
+      - name: Update CloudFormation Stack with Function URL
+        run: |
+          echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
+          aws cloudformation update-stack \
+            --stack-name obw-ai-lambda \
+            --use-previous-template \
+            --capabilities CAPABILITY_IAM \
+            --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
+                         ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
+                         ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
+                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+          aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
