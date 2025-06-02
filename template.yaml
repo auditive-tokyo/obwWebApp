@@ -56,10 +56,13 @@ Resources:
       FunctionName: obw-immediate-response-function
       CodeUri: lambda_functions/immediate-response/
       Handler: lambda_handler_immediate_response.lambda_handler
-      SnapStart: # SnapStartの設定を追加
+      SnapStart:
         ApplyOn: PublishedVersions
-      AutoPublishAlias: live # エイリアスを自動発行・更新
-      FunctionUrlConfig: # このFunction URLが 'live' エイリアスを指すことを期待
+      AutoPublishAlias: live
+      # DeploymentPreference を追加して、常に新しいバージョンを作成するように強制する (オプション)
+      # DeploymentPreference:
+      #   Type: Canary10Percent5Minutes # または AllAtOnce など、バージョニングを強制するタイプ
+      FunctionUrlConfig:
         AuthType: NONE
         Cors:
           AllowOrigins:
@@ -81,9 +84,12 @@ Resources:
       FunctionName: !Ref AiProcessingLambdaFunctionName
       CodeUri: lambda_functions/ai_processing/
       Handler: lambda_handler_ai_processing.lambda_handler
-      SnapStart: # SnapStartの設定を追加
+      SnapStart:
         ApplyOn: PublishedVersions
-      AutoPublishAlias: live # こちらも同様にエイリアスを設定
+      AutoPublishAlias: live
+      # DeploymentPreference を追加 (オプション)
+      # DeploymentPreference:
+      #   Type: Canary10Percent5Minutes
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
