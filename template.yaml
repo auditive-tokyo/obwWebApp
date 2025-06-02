@@ -32,11 +32,12 @@ Parameters:
     Type: String
     Description: "Name of the AI Processing Lambda function"
     Default: "obw-ai-processing-function"
-  # このパラメータには、Outputs から得られた ImmediateResponseFunction の Function URL を
-  # デプロイパイプラインでパラメータオーバーライドすることを想定しています。
+  # ImmediateResponseFunction の Function URL が Outputs から取得される場合、
+  # 最初は空文字をデフォルトにすることでエラーを防ぎ、後続のパイプラインで上書き
   ImmediateResponseFunctionUrlParam:
     Type: String
     Description: "Function URL for Immediate Response, provided from Outputs"
+    Default: ""
 
 Resources:
   # LayerForObw:
