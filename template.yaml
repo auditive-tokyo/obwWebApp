@@ -7,7 +7,7 @@ Description: >
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 512
+    MemorySize: 1024
     Runtime: python3.13
     Architectures:
       - x86_64
@@ -56,6 +56,8 @@ Resources:
       FunctionName: obw-immediate-response-function
       CodeUri: lambda_functions/immediate-response/
       Handler: lambda_handler_immediate_response.lambda_handler
+      SnapStart: # SnapStartの設定を追加
+        ApplyOn: PublishedVersions
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
@@ -78,6 +80,8 @@ Resources:
       FunctionName: !Ref AiProcessingLambdaFunctionName
       CodeUri: lambda_functions/ai_processing/
       Handler: lambda_handler_ai_processing.lambda_handler
+      SnapStart: # SnapStartの設定を追加
+        ApplyOn: PublishedVersions
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
