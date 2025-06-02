@@ -97,9 +97,6 @@ Resources:
           LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam
 
 Outputs:
-  ImmediateResponseFunctionUrl:
-    Description: "URL for Immediate Response function (Twilio Webhook URL; internally routed via the 'live' alias, though the alias name is not reflected in the URL)"
-    Value: !Sub "https://${ImmediateResponseFunction}.lambda-url.${AWS::Region}.on.aws"
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
     Value: !GetAtt ImmediateResponseFunction.Arn
