@@ -32,6 +32,11 @@ Parameters:
     Type: String
     Description: "Name of the AI Processing Lambda function"
     Default: "obw-ai-processing-function"
+  # このパラメータには、Outputs から得られた ImmediateResponseFunction の Function URL を
+  # デプロイパイプラインでパラメータオーバーライドすることを想定しています。
+  ImmediateResponseFunctionUrlParam:
+    Type: String
+    Description: "Function URL for Immediate Response, provided from Outputs"
 
 Resources:
   # LayerForObw:
@@ -59,18 +64,12 @@ Resources:
       SnapStart:
         ApplyOn: PublishedVersions
       AutoPublishAlias: live
-      # DeploymentPreference を追加して、常に新しいバージョンを作成するように強制する (オプション)
-      # DeploymentPreference:
-      #   Type: Canary10Percent5Minutes # または AllAtOnce など、バージョニングを強制するタイプ
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
-          AllowOrigins:
-            - '*'
-          AllowMethods:
-            - POST
-          AllowHeaders:
-            - Content-Type
+          AllowOrigins: [ "*" ]
+          AllowMethods: [ "POST" ]
+          AllowHeaders: [ "Content-Type" ]
       Environment:
         Variables:
           AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
@@ -87,22 +86,19 @@ Resources:
       SnapStart:
         ApplyOn: PublishedVersions
       AutoPublishAlias: live
-      # DeploymentPreference を追加 (オプション)
-      # DeploymentPreference:
-      #   Type: Canary10Percent5Minutes
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
-          # ImmediateResponseFunctionのFunction URLを参照
-          LAMBDA1_FUNCTION_URL: !GetAtt ImmediateResponseFunction.FunctionUrl
-      # AiProcessingFunction にもFunctionUrlConfigが必要な場合はここに追加
+          # ImmediateResponseFunction の Function URL は、Outputs から
+          # 得た値をパラメータで渡すことを想定しています。
+          LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam
 
 Outputs:
   ImmediateResponseFunctionUrl:
     Description: "URL for Immediate Response function (Twilio Webhook URL - points to 'live' alias)"
-    Value: !GetAtt ImmediateResponseFunction.FunctionUrl # このURLが 'live' エイリアスを指す
+    Value: !GetAtt ImmediateResponseFunction.FunctionUrl
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
     Value: !GetAtt ImmediateResponseFunction.Arn
