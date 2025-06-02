@@ -93,20 +93,33 @@ def lambda_handler(event, context):
         # この後には何もTwiMLを追加しない。Lambda2が応答を返すことを期待する。
 
     else:
-        # 初回呼び出し、またはSpeechResultが取得できなかった場合 (既存のロジック)
+        # 初回呼び出し、またはSpeechResultが取得できなかった場合の既存ロジックとして、まず初回のメッセージ送信
         initial_message = "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。通信状態によっては最大で５秒程度のレスポンスの遅延がある場合がございます。ご了承ください。"
         prompt_message = "ご用件をどうぞ。"
+
+        # 初回のGATHER: ユーザーの発話を待つ
         twilio_response.say(initial_message, language="ja-JP", voice="Polly.Tomoko-Neural")
-        gather = twilio_response.gather(
+        gather1 = twilio_response.gather(
             input='speech',
             method='POST',
-            language='ja-JP',
             timeout=5,
             speechTimeout='auto',
             speechModel='deepgram-nova-2-ja'
         )
-        gather.say(prompt_message, language="ja-JP", voice="Polly.Tomoko-Neural")
-        # <Gather>が失敗した場合のフォールバック (これはTwilioの標準的な使い方として残す)
+        gather1.say(prompt_message, language="ja-JP", voice="Polly.Tomoko-Neural")
+
+        # 初回のGATHERで入力がなかった場合、もう一度聞き直す
+        re_prompt = "もう一度、ご用件をお話しください。"
+        gather2 = twilio_response.gather(
+            input='speech',
+            method='POST',
+            timeout=5,
+            speechTimeout='auto',
+            speechModel='deepgram-nova-2-ja'
+        )
+        gather2.say(re_prompt, language="ja-JP", voice="Polly.Tomoko-Neural")
+
+        # 2回目でも入力がなかった場合のフォールバックとして、通話終了のメッセージと切断
         twilio_response.say(
             "聞き取れませんでした。お手数ですが、もう一度おかけ直しください。",
             language="ja-JP", voice="Polly.Tomoko-Neural"
