@@ -105,7 +105,7 @@ def lambda_handler(event, context):
             language='ja-JP',
             timeout=5,
             speechTimeout='auto',
-            speechModel='deepgram-nova-2-ja'
+            speechModel='deepgram-nova-3'
         )
         gather1.say(prompt_message, language="ja-JP", voice="Polly.Tomoko-Neural")
 
@@ -117,7 +117,7 @@ def lambda_handler(event, context):
             language='ja-JP',
             timeout=5,
             speechTimeout='auto',
-            speechModel='deepgram-nova-2-ja'
+            speechModel='deepgram-nova-3'
         )
         gather2.say(re_prompt, language="ja-JP", voice="Polly.Tomoko-Neural")
 

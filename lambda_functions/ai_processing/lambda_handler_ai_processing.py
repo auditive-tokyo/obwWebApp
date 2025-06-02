@@ -105,7 +105,7 @@ def lambda_handler(event, context):
             action=LAMBDA1_FUNCTION_URL, # Lambda1のURLへ結果をPOST
             timeout=5, # 発話がない場合のタイムアウト（秒）
             speechTimeout='auto', # 発話終了後の無音検知
-            speechModel='deepgram-nova-2-ja'
+            speechModel='deepgram-nova-3'
         )
         gather.say("他にもご用件はございますか？", language='ja-JP', voice='Polly.Tomoko-Neural')
         response_twiml_obj.append(gather)

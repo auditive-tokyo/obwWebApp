@@ -63,5 +63,8 @@ jobs:
             --stack-name obw-ai-lambda \
             --use-previous-template \
             --capabilities CAPABILITY_IAM \
-            --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}"
+            --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
+                         ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
+                         ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
+                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
           aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
