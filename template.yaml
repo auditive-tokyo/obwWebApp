@@ -12,8 +12,8 @@ Globals:
     Architectures:
       - x86_64
     Layers:
-      - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
-      # - arn:aws:lambda:ap-south-1:028816703777:layer:layer_for_obw:3 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
+      # - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
+      - arn:aws:lambda:ap-northeast-1:028816703777:layer:layer_for_obw:1 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
 
 Parameters:
   OpenAiApiKey:
@@ -34,21 +34,21 @@ Parameters:
     Default: "obw-ai-processing-function"
 
 Resources:
-  LayerForObw:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: layer_for_obw
-      Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
-      ContentUri: layers/my_common_layer/
-      CompatibleRuntimes:
-        - python3.13
-      CompatibleArchitectures:
-        - x86_64
-      LicenseInfo: 'Available under the MIT license.'
-      RetentionPolicy: Retain
-    Metadata:
-      BuildMethod: python3.13
-      BuildArchitecture: x86_64
+  # LayerForObw:
+  #   Type: AWS::Serverless::LayerVersion
+  #   Properties:
+  #     LayerName: layer_for_obw
+  #     Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
+  #     ContentUri: layers/my_common_layer/
+  #     CompatibleRuntimes:
+  #       - python3.13
+  #     CompatibleArchitectures:
+  #       - x86_64
+  #     LicenseInfo: 'Available under the MIT license.'
+  #     RetentionPolicy: Retain
+  #   Metadata:
+  #     BuildMethod: python3.13
+  #     BuildArchitecture: x86_64
 
   ImmediateResponseFunction:
     Type: AWS::Serverless::Function
@@ -58,7 +58,8 @@ Resources:
       Handler: lambda_handler_immediate_response.lambda_handler
       SnapStart: # SnapStartの設定を追加
         ApplyOn: PublishedVersions
-      FunctionUrlConfig:
+      AutoPublishAlias: live # エイリアスを自動発行・更新
+      FunctionUrlConfig: # このFunction URLが 'live' エイリアスを指すことを期待
         AuthType: NONE
         Cors:
           AllowOrigins:
@@ -82,17 +83,20 @@ Resources:
       Handler: lambda_handler_ai_processing.lambda_handler
       SnapStart: # SnapStartの設定を追加
         ApplyOn: PublishedVersions
+      AutoPublishAlias: live # こちらも同様にエイリアスを設定
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
-          LAMBDA1_FUNCTION_URL: !GetAtt ImmediateResponseFunctionUrl.FunctionUrl
+          # ImmediateResponseFunctionのFunction URLを参照
+          LAMBDA1_FUNCTION_URL: !GetAtt ImmediateResponseFunction.FunctionUrl
+      # AiProcessingFunction にもFunctionUrlConfigが必要な場合はここに追加
 
 Outputs:
   ImmediateResponseFunctionUrl:
-    Description: "URL for Immediate Response function (Twilio Webhook URL)"
-    Value: !GetAtt ImmediateResponseFunctionUrl.FunctionUrl
+    Description: "URL for Immediate Response function (Twilio Webhook URL - points to 'live' alias)"
+    Value: !GetAtt ImmediateResponseFunction.FunctionUrl # このURLが 'live' エイリアスを指す
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
     Value: !GetAtt ImmediateResponseFunction.Arn
