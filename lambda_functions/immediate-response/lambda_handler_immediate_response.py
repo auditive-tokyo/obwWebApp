@@ -4,7 +4,17 @@ import base64
 import boto3
 import os
 from twilio.twiml.voice_response import VoiceResponse, Gather
-from lingual_manager import LingualManager
+try:
+    # 本番環境（レイヤーがマウントされている場合）
+    from lingual_manager import LingualManager
+except ImportError:
+    # 開発環境
+    import sys
+    import os
+    # レイヤーのパスを追加
+    layer_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "layers/my_common_layer/python")
+    sys.path.append(layer_path)
+    from lingual_manager import LingualManager
 
 # Lambda関数2の名前を環境変数から取得
 AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function')
