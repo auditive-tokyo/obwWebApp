@@ -63,10 +63,13 @@ def lambda_handler(event, context):
     # 終話でない場合、または初回処理の場合 (speech_resultがNoneの可能性は低いが念のため)
     if not speech_result: # 通常、Lambda1から呼び出される際にはspeech_resultはあるはず
         print("警告: speech_resultがAIProcessing Lambdaに渡されませんでした。")
-        # speech_resultがない場合、ユーザーにエラーを伝えて終了するなどの処理も検討可能
-        # ここでは、エラーメッセージを返して終了する例
+        # LingualManagerからメッセージを取得
+        error_msg = lingual_mgr.get_message(language, "could_not_understand")
+        hangup_msg = lingual_mgr.get_message(language, "hangup")
+        
         error_response = VoiceResponse()
-        error_response.say("申し訳ありません、発話内容を認識できませんでした。お手数ですが、もう一度おかけ直しください。", language='ja-JP', voice='Polly.Tomoko-Neural')
+        error_response.say(error_msg, language=language, voice=voice)
+        error_response.say(hangup_msg, language=language, voice=voice)
         error_response.hangup()
         try:
             twilio_client.calls(call_sid).update(twiml=str(error_response))
@@ -83,11 +86,11 @@ def lambda_handler(event, context):
         # 2. AIの応答メッセージ部分の生成
         ai_response_segment = ""
         if urgency_result == "urgent":
-            ai_response_segment = "緊急のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここで担当者にお繋ぎします。"
+            ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
         elif urgency_result == "general":
-            ai_response_segment = "一般のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここでデータベースの検索を行います。"
+            ai_response_segment = lingual_mgr.get_message(language, "general_inquiry")
         else:
-            ai_response_segment = "お問い合わせ内容を解析できませんでした。"
+            ai_response_segment = lingual_mgr.get_message(language, "inquiry_not_understood")
 
         # 3. フォローアップのTwiML作成
         if not LAMBDA1_FUNCTION_URL:
@@ -115,11 +118,14 @@ def lambda_handler(event, context):
             speechTimeout='auto', # 発話終了後の無音検知
             speechModel='deepgram-nova-3'
         )
-        gather.say("他にもご用件はございますか？", language='ja-JP', voice='Polly.Tomoko-Neural')
+        # LingualManagerからフォローアップメッセージを取得
+        follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
+        gather.say(follow_up_msg, language=language, voice=voice)
         response_twiml_obj.append(gather)
 
         # Gatherがタイムアウトした場合や、何も聞き取れなかった場合のフォールバック
-        response_twiml_obj.say("タイムアウトしました。またご用件がございましたら、おかけ直しください。お電話ありがとうございました。", language='ja-JP', voice='Polly.Tomoko-Neural')
+        timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+        response_twiml_obj.say(timeout_msg, language=language, voice=voice)
         response_twiml_obj.hangup()
 
         new_twiml = str(response_twiml_obj)
