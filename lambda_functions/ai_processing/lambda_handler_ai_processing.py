@@ -111,11 +111,11 @@ def lambda_handler(event, context):
 
         gather = TwilioGather(
             input='speech',
-            language='ja-JP',
+            language=language,  # 動的な言語設定
             method='POST',
-            action=LAMBDA1_FUNCTION_URL, # Lambda1のURLへ結果をPOST
-            timeout=5, # 発話がない場合のタイムアウト（秒）
-            speechTimeout='auto', # 発話終了後の無音検知
+            action=f"{LAMBDA1_FUNCTION_URL}?language={language}",  # 言語情報をクエリパラメータとして渡す
+            timeout=5,
+            speechTimeout='auto',
             speechModel='deepgram-nova-3'
         )
         # LingualManagerからフォローアップメッセージを取得
