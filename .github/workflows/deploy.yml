@@ -123,27 +123,39 @@ jobs:
           fi
 
           # Lambda レイヤーの古いバージョンをクリーンアップ
-          LAYER_NAME="my-common-layer"
-          echo "Cleaning up old versions for Lambda Layer: $LAYER_NAME"
+          # CloudFormationスタックからレイヤー情報を取得
+          echo "Getting Lambda Layer information from CloudFormation stack"
+          LAYER_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name obw-ai-lambda --query "StackResources[?ResourceType=='AWS::Lambda::LayerVersion'].PhysicalResourceId" --output text)
 
-          # レイヤーの全バージョンを取得
-          LAYER_VERSIONS=$(aws lambda list-layer-versions --layer-name "$LAYER_NAME" --query 'LayerVersions[*].Version' --output json)
-          echo "All layer versions: $LAYER_VERSIONS"
+          for LAYER_ARN in $LAYER_RESOURCES; do
+            # ARNからレイヤー名を抽出
+            LAYER_NAME=$(echo $LAYER_ARN | cut -d: -f7)
+            echo "Found layer: $LAYER_NAME"
+            
+            # レイヤーの全バージョンを取得
+            LAYER_VERSIONS=$(aws lambda list-layer-versions --layer-name "$LAYER_NAME" --query 'LayerVersions[*].Version' --output json)
+            echo "All layer versions: $LAYER_VERSIONS"
 
-          # 最新バージョンを取得（バージョン番号が最も大きいもの）
-          LATEST_LAYER_VERSION=$(echo $LAYER_VERSIONS | jq 'max')
-          echo "Latest layer version: $LATEST_LAYER_VERSION"
+            # 最新バージョンを取得（バージョン番号が最も大きいもの）
+            LATEST_LAYER_VERSION=$(echo $LAYER_VERSIONS | jq 'max')
+            echo "Latest layer version: $LATEST_LAYER_VERSION"
 
-          # 最新バージョン以外を削除
-          if [ ! -z "$LATEST_LAYER_VERSION" ]; then
-            echo $LAYER_VERSIONS | jq '.[]' | while read VERSION_TO_CHECK; do
-              if [ "$VERSION_TO_CHECK" != "$LATEST_LAYER_VERSION" ]; then
-                echo "Deleting old layer version: $VERSION_TO_CHECK for $LAYER_NAME"
-                aws lambda delete-layer-version --layer-name "$LAYER_NAME" --version-number "$VERSION_TO_CHECK" || echo "Warning: Failed to delete layer version $VERSION_TO_CHECK for $LAYER_NAME."
-              else
-                echo "Keeping latest version: $VERSION_TO_CHECK for $LAYER_NAME"
-              fi
-            done
-          else
-            echo "Could not determine latest version for layer $LAYER_NAME. Skipping cleanup."
+            # 最新バージョン以外を削除
+            if [ ! -z "$LATEST_LAYER_VERSION" ] && [ "$LATEST_LAYER_VERSION" != "null" ]; then
+              echo $LAYER_VERSIONS | jq '.[]' | while read VERSION_TO_CHECK; do
+                if [ "$VERSION_TO_CHECK" != "$LATEST_LAYER_VERSION" ]; then
+                  echo "Deleting old layer version: $VERSION_TO_CHECK for $LAYER_NAME"
+                  aws lambda delete-layer-version --layer-name "$LAYER_NAME" --version-number "$VERSION_TO_CHECK" || echo "Warning: Failed to delete layer version $VERSION_TO_CHECK for $LAYER_NAME."
+                else
+                  echo "Keeping latest version: $VERSION_TO_CHECK for $LAYER_NAME"
+                fi
+              done
+            else
+              echo "Could not determine latest version for layer $LAYER_NAME. Skipping cleanup."
+            fi
+          done
+
+          # レイヤーが見つからない場合は警告表示
+          if [ -z "$LAYER_RESOURCES" ]; then
+            echo "Warning: No Lambda Layers found in CloudFormation stack. Please check your CloudFormation template and deployment."
           fi
