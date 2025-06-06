@@ -4,6 +4,7 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
 import openai
 import classification_service
+from lingual_manager import LingualManager  # LingualManagerをインポート
 
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
@@ -21,11 +22,18 @@ if ACCOUNT_SID and AUTH_TOKEN:
 else:
     print("エラー: TWILIO_ACCOUNT_SID または TWILIO_AUTH_TOKEN が環境変数に設定されていません。")
 
+# LingualManagerのインスタンスを作成
+lingual_mgr = LingualManager()
+
 def lambda_handler(event, context):
     print(f"AIProcessing Lambda Event: {json.dumps(event)}")
 
     speech_result = event.get('speech_result')
     call_sid = event.get('call_sid')
+    language = event.get('language', 'en-US')  # 言語情報を取得。デフォルトは英語
+    
+    # 言語に対応した音声設定を取得
+    voice = lingual_mgr.get_voice(language)
 
     if not twilio_client:
         print("エラー: Twilio clientが初期化されていません。処理を中断します。")
