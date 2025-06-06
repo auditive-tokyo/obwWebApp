@@ -33,6 +33,7 @@ jobs:
         run: |
           mkdir -p lambda_functions/immediate-response/
           cp layers/my_common_layer/python/lingual_manager.py lambda_functions/immediate-response/
+          cp layers/my_common_layer/python/lingual_manager.py lambda_functions/ai_processing/
 
       - name: SAM Build
         run: sam build --use-container
@@ -41,6 +42,7 @@ jobs:
         if: always()  # ビルドが成功/失敗どちらでも実行
         run: |
           rm -f lambda_functions/immediate-response/lingual_manager.py
+          rm -f lambda_functions/ai_processing/lingual_manager.py
 
       - name: SAM Deploy
         env:
