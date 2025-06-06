@@ -5,19 +5,19 @@ class LingualManager:
                 "welcome": "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。",
                 "received_and_analyzing": "メッセージを受け取りました。解析します。少々お待ちください。",
                 "prompt_for_inquiry": "ご用件をどうぞ。",
-                "re_prompt_inquiry": "もう一度、ご用件をお話しください。",
-                "could_not_understand_retry": "聞き取れませんでした。お手数ですが、もう一度ご用件をお話しください。",
-                "could_not_understand_hangup": "聞き取れませんでした。お手数ですが、もう一度おかけ直しください。",
+                "could_not_understand": "聞き取れませんでした。",
+                "re_prompt_inquiry": "お手数ですが、もう一度、ご用件をお話しください。",
+                "hangup": "お手数ですが、もう一度おかけ直しください。",
                 "processing_error": "システムエラーが発生しました。申し訳ありませんが、後ほどおかけ直しください。"
             },
             "en-US": {
                 "welcome": "Thank you for calling. This is the Osaka Bay Wheel AI automated attendant.",
                 "received_and_analyzing": "Message received. We are analyzing it. Please wait a moment.",
                 "prompt_for_inquiry": "How can I help you?",
+                "could_not_understand": "I couldn't understand your request.",
                 "re_prompt_inquiry": "Could you please state your inquiry again?",
-                "could_not_understand_retry": "We could not understand your response. Please say it again",
-                "could_not_understand_hangup": "We could not understand your response. Please try calling again.",
-                "processing_error": "A system error occurred. We apologize, please try again later."
+                "hangup": "Please try calling again.",
+                "processing_error": "A system error occurred. We apologize, please try calling back later."
             }
             # 他の言語は後で追加
         }

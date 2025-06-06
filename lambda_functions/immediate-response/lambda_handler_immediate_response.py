@@ -83,13 +83,14 @@ def lambda_handler(event, context):
             # 不正な入力の場合、再度言語選択を促す
             print(f"Invalid digit input: {digits_result}. Defaulting to bilingual messages")
 
-            # 英語のプロンプトを英語のボイスで再生
-            twilio_response.say("For English, press 1.", language="en-US", voice=lingual_mgr.get_voice("en-US"))
-            
-            # 日本語のプロンプトを日本語のボイスで再生
-            twilio_response.say("日本語をご希望の場合は2を押してください。", language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
-
+            # 言語選択用のGather
             gather_lang = Gather(input='dtmf', numDigits=1, method='POST', action='?action=language_selected')
+
+            # Gather内に音声プロンプトを配置することで、再生中でもボタン入力を検知できるようになる
+            gather_lang.say("For English, press 1.", language="en-US", voice=lingual_mgr.get_voice("en-US"))
+            gather_lang.say("日本語をご希望の場合は2を押してください。", language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
+
+            # 作成したGatherをレスポンスに追加
             twilio_response.append(gather_lang)
             
             # Gatherがタイムアウトした場合のフォールバック - バイリンガルでメッセージ
@@ -129,7 +130,7 @@ def lambda_handler(event, context):
 
             # --- 1回目のGatherが失敗した場合 (タイムアウト、無音など) ---
             # 「聞き取れませんでした。もう一度お話しください」というメッセージを再生
-            retry_speech_prompt_text = lingual_mgr.get_message(language_preference, "could_not_understand_retry")
+            retry_speech_prompt_text = lingual_mgr.get_message(language_preference, "could_not_understand")
             twilio_response.say(retry_speech_prompt_text, language=language_preference, voice=voice)
 
             # --- 2回目の用件伺い (リトライ) ---
@@ -149,8 +150,10 @@ def lambda_handler(event, context):
 
             # --- 2回目のGatherも失敗した場合 ---
             # 「聞き取れませんでした。おかけ直しください」というメッセージを再生して通話終了
-            hangup_speech_prompt_text = lingual_mgr.get_message(language_preference, "could_not_understand_hangup")
-            twilio_response.say(hangup_speech_prompt_text, language=language_preference, voice=voice)
+            could_not_understand_text = lingual_mgr.get_message(language_preference, "could_not_understand")
+            hangup_text = lingual_mgr.get_message(language_preference, "hangup")
+            twilio_response.say(could_not_understand_text, language=language_preference, voice=voice)
+            twilio_response.say(hangup_text, language=language_preference, voice=voice)
             twilio_response.hangup()
 
     elif speech_result and call_sid: # ユーザーの発話を受け取った場合 (言語選択後)

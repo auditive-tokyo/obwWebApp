@@ -29,6 +29,9 @@ docs/
 # security
 .env
 
+# synbolic links
+lambda_functions/immediate-response/lingual_manager.py
+
 # misc
 venv/
 .aws-sam/
