@@ -47,10 +47,9 @@ def lambda_handler(event, context):
     if speech_result: # speech_resultが存在する場合のみキーワードチェック
         for keyword in END_CONVERSATION_KEYWORDS:
             if keyword in speech_result.lower():
-                print(f"User indicated end of conversation with keyword: '{keyword}' in '{speech_result}'")
-                response_message_to_user = "承知いたしました。お電話ありがとうございました。"
+                response_message_to_user = lingual_mgr.get_message(language, "ending_message")
                 hangup_twiml_obj = VoiceResponse()
-                hangup_twiml_obj.say(response_message_to_user, language='ja-JP', voice='Polly.Tomoko-Neural')
+                hangup_twiml_obj.say(response_message_to_user, language=language, voice=voice)
                 hangup_twiml_obj.hangup()
                 try:
                     call = twilio_client.calls(call_sid).update(twiml=str(hangup_twiml_obj))
@@ -97,8 +96,9 @@ def lambda_handler(event, context):
             print("致命的エラー: LAMBDA1_FUNCTION_URLが環境変数に設定されていません。")
             # フォールバックとして、AIの応答だけを伝えて終了
             fallback_response = VoiceResponse()
-            fallback_response.say(ai_response_segment, language='ja-JP', voice='Polly.Tomoko-Neural')
-            fallback_response.say("システムエラーのため、これ以上の対応はできません。申し訳ありません。", language='ja-JP', voice='Polly.Tomoko-Neural')
+            fallback_response.say(ai_response_segment, language=language, voice=voice)
+            system_error_msg = lingual_mgr.get_message(language, "system_error")
+            fallback_response.say(system_error_msg, language=language, voice=voice)
             fallback_response.hangup()
             try:
                 twilio_client.calls(call_sid).update(twiml=str(fallback_response))
@@ -107,7 +107,7 @@ def lambda_handler(event, context):
             return {'status': 'error', 'message': 'LAMBDA1_FUNCTION_URL not set'}
 
         response_twiml_obj = VoiceResponse()
-        response_twiml_obj.say(ai_response_segment, language='ja-JP', voice='Polly.Tomoko-Neural')
+        response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
 
         gather = TwilioGather(
             input='speech',
