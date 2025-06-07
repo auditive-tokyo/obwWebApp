@@ -57,6 +57,10 @@ jobs:
           echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
       
       - name: Update CloudFormation Stack with Function URL
+        env: # このステップで再度環境変数を設定
+          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
           aws cloudformation update-stack \
@@ -80,7 +84,6 @@ jobs:
             echo "Could not get 'live' alias version for $IMMEDIATE_RESPONSE_FUNCTION_NAME. Skipping cleanup."
           else
             echo "Version for 'live' alias of $IMMEDIATE_RESPONSE_FUNCTION_NAME: $ALIASED_VERSION_IR"
-            # $LATEST ではない、かつエイリアスされていないバージョンをリストアップして削除
             aws lambda list-versions-by-function --function-name "$IMMEDIATE_RESPONSE_FUNCTION_NAME" --query "Versions[?Version!='\$LATEST'].Version" --output json | jq -r '.[]' | while read VERSION_TO_CHECK; do
               if [ "$VERSION_TO_CHECK" != "$ALIASED_VERSION_IR" ]; then
                 echo "Deleting old version: $VERSION_TO_CHECK for $IMMEDIATE_RESPONSE_FUNCTION_NAME"
@@ -92,26 +95,16 @@ jobs:
           fi
 
           # AiProcessingFunction の古いバージョンをクリーンアップ
-          # template.yaml の AiProcessingLambdaFunctionName パラメータのデフォルト値を使用
-          AI_PROCESSING_FUNCTION_NAME="obw-ai-processing-function"
-          echo "Cleaning up old versions for $AI_PROCESSING_FUNCTION_NAME"
-          ALIASED_VERSION_AP=$(aws lambda get-alias --function-name "$AI_PROCESSING_FUNCTION_NAME" --name live --query 'FunctionVersion' --output text 2>/dev/null)
-
-          if [ -z "$ALIASED_VERSION_AP" ]; then
-            echo "Could not get 'live' alias version for $AI_PROCESSING_FUNCTION_NAME. Skipping cleanup."
-          else
-            echo "Version for 'live' alias of $AI_PROCESSING_FUNCTION_NAME: $ALIASED_VERSION_AP"
-            # $LATEST ではない、かつエイリアスされていないバージョンをリストアップして削除
-            aws lambda list-versions-by-function --function-name "$AI_PROCESSING_FUNCTION_NAME" --query "Versions[?Version!='\$LATEST'].Version" --output json | jq -r '.[]' | while read VERSION_TO_CHECK; do
-              if [ "$VERSION_TO_CHECK" != "$ALIASED_VERSION_AP" ]; then
-                echo "Deleting old version: $VERSION_TO_CHECK for $AI_PROCESSING_FUNCTION_NAME"
-                aws lambda delete-function --function-name "$AI_PROCESSING_FUNCTION_NAME" --qualifier "$VERSION_TO_CHECK" || echo "Warning: Failed to delete version $VERSION_TO_CHECK for $AI_PROCESSING_FUNCTION_NAME. It might have been already deleted or is in use by another alias."
-              else
-                echo "Keeping 'live' aliased version: $VERSION_TO_CHECK for $AI_PROCESSING_FUNCTION_NAME"
-              fi
-            done
-          fi
-
+          AI_PROCESSING_FUNCTION_NAME="obw-ai-processing-function" # template.yaml の AiProcessingLambdaFunctionName パラメータのデフォルト値
+          echo "Cleaning up old numbered versions for $AI_PROCESSING_FUNCTION_NAME (now primarily uses $LATEST)"
+          # $LATEST ではない、すべての番号付きバージョンをリストアップして削除
+          aws lambda list-versions-by-function --function-name "$AI_PROCESSING_FUNCTION_NAME" --query "Versions[?Version!='\$LATEST'].Version" --output json | jq -r '.[]' | while read VERSION_TO_DELETE; do
+            if [ ! -z "$VERSION_TO_DELETE" ]; then # VERSION_TO_DELETEが空でないことを確認
+              echo "Deleting old version: $VERSION_TO_DELETE for $AI_PROCESSING_FUNCTION_NAME"
+              aws lambda delete-function --function-name "$AI_PROCESSING_FUNCTION_NAME" --qualifier "$VERSION_TO_DELETE" || echo "Warning: Failed to delete version $VERSION_TO_DELETE for $AI_PROCESSING_FUNCTION_NAME. It might have been already deleted."
+            fi
+          done
+          
           # Lambda レイヤーの古いバージョンをクリーンアップ
           # CloudFormationスタックからレイヤー情報を取得
           echo "Getting Lambda Layer information from CloudFormation stack"
