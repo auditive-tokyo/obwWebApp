@@ -7,7 +7,6 @@ Description: >
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 256
     Runtime: python3.13
     Architectures:
       - x86_64
@@ -60,6 +59,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: obw-immediate-response-function
+      MemorySize: 128 # メモリサイズを128MBに設定
       CodeUri: lambda_functions/immediate-response/
       Handler: lambda_handler_immediate_response.lambda_handler
       SnapStart:
@@ -82,18 +82,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Ref AiProcessingLambdaFunctionName
+      MemorySize: 512
       CodeUri: lambda_functions/ai_processing/
       Handler: lambda_handler_ai_processing.lambda_handler
-      SnapStart:
-        ApplyOn: PublishedVersions
-      AutoPublishAlias: live
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
-          # ImmediateResponseFunction の Function URL は、Outputs から
-          # 得た値をパラメータで渡すことを想定しています。
           LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam
 
 Outputs:
