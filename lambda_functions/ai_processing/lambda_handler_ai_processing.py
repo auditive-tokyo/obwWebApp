@@ -6,7 +6,7 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
 import openai # openai.AsyncOpenAI を使う
 import classification_service
-from .vector_search import openai_vector_search
+from vector_search import openai_vector_search
 from lingual_manager import LingualManager
 
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
