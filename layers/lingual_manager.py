@@ -12,7 +12,7 @@ class LingualManager:
                 # 緊急度判定用メッセージを追加
                 "urgent_inquiry": "緊急のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここで担当者にお繋ぎします。",
                 "general_inquiry": "一般のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここでデータベースの検索を行います。",
-                "inquiry_not_understood": "お問い合わせ内容を解析できませんでした。",
+                "inquiry_not_understood": "お問い合わせ内容を解析できませんでした。可能な限りゆっくり話してください。",
                 "follow_up_question": "他にもご用件はございますか？",
                 "timeout_message": "タイムアウトしました。またご用件がございましたら、おかけ直しください。お電話ありがとうございました。",
                 "ending_message": "承知いたしました。お電話ありがとうございました。",
@@ -29,7 +29,7 @@ class LingualManager:
                 # 英語版の緊急度判定用メッセージを追加
                 "urgent_inquiry": "I've identified this as an urgent inquiry. This is a demo version, but in the production environment, I would connect you with a representative.",
                 "general_inquiry": "I've identified this as a general inquiry. This is a demo version, but in the production environment, I would search our database for information.",
-                "inquiry_not_understood": "I was unable to analyze your inquiry.",
+                "inquiry_not_understood": "I was unable to analyze your inquiry. Please try speaking as slowly as possible.",
                 "follow_up_question": "Is there anything else I can help you with?",
                 "timeout_message": "The session has timed out. If you have any other inquiries, please call again. Thank you for your call.",
                 "ending_message": "Understood. Thank you for your call.",
