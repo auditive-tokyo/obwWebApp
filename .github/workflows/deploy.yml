@@ -63,15 +63,34 @@ jobs:
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
-          aws cloudformation update-stack \
+          
+          # update-stack コマンドを実行し、出力を変数に格納
+          UPDATE_OUTPUT=$(aws cloudformation update-stack \
             --stack-name obw-ai-lambda \
             --use-previous-template \
             --capabilities CAPABILITY_IAM \
             --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
                          ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
                          ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
-          aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
+                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET" 2>&1) # 標準エラー出力もキャプチャ
+
+          # コマンドの終了コードを確認
+          UPDATE_EXIT_CODE=$?
+
+          echo "Update stack command output: $UPDATE_OUTPUT"
+          echo "Update stack command exit code: $UPDATE_EXIT_CODE"
+
+          # 終了コードが0（成功）または、エラーメッセージが "No updates are to be performed." の場合
+          if [ $UPDATE_EXIT_CODE -eq 0 ]; then
+            echo "Stack update initiated successfully or no changes needed initially."
+            aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
+            echo "Stack update complete."
+          elif echo "$UPDATE_OUTPUT" | grep -q "No updates are to be performed."; then
+            echo "No updates were to be performed on the stack. Continuing..."
+          else
+            echo "Error during stack update: $UPDATE_OUTPUT"
+            exit $UPDATE_EXIT_CODE # その他のエラーの場合はスクリプトをエラー終了させる
+          fi
 
       - name: Clean up old Lambda versions
         run: |
