@@ -56,22 +56,22 @@ jobs:
           echo "Function URL is: ${FUNCTION_URL}"
           echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
       
-      - name: Update CloudFormation Stack with Function URL
-        env: # このステップで再度環境変数を設定
-          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
-          TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
-        run: |
-          echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
-          aws cloudformation update-stack \
-            --stack-name obw-ai-lambda \
-            --use-previous-template \
-            --capabilities CAPABILITY_IAM \
-            --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
-                         ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
-                         ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
-          aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
+      # - name: Update CloudFormation Stack with Function URL
+      #   env: # このステップで再度環境変数を設定
+      #     OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+      #     TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      #     TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      #   run: |
+      #     echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
+      #     aws cloudformation update-stack \
+      #       --stack-name obw-ai-lambda \
+      #       --use-previous-template \
+      #       --capabilities CAPABILITY_IAM \
+      #       --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
+      #                    ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
+      #                    ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
+      #                    ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+      #     aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
 
       - name: Clean up old Lambda versions
         run: |
