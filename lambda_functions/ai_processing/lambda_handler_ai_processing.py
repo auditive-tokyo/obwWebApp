@@ -1,14 +1,18 @@
+# filepath: /Volumes/AUDITIVE/GitHub/obwWebApp/lambda_functions/ai_processing/lambda_handler_ai_processing.py
+import asyncio
 import json
 import os
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
-import openai
+import openai # openai.AsyncOpenAI を使う
 import classification_service
+from .vector_search import openai_vector_search
 from lingual_manager import LingualManager
 
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY') # OpenAI APIキー
 
 # 終話を示すキーワードのリスト（小文字）
 END_CONVERSATION_KEYWORDS = [
@@ -25,26 +29,53 @@ else:
 # LingualManagerのインスタンスを作成
 lingual_mgr = LingualManager()
 
-def lambda_handler(event, context):
-    print(f"AIProcessing Lambda Event: {json.dumps(event)}")
+# 非同期OpenAIクライアントのインスタンスを作成 (Lambdaのグローバルスコープで)
+openai_async_client = None
+if OPENAI_API_KEY:
+    openai_async_client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+else:
+    print("エラー: OPENAI_API_KEY が環境変数に設定されていません。非同期OpenAIクライアントを初期化できません。")
 
+
+async def update_twilio_call_async(call_sid: str, twiml_string: str):
+    """Twilioの通話を非同期で更新する (実際にはrun_in_executorで同期呼び出しをラップ)"""
+    if not twilio_client:
+        print("Error: update_twilio_call_async - Twilio client not initialized.")
+        # エラーを呼び出し元に伝えるか、ここで例外を発生させる
+        raise ConnectionError("Twilio client not initialized for async update.")
+    try:
+        loop = asyncio.get_event_loop()
+        # twilio_client.calls(call_sid).update はブロッキングIOなので別スレッドで実行
+        await loop.run_in_executor(None, lambda: twilio_client.calls(call_sid).update(twiml=twiml_string))
+        print(f"Async Twilio call update for {call_sid} completed via executor.")
+    except Exception as e:
+        print(f"Error in update_twilio_call_async for call {call_sid}: {e}")
+        # エラーを呼び出し元に伝えるか、ここで例外を発生させる
+        raise
+
+
+async def lambda_handler_async(event, context):
+    print(f"AIProcessing Lambda Event: {json.dumps(event)}")
     speech_result = event.get('speech_result')
     call_sid = event.get('call_sid')
-    language = event.get('language', 'en-US')  # 言語情報を取得。デフォルトは英語
-    
-    # 言語に対応した音声設定を取得
+    language = event.get('language', 'en-US')
     voice = lingual_mgr.get_voice(language)
 
     if not twilio_client:
-        print("エラー: Twilio clientが初期化されていません。処理を中断します。")
-        return {'status': 'error', 'message': 'Twilio client not initialized'}
+        print("エラー: Twilio clientが初期化されていません。")
+        # ここでユーザーにエラーを伝えるTwiMLを返すのは難しいので、ログに残して終了
+        return {'status': 'error', 'message': 'Twilio client not initialized at handler start'}
+    
+    if not openai_async_client: # OpenAIクライアントもチェック
+        print("エラー: OpenAI async clientが初期化されていません。")
+        return {'status': 'error', 'message': 'OpenAI async client not initialized at handler start'}
 
-    if not call_sid: # speech_resultは初回以外は必須だが、call_sidは常に必須
+
+    if not call_sid:
         print("エラー: call_sid がイベントに含まれていません。")
         return {'status': 'error', 'message': 'Missing call_sid'}
 
-    # ユーザーが終話を望んでいるかキーワードでチェック
-    if speech_result: # speech_resultが存在する場合のみキーワードチェック
+    if speech_result:
         for keyword in END_CONVERSATION_KEYWORDS:
             if keyword in speech_result.lower():
                 response_message_to_user = lingual_mgr.get_message(language, "ending_message")
@@ -52,106 +83,166 @@ def lambda_handler(event, context):
                 hangup_twiml_obj.say(response_message_to_user, language=language, voice=voice)
                 hangup_twiml_obj.hangup()
                 try:
-                    call = twilio_client.calls(call_sid).update(twiml=str(hangup_twiml_obj))
-                    print(f"Successfully updated call {call_sid} to hang up. Status: {call.status}")
+                    await update_twilio_call_async(call_sid, str(hangup_twiml_obj))
+                    print(f"Successfully updated call {call_sid} to hang up due to keyword.")
                     return {'status': 'completed', 'action': 'hangup_due_to_keyword'}
                 except Exception as e:
-                    print(f"Error updating call to hang up: {e}")
-                    return {'status': 'error', 'message': f"Twilio API error during hangup: {str(e)}"}
+                    print(f"Error updating call to hang up (keyword): {e}")
+                    return {'status': 'error', 'message': f"Twilio API error during keyword hangup: {str(e)}"}
 
-    # 終話でない場合、または初回処理の場合 (speech_resultがNoneの可能性は低いが念のため)
-    if not speech_result: # 通常、Lambda1から呼び出される際にはspeech_resultはあるはず
+    if not speech_result:
         print("警告: speech_resultがAIProcessing Lambdaに渡されませんでした。")
-        # LingualManagerからメッセージを取得
         error_msg = lingual_mgr.get_message(language, "could_not_understand")
         hangup_msg = lingual_mgr.get_message(language, "hangup")
-        
         error_response = VoiceResponse()
         error_response.say(error_msg, language=language, voice=voice)
         error_response.say(hangup_msg, language=language, voice=voice)
         error_response.hangup()
         try:
-            twilio_client.calls(call_sid).update(twiml=str(error_response))
+            await update_twilio_call_async(call_sid, str(error_response))
         except Exception as e:
             print(f"Error updating call with speech_result error: {e}")
         return {'status': 'error', 'message': 'Missing speech_result for processing'}
 
     try:
-        # 1. AIによる緊急度判定
         print(f"Classifying speech: {speech_result}")
-        urgency_result = classification_service.classify_message_urgency(speech_result)
+        loop = asyncio.get_event_loop()
+        # classification_service.classify_message_urgency が同期関数の場合
+        urgency_result = await loop.run_in_executor(None, classification_service.classify_message_urgency, speech_result)
         print(f"Classification result: {urgency_result}")
 
-        # 2. AIの応答メッセージ部分の生成と、エラー時の処理
         ai_response_segment = ""
         should_hangup_due_to_classification_error = False
 
-        if urgency_result == "urgent":
-            ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
-        elif urgency_result == "general":
-            ai_response_segment = lingual_mgr.get_message(language, "general_inquiry")
-        elif urgency_result == "unknown": # "unknown" の場合
-            ai_response_segment = lingual_mgr.get_message(language, "inquiry_not_understood")
-        elif urgency_result == "error": # "error" の場合
-            print("分類サービスでエラーが発生しました。システムエラーメッセージを使用し、通話を終了します。")
-            ai_response_segment = lingual_mgr.get_message(language, "system_error")
-            should_hangup_due_to_classification_error = True
-        else: # 予期しない結果の場合 (念のため)
-            print(f"予期しない分類結果: {urgency_result}。デフォルトのエラーメッセージを使用し、通話を終了します。")
-            ai_response_segment = lingual_mgr.get_message(language, "system_error")
-            should_hangup_due_to_classification_error = True
+        if urgency_result == "general":
+            # 1. 「データベースを検索します」というメッセージをユーザーに伝える
+            announce_search_msg = lingual_mgr.get_message(language, "general_inquiry")
+            announce_twiml = VoiceResponse()
+            announce_twiml.say(announce_search_msg, language=language, voice=voice)
+            
+            try:
+                await update_twilio_call_async(call_sid, str(announce_twiml))
+                print("Search announcement sent to user.")
+            except Exception as e_announce:
+                print(f"Error sending search announcement to user: {e_announce}")
+                # アナウンスに失敗した場合、処理を継続するかどうか検討
+                # ここではエラーとして終了する
+                return {'status': 'error', 'message': f"Failed to announce search: {str(e_announce)}"}
+            
+            # 2. ベクトル検索を実行 (新しく作成したサービス関数を呼び出す)
+            print(f"Calling vector search service for query: {speech_result}")
+            search_results_text = await openai_vector_search(
+                openai_async_client, # 初期化済みクライアントを渡す
+                speech_result, 
+                language
+            )
+            print(f"Vector search service returned: {search_results_text}")
+            
+            # 3. 検索結果に基づいて次のTwiMLを生成
+            results_twiml_obj = VoiceResponse()
+            results_twiml_obj.say(search_results_text, language=language, voice=voice)
+            
+            gather = TwilioGather(
+                input='speech', language=language, method='POST',
+                action=f"{LAMBDA1_FUNCTION_URL}?language={language}",
+                timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3'
+            )
+            follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
+            gather.say(follow_up_msg, language=language, voice=voice)
+            results_twiml_obj.append(gather)
 
-        if should_hangup_due_to_classification_error:
+            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+            results_twiml_obj.say(timeout_msg, language=language, voice=voice)
+            results_twiml_obj.hangup()
+
+            try:
+                await update_twilio_call_async(call_sid, str(results_twiml_obj))
+                print("Search results and follow-up prompt sent to user.")
+                return {'status': 'completed', 'action': 'provided_search_results_and_gathered'}
+            except Exception as e_results:
+                print(f"Error sending search results to user: {e_results}")
+                return {'status': 'error', 'message': f"Failed to send search results: {str(e_results)}"}
+
+        # ... (urgent, unknown, error のケースは変更なし、ただし update_twilio_call_async を使うようにする) ...
+        elif urgency_result == "urgent":
+            ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
+            # (TwiML構築)
+            response_twiml_obj = VoiceResponse() # ... urgent用のTwiML ...
+            response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
+            gather = TwilioGather( input='speech', language=language, method='POST', action=f"{LAMBDA1_FUNCTION_URL}?language={language}", timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
+            follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
+            gather.say(follow_up_msg, language=language, voice=voice)
+            response_twiml_obj.append(gather)
+            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+            response_twiml_obj.say(timeout_msg, language=language, voice=voice)
+            response_twiml_obj.hangup()
+            try:
+                await update_twilio_call_async(call_sid, str(response_twiml_obj))
+                return {'status': 'completed', 'action': 'prompted_for_more_requests_urgent'}
+            except Exception as e:
+                print(f"Error in urgent case: {e}")
+                return {'status': 'error', 'message': f"Twilio API error in urgent case: {str(e)}"}
+
+
+        elif urgency_result == "unknown":
+            ai_response_segment = lingual_mgr.get_message(language, "inquiry_not_understood")
+            response_twiml_obj = VoiceResponse() # ... unknown用のTwiML ...
+            response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
+            gather = TwilioGather( input='speech', language=language, method='POST', action=f"{LAMBDA1_FUNCTION_URL}?language={language}", timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
+            re_prompt_msg = lingual_mgr.get_message(language, "re_prompt_inquiry") # 再度促すメッセージ
+            gather.say(re_prompt_msg, language=language, voice=voice)
+            response_twiml_obj.append(gather)
+            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+            response_twiml_obj.say(timeout_msg, language=language, voice=voice)
+            response_twiml_obj.hangup()
+            try:
+                await update_twilio_call_async(call_sid, str(response_twiml_obj))
+                return {'status': 'completed', 'action': 'prompted_again_unknown'}
+            except Exception as e:
+                print(f"Error in unknown case: {e}")
+                return {'status': 'error', 'message': f"Twilio API error in unknown case: {str(e)}"}
+
+
+        elif urgency_result == "error" or should_hangup_due_to_classification_error: # should_hangup... は既に上で処理されているはずだが念のため
+            print("Classification service error or unexpected result. Hanging up.")
+            ai_response_segment = lingual_mgr.get_message(language, "system_error")
             error_hangup_response = VoiceResponse()
             error_hangup_response.say(ai_response_segment, language=language, voice=voice)
             error_hangup_response.hangup()
             try:
-                twilio_client.calls(call_sid).update(twiml=str(error_hangup_response))
+                await update_twilio_call_async(call_sid, str(error_hangup_response))
                 print(f"Successfully updated call {call_sid} to hang up due to classification error.")
                 return {'status': 'completed', 'action': 'hangup_due_to_classification_error'}
             except Exception as e_hangup:
                 print(f"Error updating call to hang up after classification error: {e_hangup}")
-                # この場合、Twilioへの更新も失敗しているため、Lambdaはエラーを返す
                 return {'status': 'error', 'message': f"Twilio API error during error hangup: {str(e_hangup)}"}
 
-        # 3. フォローアップのTwiML作成 (正常系の場合のみ実行される)
-        response_twiml_obj = VoiceResponse()
-        response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
 
-        gather = TwilioGather(
-            input='speech',
-            language=language,  # 動的な言語設定
-            method='POST',
-            action=f"{LAMBDA1_FUNCTION_URL}?language={language}",  # 言語情報をクエリパラメータとして渡す
-            timeout=5,
-            speechTimeout='auto',
-            speechModel='deepgram-nova-3'
-        )
-        # LingualManagerからフォローアップメッセージを取得
-        follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
-        gather.say(follow_up_msg, language=language, voice=voice)
-        response_twiml_obj.append(gather)
-
-        # Gatherがタイムアウトした場合や、何も聞き取れなかった場合のフォールバック
-        timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-        response_twiml_obj.say(timeout_msg, language=language, voice=voice)
-        response_twiml_obj.hangup()
-
-        new_twiml = str(response_twiml_obj)
-        print(f"Generated TwiML for Call Update: {new_twiml}")
-
-        # 4. Twilio Call Update APIの呼び出し
-        print(f"Updating call {call_sid} with new TwiML.")
-        call = twilio_client.calls(call_sid).update(twiml=new_twiml)
-        print(f"Successfully updated call {call_sid}. Status: {call.status}")
-
-        return {'status': 'completed', 'action': 'prompted_for_more_requests'}
-
-    except openai.APIError as e:
+    except openai.APIError as e: # これは openai_async_client を直接使った場合に発生する可能性
         print(f"OpenAI APIエラーが発生しました: {e}")
-        # ユーザーにはLambda1のPause後のメッセージが流れるか、通話が切れる想定
-        # または、ここでエラーメッセージを<Say>するTwiMLを返すことも可能
+        # ユーザーにエラーを伝える試み
+        try:
+            error_response = VoiceResponse()
+            error_response.say(lingual_mgr.get_message(language, "processing_error"), language=language, voice=voice)
+            error_response.hangup()
+            await update_twilio_call_async(call_sid, str(error_response))
+        except Exception as e_twil:
+            print(f"Failed to inform user about OpenAI API error via Twilio: {e_twil}")
         return {'status': 'error', 'message': f"OpenAI API Error: {str(e)}"}
+    except ConnectionError as e: # update_twilio_call_async から発生する可能性
+        print(f"Twilio接続エラー: {e}")
+        return {'status': 'error', 'message': f"Twilio Connection Error: {str(e)}"}
     except Exception as e:
         print(f"AI処理中に予期せぬエラーが発生しました: {e}")
+        try:
+            error_response = VoiceResponse()
+            error_response.say(lingual_mgr.get_message(language, "processing_error"), language=language, voice=voice)
+            error_response.hangup()
+            await update_twilio_call_async(call_sid, str(error_response))
+        except Exception as e_twil:
+            print(f"Failed to inform user about unexpected error via Twilio: {e_twil}")
         return {'status': 'error', 'message': f"Unexpected error: {str(e)}"}
+
+def lambda_handler(event, context):
+    # asyncio.run() を使って非同期関数を呼び出す
+    return asyncio.run(lambda_handler_async(event, context))

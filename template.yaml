@@ -12,7 +12,7 @@ Globals:
       - x86_64
     Layers:
       - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
-      # - arn:aws:lambda:ap-northeast-1:028816703777:layer:layer_for_obw:9 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
+      # - arn:aws:lambda:ap-northeast-1:028816703777:layer:layer_for_obw:10 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
 
 Parameters:
   OpenAiApiKey:
@@ -59,7 +59,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: obw-immediate-response-function
-      MemorySize: 128 # メモリサイズを128MBに設定
+      MemorySize: 128
       CodeUri: lambda_functions/immediate-response/
       Handler: lambda_handler_immediate_response.lambda_handler
       SnapStart:
@@ -82,7 +82,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Ref AiProcessingLambdaFunctionName
-      MemorySize: 512
+      MemorySize: 1024
       CodeUri: lambda_functions/ai_processing/
       Handler: lambda_handler_ai_processing.lambda_handler
       Environment:
