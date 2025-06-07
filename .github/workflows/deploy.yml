@@ -63,34 +63,15 @@ jobs:
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
-          
-          # update-stack コマンドを実行し、出力を変数に格納
-          UPDATE_OUTPUT=$(aws cloudformation update-stack \
+          aws cloudformation update-stack \
             --stack-name obw-ai-lambda \
             --use-previous-template \
             --capabilities CAPABILITY_IAM \
             --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
                          ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
                          ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET" 2>&1) # 標準エラー出力もキャプチャ
-
-          # コマンドの終了コードを確認
-          UPDATE_EXIT_CODE=$?
-
-          echo "Update stack command output: $UPDATE_OUTPUT"
-          echo "Update stack command exit code: $UPDATE_EXIT_CODE"
-
-          # 終了コードが0（成功）または、エラーメッセージが "No updates are to be performed." の場合
-          if [ $UPDATE_EXIT_CODE -eq 0 ]; then
-            echo "Stack update initiated successfully or no changes needed initially."
-            aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
-            echo "Stack update complete."
-          elif echo "$UPDATE_OUTPUT" | grep -q "No updates are to be performed."; then
-            echo "No updates were to be performed on the stack. Continuing..."
-          else
-            echo "Error during stack update: $UPDATE_OUTPUT"
-            exit $UPDATE_EXIT_CODE # その他のエラーの場合はスクリプトをエラー終了させる
-          fi
+                         ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+          aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
 
       - name: Clean up old Lambda versions
         run: |
@@ -103,6 +84,7 @@ jobs:
             echo "Could not get 'live' alias version for $IMMEDIATE_RESPONSE_FUNCTION_NAME. Skipping cleanup."
           else
             echo "Version for 'live' alias of $IMMEDIATE_RESPONSE_FUNCTION_NAME: $ALIASED_VERSION_IR"
+            # $LATEST ではない、かつエイリアスされていないバージョンをリストアップして削除
             aws lambda list-versions-by-function --function-name "$IMMEDIATE_RESPONSE_FUNCTION_NAME" --query "Versions[?Version!='\$LATEST'].Version" --output json | jq -r '.[]' | while read VERSION_TO_CHECK; do
               if [ "$VERSION_TO_CHECK" != "$ALIASED_VERSION_IR" ]; then
                 echo "Deleting old version: $VERSION_TO_CHECK for $IMMEDIATE_RESPONSE_FUNCTION_NAME"
@@ -113,17 +95,6 @@ jobs:
             done
           fi
 
-          # AiProcessingFunction の古いバージョンをクリーンアップ
-          AI_PROCESSING_FUNCTION_NAME="obw-ai-processing-function" # template.yaml の AiProcessingLambdaFunctionName パラメータのデフォルト値
-          echo "Cleaning up old numbered versions for $AI_PROCESSING_FUNCTION_NAME (now primarily uses $LATEST)"
-          # $LATEST ではない、すべての番号付きバージョンをリストアップして削除
-          aws lambda list-versions-by-function --function-name "$AI_PROCESSING_FUNCTION_NAME" --query "Versions[?Version!='\$LATEST'].Version" --output json | jq -r '.[]' | while read VERSION_TO_DELETE; do
-            if [ ! -z "$VERSION_TO_DELETE" ]; then # VERSION_TO_DELETEが空でないことを確認
-              echo "Deleting old version: $VERSION_TO_DELETE for $AI_PROCESSING_FUNCTION_NAME"
-              aws lambda delete-function --function-name "$AI_PROCESSING_FUNCTION_NAME" --qualifier "$VERSION_TO_DELETE" || echo "Warning: Failed to delete version $VERSION_TO_DELETE for $AI_PROCESSING_FUNCTION_NAME. It might have been already deleted."
-            fi
-          done
-          
           # Lambda レイヤーの古いバージョンをクリーンアップ
           # CloudFormationスタックからレイヤー情報を取得
           echo "Getting Lambda Layer information from CloudFormation stack"
