@@ -4,7 +4,7 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
 import openai
 import classification_service
-from lingual_manager import LingualManager  # LingualManagerをインポート
+from lingual_manager import LingualManager
 
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
@@ -82,30 +82,39 @@ def lambda_handler(event, context):
         urgency_result = classification_service.classify_message_urgency(speech_result)
         print(f"Classification result: {urgency_result}")
 
-        # 2. AIの応答メッセージ部分の生成
+        # 2. AIの応答メッセージ部分の生成と、エラー時の処理
         ai_response_segment = ""
+        should_hangup_due_to_classification_error = False
+
         if urgency_result == "urgent":
             ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
         elif urgency_result == "general":
             ai_response_segment = lingual_mgr.get_message(language, "general_inquiry")
-        else:
+        elif urgency_result == "unknown": # "unknown" の場合
             ai_response_segment = lingual_mgr.get_message(language, "inquiry_not_understood")
+        elif urgency_result == "error": # "error" の場合
+            print("分類サービスでエラーが発生しました。システムエラーメッセージを使用し、通話を終了します。")
+            ai_response_segment = lingual_mgr.get_message(language, "system_error")
+            should_hangup_due_to_classification_error = True
+        else: # 予期しない結果の場合 (念のため)
+            print(f"予期しない分類結果: {urgency_result}。デフォルトのエラーメッセージを使用し、通話を終了します。")
+            ai_response_segment = lingual_mgr.get_message(language, "system_error")
+            should_hangup_due_to_classification_error = True
 
-        # 3. フォローアップのTwiML作成
-        if not LAMBDA1_FUNCTION_URL:
-            print("致命的エラー: LAMBDA1_FUNCTION_URLが環境変数に設定されていません。")
-            # フォールバックとして、AIの応答だけを伝えて終了
-            fallback_response = VoiceResponse()
-            fallback_response.say(ai_response_segment, language=language, voice=voice)
-            system_error_msg = lingual_mgr.get_message(language, "system_error")
-            fallback_response.say(system_error_msg, language=language, voice=voice)
-            fallback_response.hangup()
+        if should_hangup_due_to_classification_error:
+            error_hangup_response = VoiceResponse()
+            error_hangup_response.say(ai_response_segment, language=language, voice=voice)
+            error_hangup_response.hangup()
             try:
-                twilio_client.calls(call_sid).update(twiml=str(fallback_response))
-            except Exception as e_fb:
-                print(f"Error updating call with LAMBDA1_FUNCTION_URL error: {e_fb}")
-            return {'status': 'error', 'message': 'LAMBDA1_FUNCTION_URL not set'}
+                twilio_client.calls(call_sid).update(twiml=str(error_hangup_response))
+                print(f"Successfully updated call {call_sid} to hang up due to classification error.")
+                return {'status': 'completed', 'action': 'hangup_due_to_classification_error'}
+            except Exception as e_hangup:
+                print(f"Error updating call to hang up after classification error: {e_hangup}")
+                # この場合、Twilioへの更新も失敗しているため、Lambdaはエラーを返す
+                return {'status': 'error', 'message': f"Twilio API error during error hangup: {str(e_hangup)}"}
 
+        # 3. フォローアップのTwiML作成 (正常系の場合のみ実行される)
         response_twiml_obj = VoiceResponse()
         response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
 
