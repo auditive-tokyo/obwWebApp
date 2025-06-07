@@ -7,13 +7,13 @@ Description: >
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 1024
+    MemorySize: 256
     Runtime: python3.13
     Architectures:
       - x86_64
     Layers:
-      - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
-      # - arn:aws:lambda:ap-northeast-1:028816703777:layer:layer_for_obw:6 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
+      # - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
+      - arn:aws:lambda:ap-northeast-1:028816703777:layer:layer_for_obw:9 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
 
 Parameters:
   OpenAiApiKey:
@@ -40,21 +40,21 @@ Parameters:
     Default: ""
 
 Resources:
-  LayerForObw:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: layer_for_obw
-      Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
-      ContentUri: layers/
-      CompatibleRuntimes:
-        - python3.13
-      CompatibleArchitectures:
-        - x86_64
-      LicenseInfo: 'Available under the MIT license.'
-      RetentionPolicy: Retain
-    Metadata:
-      BuildMethod: python3.13
-      BuildArchitecture: x86_64
+  # LayerForObw:
+  #   Type: AWS::Serverless::LayerVersion
+  #   Properties:
+  #     LayerName: layer_for_obw
+  #     Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
+  #     ContentUri: layers/
+  #     CompatibleRuntimes:
+  #       - python3.13
+  #     CompatibleArchitectures:
+  #       - x86_64
+  #     LicenseInfo: 'Available under the MIT license.'
+  #     RetentionPolicy: Retain
+  #   Metadata:
+  #     BuildMethod: python3.13
+  #     BuildArchitecture: x86_64
 
   ImmediateResponseFunction:
     Type: AWS::Serverless::Function
