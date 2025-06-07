@@ -169,7 +169,7 @@ def lambda_handler(event, context):
 
         try:
             lambda_client.invoke(
-                FunctionName=f"{AI_PROCESSING_LAMBDA_NAME}:live",
+                FunctionName=AI_PROCESSING_LAMBDA_NAME,
                 InvocationType='Event',
                 Payload=json.dumps(payload)
             )
