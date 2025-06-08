@@ -27,11 +27,18 @@ def lambda_handler(event, context):
     else:
         print("No headers found in event.")
 
+    # クエリパラメータを取得
+    query_params = event.get('queryStringParameters', {})
+    language_preference = query_params.get('language', 'en-US') # 既存
+    previous_openai_response_id_from_query = query_params.get('previous_openai_response_id')
+    
+    print(f"  Query Param - language: {language_preference}")
+    print(f"  Query Param - previous_openai_response_id: {previous_openai_response_id_from_query}")
+
     speech_result = None
     call_sid = None
     digits_result = None # DTMF入力を格納する変数
-    language_preference = event.get('queryStringParameters', {}).get('language', 'en-US') # URLクエリから言語設定を取得、デフォルトは英語
-
+ 
     actual_body_content_for_parsing = ""
     # Twilioからのリクエストボディを解析
     if event.get('requestContext', {}).get('http', {}).get('method') == 'POST' and 'body' in event and event['body']:
@@ -164,7 +171,8 @@ def lambda_handler(event, context):
         payload = {
             'speech_result': speech_result,
             'call_sid': call_sid,
-            'language': language_preference # AI処理Lambdaに言語情報を渡す
+            'language': language_preference, # AI処理Lambdaに言語情報を渡す
+            'previous_openai_response_id': previous_openai_response_id_from_query
         }
 
         try:
