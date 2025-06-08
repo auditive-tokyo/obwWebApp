@@ -72,6 +72,7 @@ async def classify_message_urgency_with_openai_tool_calling(
                 "name": "categorize_user_request"
             },
             temperature=0.0,
+            store=False
         )
 
         tool_calls = None
