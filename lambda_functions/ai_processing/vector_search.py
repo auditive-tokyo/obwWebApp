@@ -79,19 +79,14 @@ File Search ツールが情報を引用した場合 (annotations が空でない
         print("--- OpenAI API Response (Success with JSON Schema) ---")
         print(response) # デバッグが完了したらコメントアウトしても良い
         print(f"Response object type: {type(response)}")
-        if hasattr(response, 'output'):
-            print(f"Response output type: {type(response.output)}")
+        if response and hasattr(response, 'id'):
+            print(f"Response ID: {response.id}")
         print("--- End of OpenAI API Response ---")
 
         generated_text = "検索結果に基づく応答の抽出に失敗しました。" # デフォルト
 
         if response and hasattr(response, 'output'):
-            # json_schema を指定した場合、output はリストで、
-            # その中の ResponseOutputMessage -> content -> ResponseOutputText.text にJSON文字列が含まれると期待
-            if isinstance(response.output, list) and len(response.output) > 0: # 通常は > 1 だが、ツールコールがない場合も考慮
-                # ResponseOutputMessage を探す (通常はリストの最後の方、または type で判断)
-                # ここでは、File Search Tool がある前提で2番目 (index 1) を試す
-                # より堅牢にするなら、リストをループして type == 'message' を探す
+            if isinstance(response.output, list) and len(response.output) > 0:
                 output_message_item = None
                 if len(response.output) > 1 and hasattr(response.output[1], 'type') and response.output[1].type == 'message':
                     output_message_item = response.output[1]
