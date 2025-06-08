@@ -95,15 +95,27 @@ async def lambda_handler_async(event, context):
         return {'status': 'error', 'message': 'Missing speech_result for processing'}
 
     try:
-        print(f"Classifying speech: {speech_result}")
-        urgency_result = await classification_service.classify_message_urgency_with_openai_tool_calling(
-            openai_async_client,
-            speech_result
-        )
-        print(f"Classification result: {urgency_result}")
-
-        ai_response_segment = ""
+        urgency_result = None
         should_hangup_due_to_classification_error = False
+
+        if previous_response_id_from_event:
+            # 2ターン目以降は、文脈があるとみなし、強制的に general ルートへ
+            print(f"Previous response ID '{previous_response_id_from_event}' exists. Skipping classification and setting urgency_result to 'general'.")
+            urgency_result = "general"
+        else:
+            # 最初のターンのみ意図分類を実行
+            print(f"No previous response ID. Classifying speech: {speech_result}")
+            urgency_result = await classification_service.classify_message_urgency_with_openai_tool_calling(
+                openai_async_client,
+                speech_result
+            )
+            print(f"Classification result: {urgency_result}")
+            if urgency_result == "error":
+                # 分類サービス自体がエラーを返した場合
+                should_hangup_due_to_classification_error = True
+                print("Classification service returned an error. Will proceed to hangup.")
+
+        # ai_response_segment = "" # この変数は各ケースで設定されるので、ここでの初期化は必須ではないかも
 
         if urgency_result == "general":
             # 1. 「データベースを検索します」というメッセージを準備
