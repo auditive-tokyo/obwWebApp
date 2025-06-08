@@ -106,19 +106,16 @@ async def lambda_handler_async(event, context):
             announce_search_msg = lingual_mgr.get_message(language, "general_inquiry")
             announce_twiml = VoiceResponse()
             announce_twiml.say(announce_search_msg, language=language, voice=voice)
+            announce_twiml.pause(length=15)
             
             # タスクを作成
             announce_task = update_twilio_call_async(call_sid, str(announce_twiml))
-            # search_task = openai_vector_search( # 修正前
-            #     openai_async_client,
-            #     speech_result,
-            #     language
-            # )
-            search_task = openai_vector_search_with_file_search_tool( # 修正後
+
+            search_task = openai_vector_search_with_file_search_tool(
                 openai_async_client,
                 speech_result,
                 language,
-                OPENAI_VECTOR_STORE_ID # ★ OPENAI_VECTOR_STORE_ID を渡す
+                OPENAI_VECTOR_STORE_ID
             )
             
             print("Announcement and vector search tasks created, starting them in parallel...")
