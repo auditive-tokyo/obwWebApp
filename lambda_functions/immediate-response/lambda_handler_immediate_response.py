@@ -194,7 +194,7 @@ def lambda_handler(event, context):
         analyzing_message_text = lingual_mgr.get_message(language_preference, "received_and_analyzing")
         analyzing_voice = lingual_mgr.get_voice(language_preference)
         twilio_response.say(analyzing_message_text, language=language_preference, voice=analyzing_voice)
-        twilio_response.pause(length=15)
+        twilio_response.pause(length=300)
 
     else: # 初回呼び出し (current_action == 'greet')
         # 言語選択用のGather
