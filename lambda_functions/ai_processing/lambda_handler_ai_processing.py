@@ -94,29 +94,35 @@ async def lambda_handler_async(event, context):
         should_hangup_due_to_classification_error = False
 
         if urgency_result == "general":
-            # 1. 「データベースを検索します」というメッセージをユーザーに伝える
+            # 1. 「データベースを検索します」というメッセージを準備
             announce_search_msg = lingual_mgr.get_message(language, "general_inquiry")
             announce_twiml = VoiceResponse()
             announce_twiml.say(announce_search_msg, language=language, voice=voice)
             
-            try:
-                await update_twilio_call_async(call_sid, str(announce_twiml))
-                print("Search announcement sent to user.")
-            except Exception as e_announce:
-                print(f"Error sending search announcement to user: {e_announce}")
-                # アナウンスに失敗した場合、処理を継続するかどうか検討
-                # ここではエラーとして終了する
-                return {'status': 'error', 'message': f"Failed to announce search: {str(e_announce)}"}
-            
-            # 2. ベクトル検索を実行 (新しく作成したサービス関数を呼び出す)
-            print(f"Calling vector search service for query: {speech_result}")
-            search_results_text = await openai_vector_search(
-                openai_async_client, # 初期化済みクライアントを渡す
-                speech_result, 
+            # タスクを作成
+            announce_task = update_twilio_call_async(call_sid, str(announce_twiml))
+            search_task = openai_vector_search(
+                openai_async_client,
+                speech_result,
                 language
             )
-            print(f"Vector search service returned: {search_results_text}")
             
+            print("Announcement and vector search tasks created, starting them in parallel...")
+            try:
+                # アナウンス送信とベクトル検索を並行して実行
+                # gather は両方のタスクが完了するまで待つ
+                announce_result, search_results_text = await asyncio.gather(
+                    announce_task,
+                    search_task
+                )                
+                print("Search announcement sent and vector search completed.")
+                print(f"Vector search service returned: {search_results_text}")
+
+            except Exception as e_gather:
+                # gather で実行したタスクのいずれかでエラーが発生した場合
+                print(f"Error during announcement or vector search: {e_gather}")
+                return {'status': 'error', 'message': f"Processing error during general inquiry: {str(e_gather)}"}
+
             # 3. 検索結果に基づいて次のTwiMLを生成
             results_twiml_obj = VoiceResponse()
             results_twiml_obj.say(search_results_text, language=language, voice=voice)
