@@ -125,7 +125,7 @@ async def lambda_handler_async(event, context):
             print("Announcement and vector search tasks created, starting them in parallel...")
             try:
                 # アナウンス送信とベクトル検索を並行して実行
-                search_results_json_string = await asyncio.gather(
+                announce_result, search_results_json_string = await asyncio.gather(
                     announce_task,
                     search_task
                 )
