@@ -19,6 +19,10 @@ Parameters:
     Type: String
     Description: "OpenAI API Key"
     NoEcho: true
+  OpenAiVectorStoreId:
+    Type: String
+    Description: "OpenAI Vector Store ID"
+    NoEcho: true
   TwilioAccountSid:
     Type: String
     Description: "Twilio Account SID"
@@ -88,6 +92,7 @@ Resources:
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
           LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam

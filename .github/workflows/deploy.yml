@@ -35,6 +35,7 @@ jobs:
       - name: SAM Deploy
         env:
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
         run: |
@@ -45,6 +46,7 @@ jobs:
             --no-confirm-changeset \
             --parameter-overrides \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
+              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
 
@@ -56,9 +58,10 @@ jobs:
           echo "Function URL is: ${FUNCTION_URL}"
           echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
       
-      # - name: Update CloudFormation Stack with Function URL
+      # - name: Update CloudFormation Stack with Function URL 
       #   env: # このステップで再度環境変数を設定
       #     OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+      #     OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }} # ★ ここにも追加
       #     TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
       #     TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
       #   run: |
@@ -69,6 +72,7 @@ jobs:
       #       --capabilities CAPABILITY_IAM \
       #       --parameters ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_function_url.outputs.function_url }}" \
       #                    ParameterKey=OpenAiApiKey,ParameterValue="$OPENAI_API_KEY_FROM_SECRET" \
+      #                    ParameterKey=OpenAiVectorStoreId,ParameterValue="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \ # ★ ここにも追加
       #                    ParameterKey=TwilioAccountSid,ParameterValue="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
       #                    ParameterKey=TwilioAuthToken,ParameterValue="$TWILIO_AUTH_TOKEN_FROM_SECRET"
       #     aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda

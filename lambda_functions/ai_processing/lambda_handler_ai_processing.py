@@ -5,13 +5,14 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
 import openai
 import classification_service
-from vector_search import openai_vector_search
+from vector_search import openai_vector_search_with_file_search_tool
 from lingual_manager import LingualManager
 
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+OPENAI_VECTOR_STORE_ID = os.environ.get('OPENAI_VECTOR_STORE_ID')
 
 twilio_client = None
 if ACCOUNT_SID and AUTH_TOKEN:
@@ -63,6 +64,13 @@ async def lambda_handler_async(event, context):
         print("エラー: OpenAI async clientが初期化されていません。")
         return {'status': 'error', 'message': 'OpenAI async client not initialized at handler start'}
 
+    # ★ OPENAI_VECTOR_STORE_ID のチェックを追加
+    if not OPENAI_VECTOR_STORE_ID:
+        print("エラー: OPENAI_VECTOR_STORE_ID が環境変数に設定されていません。")
+        # ユーザーにエラーを伝えるTwiMLを返すのは難しいので、ログに残して終了
+        # 必要であれば、ここでユーザーにシステムエラーを伝える処理を追加
+        return {'status': 'error', 'message': 'OPENAI_VECTOR_STORE_ID not configured'}
+
 
     if not call_sid:
         print("エラー: call_sid がイベントに含まれていません。")
@@ -101,10 +109,16 @@ async def lambda_handler_async(event, context):
             
             # タスクを作成
             announce_task = update_twilio_call_async(call_sid, str(announce_twiml))
-            search_task = openai_vector_search(
+            # search_task = openai_vector_search( # 修正前
+            #     openai_async_client,
+            #     speech_result,
+            #     language
+            # )
+            search_task = openai_vector_search_with_file_search_tool( # 修正後
                 openai_async_client,
                 speech_result,
-                language
+                language,
+                OPENAI_VECTOR_STORE_ID # ★ OPENAI_VECTOR_STORE_ID を渡す
             )
             
             print("Announcement and vector search tasks created, starting them in parallel...")
