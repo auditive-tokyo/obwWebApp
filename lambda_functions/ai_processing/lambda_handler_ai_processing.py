@@ -1,10 +1,9 @@
-# filepath: /Volumes/AUDITIVE/GitHub/obwWebApp/lambda_functions/ai_processing/lambda_handler_ai_processing.py
 import asyncio
 import json
 import os
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
-import openai # openai.AsyncOpenAI を使う
+import openai
 import classification_service
 from vector_search import openai_vector_search
 from lingual_manager import LingualManager
@@ -12,13 +11,7 @@ from lingual_manager import LingualManager
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY') # OpenAI APIキー
-
-# 終話を示すキーワードのリスト（小文字）
-END_CONVERSATION_KEYWORDS = [
-    "特にないです", "とくにないです", "いいえ", "ありません", "ないです",
-    "大丈夫です", "けっこうです", "終わりです", "以上です"
-]
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
 twilio_client = None
 if ACCOUNT_SID and AUTH_TOKEN:
@@ -75,21 +68,6 @@ async def lambda_handler_async(event, context):
         print("エラー: call_sid がイベントに含まれていません。")
         return {'status': 'error', 'message': 'Missing call_sid'}
 
-    if speech_result:
-        for keyword in END_CONVERSATION_KEYWORDS:
-            if keyword in speech_result.lower():
-                response_message_to_user = lingual_mgr.get_message(language, "ending_message")
-                hangup_twiml_obj = VoiceResponse()
-                hangup_twiml_obj.say(response_message_to_user, language=language, voice=voice)
-                hangup_twiml_obj.hangup()
-                try:
-                    await update_twilio_call_async(call_sid, str(hangup_twiml_obj))
-                    print(f"Successfully updated call {call_sid} to hang up due to keyword.")
-                    return {'status': 'completed', 'action': 'hangup_due_to_keyword'}
-                except Exception as e:
-                    print(f"Error updating call to hang up (keyword): {e}")
-                    return {'status': 'error', 'message': f"Twilio API error during keyword hangup: {str(e)}"}
-
     if not speech_result:
         print("警告: speech_resultがAIProcessing Lambdaに渡されませんでした。")
         error_msg = lingual_mgr.get_message(language, "could_not_understand")
@@ -106,9 +84,10 @@ async def lambda_handler_async(event, context):
 
     try:
         print(f"Classifying speech: {speech_result}")
-        loop = asyncio.get_event_loop()
-        # classification_service.classify_message_urgency が同期関数の場合
-        urgency_result = await loop.run_in_executor(None, classification_service.classify_message_urgency, speech_result)
+        urgency_result = await classification_service.classify_message_urgency_with_openai_tool_calling(
+            openai_async_client,
+            speech_result
+        )
         print(f"Classification result: {urgency_result}")
 
         ai_response_segment = ""

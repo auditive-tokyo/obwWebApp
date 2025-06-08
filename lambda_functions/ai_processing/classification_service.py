@@ -2,8 +2,6 @@ import os
 import openai
 import json
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
 # Tool Callingで使用する関数の定義
 tools = [
     {
@@ -31,13 +29,19 @@ tools = [
 ]
 
 
-def classify_message_urgency_with_openai_tool_calling(user_message: str) -> str:
+async def classify_message_urgency_with_openai_tool_calling(
+    openai_async_client: openai.AsyncOpenAI,
+    user_message: str
+) -> str:
     """
-    OpenAIのTool Callingを使用してユーザーのメッセージの緊急度を分類します。
+    OpenAIのTool Callingを使用してユーザーのメッセージの緊急度を分類します (非同期版)。
     戻り値: "urgent", "general", "unknown", "error"
     """
+    if not openai_async_client:
+        print("Error: classify_message_urgency - OpenAI async client not provided.")
+        return "error"
 
-    print(f"OpenAI (Tool Calling)でメッセージの緊急度を分類中: '{user_message}'")
+    print(f"OpenAI (Tool Calling)でメッセージの緊急度を分類中 (非同期): '{user_message}'")
 
     system_prompt = """あなたはOsaka Bay Wheelというホテルのユーザーからの問い合わせを分類するアシスタントです。
 ユーザーのメッセージが緊急かどうかを判断してください。
@@ -59,7 +63,7 @@ def classify_message_urgency_with_openai_tool_calling(user_message: str) -> str:
 必ず 'categorize_user_request' 関数を呼び出して結果を返してください。
 """
     try:
-        response = openai.chat.completions.create(
+        response = await openai_async_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -79,28 +83,26 @@ def classify_message_urgency_with_openai_tool_calling(user_message: str) -> str:
                     function_args = json.loads(tool_call.function.arguments)
                     urgency = function_args.get("urgency")
                     reasoning = function_args.get("reasoning", "N/A")
-                    print(f"OpenAIからの分類結果 (Tool Call): urgency='{urgency}', reasoning='{reasoning}'")
+                    print(f"OpenAIからの分類結果 (Tool Call, async): urgency='{urgency}', reasoning='{reasoning}'")
                     if urgency in ["urgent", "general", "unknown"]:
                         return urgency
                     else:
                         print(f"予期しない緊急度の値: {urgency}。'unknown'として扱います。")
-                        return "unknown" # モデルがenum外の値を返した場合
+                        return "unknown"
         
-        # Tool callが期待通りに得られなかった場合
-        print("OpenAIが期待通りにTool Callを返しませんでした。分類結果を 'unknown' とします。")
-        return "unknown" # API通信は成功したが、モデルの応答が不適切だった場合
+        print("OpenAIが期待通りにTool Callを返しませんでした (async)。分類結果を 'unknown' とします。")
+        return "unknown"
 
     except openai.APIConnectionError as e:
-        print(f"OpenAI APIへの接続に失敗しました: {e}")
+        print(f"OpenAI APIへの接続に失敗しました (async): {e}")
         return "error"
     except openai.RateLimitError as e:
-        print(f"OpenAI APIのレート制限に達しました: {e}")
+        print(f"OpenAI APIのレート制限に達しました (async): {e}")
         return "error"
     except openai.APIStatusError as e:
-        print(f"OpenAI APIがエラーを返しました (ステータスコード: {e.status_code}): {e.response}")
+        print(f"OpenAI APIがエラーを返しました (ステータスコード: {e.status_code}, async): {e.response}")
         return "error"
     except Exception as e:
-        print(f"OpenAI (Tool Calling)での分類中に予期せぬエラーが発生しました: {e}")
+        print(f"OpenAI (Tool Calling)での分類中に予期せぬエラーが発生しました (async): {e}")
         return "error"
 
-classify_message_urgency = classify_message_urgency_with_openai_tool_calling
