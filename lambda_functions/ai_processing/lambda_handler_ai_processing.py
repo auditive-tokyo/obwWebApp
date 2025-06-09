@@ -5,7 +5,10 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather as TwilioGather
 import openai
 import classification_service
+# 内部モジュールのインポート
 from vector_search import openai_vector_search_with_file_search_tool
+from utils.load_validate_env_vars import load_and_validate_essential_env_vars
+# layerのインポート
 from lingual_manager import LingualManager
 
 ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -14,22 +17,12 @@ LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 OPENAI_VECTOR_STORE_ID = os.environ.get('OPENAI_VECTOR_STORE_ID')
 
-twilio_client = None
-if ACCOUNT_SID and AUTH_TOKEN:
-    twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
-else:
-    print("エラー: TWILIO_ACCOUNT_SID または TWILIO_AUTH_TOKEN が環境変数に設定されていません。")
+load_and_validate_essential_env_vars()
 
-# LingualManagerのインスタンスを作成
+# インスタンスの作成
+twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
 lingual_mgr = LingualManager()
-
-# 非同期OpenAIクライアントのインスタンスを作成 (Lambdaのグローバルスコープで)
-openai_async_client = None
-if OPENAI_API_KEY:
-    openai_async_client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
-else:
-    print("エラー: OPENAI_API_KEY が環境変数に設定されていません。非同期OpenAIクライアントを初期化できません。")
-
+openai_async_client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 async def update_twilio_call_async(call_sid: str, twiml_string: str):
     """Twilioの通話を非同期で更新する (実際にはrun_in_executorで同期呼び出しをラップ)"""
@@ -67,14 +60,6 @@ async def lambda_handler_async(event, context):
     if not openai_async_client: # OpenAIクライアントもチェック
         print("エラー: OpenAI async clientが初期化されていません。")
         return {'status': 'error', 'message': 'OpenAI async client not initialized at handler start'}
-
-    # ★ OPENAI_VECTOR_STORE_ID のチェックを追加
-    if not OPENAI_VECTOR_STORE_ID:
-        print("エラー: OPENAI_VECTOR_STORE_ID が環境変数に設定されていません。")
-        # ユーザーにエラーを伝えるTwiMLを返すのは難しいので、ログに残して終了
-        # 必要であれば、ここでユーザーにシステムエラーを伝える処理を追加
-        return {'status': 'error', 'message': 'OPENAI_VECTOR_STORE_ID not configured'}
-
 
     if not call_sid:
         print("エラー: call_sid がイベントに含まれていません。")
