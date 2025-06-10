@@ -2,9 +2,8 @@ class LingualManager:
     def __init__(self):
         self.messages = {
             "ja-JP": {
-                "welcome": "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。",
+                "welcome": "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。ご用件をどうぞ。",
                 "received_and_analyzing": "メッセージを受け取りました。解析します。少々お待ちください。",
-                "prompt_for_inquiry": "ご用件をどうぞ。",
                 "could_not_understand": "聞き取れませんでした。",
                 "re_prompt_inquiry": "お手数ですが、もう一度、ご用件をお話しください。",
                 "hangup": "お手数ですが、もう一度おかけ直しください。",
@@ -19,9 +18,8 @@ class LingualManager:
                 "system_error": "システムエラーのため、これ以上の対応はできません。申し訳ありません。"
             },
             "en-US": {
-                "welcome": "Thank you for calling. This is the Osaka Bay Wheel AI automated attendant.",
+                "welcome": "Thank you for calling. This is the Osaka Bay Wheel AI automated attendant. How can I help you?",
                 "received_and_analyzing": "Message received. I am analyzing it. Please wait a moment.",
-                "prompt_for_inquiry": "How can I help you?",
                 "could_not_understand": "I couldn't understand your request.",
                 "re_prompt_inquiry": "Could you please state your inquiry again?",
                 "hangup": "Please try calling again.",

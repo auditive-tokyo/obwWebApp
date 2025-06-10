@@ -119,10 +119,7 @@ def lambda_handler(event, context):
             welcome_message = lingual_mgr.get_message(language_preference, "welcome")
             voice = lingual_mgr.get_voice(language_preference)
 
-            twilio_response.say(welcome_message, language=language_preference, voice=voice)
-
-            # --- 1回目の用件伺い ---
-            prompt_inquiry_text_1 = lingual_mgr.get_message(language_preference, "prompt_for_inquiry")
+            # --- 1回目の用件伺い (割り込み可能) ---
             gather_inquiry_1 = Gather(
                 input='speech',
                 method='POST',
@@ -130,9 +127,10 @@ def lambda_handler(event, context):
                 speechTimeout='auto',
                 timeout=5,
                 speechModel='deepgram-nova-3',
-                action=f'?action=speech_captured&language={language_preference}&attempt=1' # 試行回数を渡す
+                action=f'?action=speech_captured&language={language_preference}&attempt=1'
             )
-            gather_inquiry_1.say(prompt_inquiry_text_1, language=language_preference, voice=voice)
+            # Gather の中に Say をネストすることで、Say の再生中に割り込みが可能になる
+            gather_inquiry_1.say(welcome_message, language=language_preference, voice=voice)
             twilio_response.append(gather_inquiry_1)
 
             # --- 1回目のGatherが失敗した場合 (タイムアウト、無音など) ---
