@@ -88,7 +88,7 @@ async def lambda_handler_async(event, context):
             announce_twiml.pause(length=15)
             
             # タスクを作成
-            announce_task = update_twilio_call_async(call_sid, str(announce_twiml))
+            announce_task = update_twilio_call_async(twilio_client, call_sid, str(announce_twiml))
             search_task = openai_vector_search_with_file_search_tool(
                 openai_async_client,
                 speech_result,
@@ -134,7 +134,7 @@ async def lambda_handler_async(event, context):
                 error_response.say(lingual_mgr.get_message(language, "processing_error"), language=language, voice=voice)
                 error_response.hangup()
                 try:
-                    await update_twilio_call_async(call_sid, str(error_response))
+                    await update_twilio_call_async(twilio_client, call_sid, str(error_response))
                 except Exception as e_twil_err:
                     print(f"Failed to inform user about gather error: {e_twil_err}")
                 return {'status': 'error', 'message': f"Processing error during general inquiry: {str(e_gather)}"}
@@ -162,7 +162,7 @@ async def lambda_handler_async(event, context):
             results_twiml_obj.hangup()
 
             try:
-                await update_twilio_call_async(call_sid, str(results_twiml_obj))
+                await update_twilio_call_async(twilio_client, call_sid, str(results_twiml_obj))
                 print("Search results and follow-up prompt sent to user.")
                 # 関数の戻り値に、取得した情報を追加することも検討できる (ImmediateResponseFunction側で利用する場合)
                 return {
@@ -188,7 +188,7 @@ async def lambda_handler_async(event, context):
             response_twiml_obj.say(timeout_msg, language=language, voice=voice)
             response_twiml_obj.hangup()
             try:
-                await update_twilio_call_async(call_sid, str(response_twiml_obj))
+                await update_twilio_call_async(twilio_client, call_sid, str(response_twiml_obj))
                 return {'status': 'completed', 'action': 'prompted_for_more_requests_urgent'}
             except Exception as e:
                 print(f"Error in urgent case: {e}")
@@ -207,7 +207,7 @@ async def lambda_handler_async(event, context):
             response_twiml_obj.say(timeout_msg, language=language, voice=voice)
             response_twiml_obj.hangup()
             try:
-                await update_twilio_call_async(call_sid, str(response_twiml_obj))
+                await update_twilio_call_async(twilio_client, call_sid, str(response_twiml_obj))
                 return {'status': 'completed', 'action': 'prompted_again_unknown'}
             except Exception as e:
                 print(f"Error in unknown case: {e}")
@@ -221,7 +221,7 @@ async def lambda_handler_async(event, context):
             error_hangup_response.say(ai_response_segment, language=language, voice=voice)
             error_hangup_response.hangup()
             try:
-                await update_twilio_call_async(call_sid, str(error_hangup_response))
+                await update_twilio_call_async(twilio_client, call_sid, str(error_hangup_response))
                 print(f"Successfully updated call {call_sid} to hang up due to classification error.")
                 return {'status': 'completed', 'action': 'hangup_due_to_classification_error'}
             except Exception as e_hangup:
@@ -236,7 +236,7 @@ async def lambda_handler_async(event, context):
             error_response = VoiceResponse()
             error_response.say(lingual_mgr.get_message(language, "processing_error"), language=language, voice=voice)
             error_response.hangup()
-            await update_twilio_call_async(call_sid, str(error_response))
+            await update_twilio_call_async(twilio_client, call_sid, str(error_response))
         except Exception as e_twil:
             print(f"Failed to inform user about OpenAI API error via Twilio: {e_twil}")
         return {'status': 'error', 'message': f"OpenAI API Error: {str(e)}"}
@@ -249,7 +249,7 @@ async def lambda_handler_async(event, context):
             error_response = VoiceResponse()
             error_response.say(lingual_mgr.get_message(language, "processing_error"), language=language, voice=voice)
             error_response.hangup()
-            await update_twilio_call_async(call_sid, str(error_response))
+            await update_twilio_call_async(twilio_client, call_sid, str(error_response))
         except Exception as e_twil:
             print(f"Failed to inform user about unexpected error via Twilio: {e_twil}")
         return {'status': 'error', 'message': f"Unexpected error: {str(e)}"}
