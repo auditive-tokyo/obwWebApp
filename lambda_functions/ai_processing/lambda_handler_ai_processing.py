@@ -7,7 +7,7 @@ import openai
 import classification_service
 # 内部モジュールのインポート
 from vector_search import openai_vector_search_with_file_search_tool
-from utils.load_validate_env_vars import load_and_validate_essential_env_vars
+from utils.validation import validate_essential_env_vars, validate_handler_resources
 # layerのインポート
 from lingual_manager import LingualManager
 
@@ -17,7 +17,7 @@ LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 OPENAI_VECTOR_STORE_ID = os.environ.get('OPENAI_VECTOR_STORE_ID')
 
-load_and_validate_essential_env_vars()
+validate_essential_env_vars()
 
 # インスタンスの作成
 twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
@@ -52,18 +52,13 @@ async def lambda_handler_async(event, context):
 
     voice = lingual_mgr.get_voice(language)
 
-    if not twilio_client:
-        print("エラー: Twilio clientが初期化されていません。")
-        # ここでユーザーにエラーを伝えるTwiMLを返すのは難しいので、ログに残して終了
-        return {'status': 'error', 'message': 'Twilio client not initialized at handler start'}
-    
-    if not openai_async_client: # OpenAIクライアントもチェック
-        print("エラー: OpenAI async clientが初期化されていません。")
-        return {'status': 'error', 'message': 'OpenAI async client not initialized at handler start'}
-
-    if not call_sid:
-        print("エラー: call_sid がイベントに含まれていません。")
-        return {'status': 'error', 'message': 'Missing call_sid'}
+    resource_validation_error = validate_handler_resources(
+        twilio_client,
+        openai_async_client,
+        call_sid
+    )
+    if resource_validation_error:
+        return resource_validation_error
 
     if not speech_result:
         print("警告: speech_resultがAIProcessing Lambdaに渡されませんでした。")
