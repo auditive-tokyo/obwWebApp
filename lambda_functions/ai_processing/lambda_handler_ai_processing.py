@@ -8,6 +8,7 @@ import classification_service
 # 内部モジュールのインポート
 from vector_search import openai_vector_search_with_file_search_tool
 from utils.validation import validate_essential_env_vars, validate_handler_resources
+from utils.twilio_utils import update_twilio_call_async
 # layerのインポート
 from lingual_manager import LingualManager
 
@@ -24,22 +25,6 @@ twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
 lingual_mgr = LingualManager()
 openai_async_client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-async def update_twilio_call_async(call_sid: str, twiml_string: str):
-    """Twilioの通話を非同期で更新する (実際にはrun_in_executorで同期呼び出しをラップ)"""
-    if not twilio_client:
-        print("Error: update_twilio_call_async - Twilio client not initialized.")
-        # エラーを呼び出し元に伝えるか、ここで例外を発生させる
-        raise ConnectionError("Twilio client not initialized for async update.")
-    try:
-        loop = asyncio.get_event_loop()
-        # twilio_client.calls(call_sid).update はブロッキングIOなので別スレッドで実行
-        await loop.run_in_executor(None, lambda: twilio_client.calls(call_sid).update(twiml=twiml_string))
-        print(f"Async Twilio call update for {call_sid} completed via executor.")
-    except Exception as e:
-        print(f"Error in update_twilio_call_async for call {call_sid}: {e}")
-        # エラーを呼び出し元に伝えるか、ここで例外を発生させる
-        raise
-
 
 async def lambda_handler_async(event, context):
     print(f"AIProcessing Lambda Event: {json.dumps(event)}")
@@ -47,8 +32,6 @@ async def lambda_handler_async(event, context):
     call_sid = event.get('call_sid')
     language = event.get('language', 'en-US')
     previous_response_id_from_event = event.get('previous_openai_response_id', None)
-
-    print(f"Received previous_openai_response_id: {previous_response_id_from_event}")
 
     voice = lingual_mgr.get_voice(language)
 
@@ -69,7 +52,7 @@ async def lambda_handler_async(event, context):
         error_response.say(hangup_msg, language=language, voice=voice)
         error_response.hangup()
         try:
-            await update_twilio_call_async(call_sid, str(error_response))
+            await update_twilio_call_async(twilio_client, call_sid, str(error_response))
         except Exception as e:
             print(f"Error updating call with speech_result error: {e}")
         return {'status': 'error', 'message': 'Missing speech_result for processing'}
@@ -122,7 +105,6 @@ async def lambda_handler_async(event, context):
                     search_task
                 )
                 print("Search announcement sent and vector search completed.")
-                print(f"Vector search service returned JSON: {search_results_json_string}")
 
                 # JSON文字列をパースして必要な情報を取得
                 parsed_search_results = {}
@@ -186,14 +168,13 @@ async def lambda_handler_async(event, context):
                 return {
                     'status': 'completed',
                     'action': 'provided_search_results_and_gathered',
-                    'openai_response_id': current_openai_response_id, # 例
-                    'needs_operator': needs_operator_flag # 例
+                    'openai_response_id': current_openai_response_id,
+                    # 'needs_operator': needs_operator_flag
                 }
             except Exception as e_results:
                 print(f"Error sending search results to user: {e_results}")
                 return {'status': 'error', 'message': f"Failed to send search results: {str(e_results)}"}
 
-        # ... (urgent, unknown, error のケースは変更なし、ただし update_twilio_call_async を使うようにする) ...
         elif urgency_result == "urgent":
             ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
             # (TwiML構築)
