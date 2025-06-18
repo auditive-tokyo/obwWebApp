@@ -36,3 +36,5 @@ lambda_functions/ai_processing/lingual_manager.py
 # misc
 venv/
 .aws-sam/
+.venv/
+vector_db_files/

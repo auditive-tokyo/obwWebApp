@@ -3,7 +3,7 @@ name: Deploy SAM Application
 on:
   push:
     branches:
-      - main
+      # - main
   workflow_dispatch:
 
 jobs:

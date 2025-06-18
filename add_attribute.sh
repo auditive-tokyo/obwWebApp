@@ -3,7 +3,7 @@
 # 既存のファイルにattributeを追加するスクリプト
 
 # 対象のFile ID (必要に応じて変更)
-TARGET_FILE_ID="file-FEfi4gVxj8Zfsbf4rRu6AS"
+TARGET_FILE_ID="file-W8tfSP2EuZdEeGFfrpEV5q"
 
 # .envファイルが存在するか確認し、存在すれば読み込む
 ENV_FILE=".env"
