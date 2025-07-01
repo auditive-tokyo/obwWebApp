@@ -187,6 +187,7 @@ def lambda_handler(event, context):
         # 言語選択用のGather
         gather_lang = Gather(input='dtmf', numDigits=1, method='POST', action='?action=language_selected')
 
+        twilio_response.pause(length=1)
         # Gather内に音声プロンプトを配置することで、再生中でもボタン入力を検知できるようになる
         gather_lang.say("For English, press 1.", language="en-US", voice=lingual_mgr.get_voice("en-US"))
         gather_lang.say("日本語をご希望の場合は2を押してください。", language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
