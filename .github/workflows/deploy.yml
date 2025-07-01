@@ -31,6 +31,9 @@ jobs:
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
+      - name: Clean previous SAM build
+        run: rm -rf .aws-sam/build
+
       - name: SAM Build
         run: sam build --use-container
 
