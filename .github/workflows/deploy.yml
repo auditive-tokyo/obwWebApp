@@ -70,27 +70,12 @@ jobs:
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
 
-          # ★★★ ここからが修正点 ★★★
-
-          # 1. samconfig.toml からS3バケット名を取得する (最も確実な方法)
-          S3_BUCKET=$(grep 's3_bucket' samconfig.toml | cut -d' ' -f3 | tr -d '"')
-          if [ -z "$S3_BUCKET" ]; then
-            echo "Error: Could not determine S3 bucket from samconfig.toml."
-            exit 1
-          fi
-          echo "Using S3 bucket from samconfig.toml: $S3_BUCKET"
-
-          # 2. sam package を実行して、S3 URIを含むテンプレートを生成
-          sam package \
-            --template-file .aws-sam/build/template.yaml \
-            --s3-bucket "$S3_BUCKET" \
-            --output-template-file packaged.yaml
-
-          # 3. aws cloudformation deploy で、パッケージ済みのテンプレートを使用
-          aws cloudformation deploy \
+          # sam deploy を再度実行して、Function URL をパラメータとして渡す
+          sam deploy \
             --stack-name obw-ai-lambda \
-            --template-file packaged.yaml \
             --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
               ImmediateResponseFunctionUrlParam="${{ steps.get_function_url.outputs.function_url }}" \
