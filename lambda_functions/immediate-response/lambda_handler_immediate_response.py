@@ -29,7 +29,7 @@ def lambda_handler(event, context):
 
     # クエリパラメータを取得
     query_params = event.get('queryStringParameters', {})
-    language_preference = query_params.get('language', 'en-US') # 既存
+    language_preference = query_params.get('language', 'en-US')
     previous_openai_response_id_from_query = query_params.get('previous_openai_response_id')
     source = query_params.get('source') # どのGatherからのリクエストかを取得
     

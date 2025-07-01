@@ -31,6 +31,7 @@ async def lambda_handler_async(event, context):
     speech_result = event.get('speech_result')
     call_sid = event.get('call_sid')
     language = event.get('language', 'en-US')
+    print(f"--- DEBUG: Language received by AIProcessing Lambda is: '{language}' ---")
     previous_response_id_from_event = event.get('previous_openai_response_id', None)
 
     voice = lingual_mgr.get_voice(language)
