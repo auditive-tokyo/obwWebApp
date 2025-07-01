@@ -13,6 +13,8 @@ class LingualManager:
                 "general_inquiry": "データベースを検索しますので、少々お待ちください。",
                 "inquiry_not_understood": "お問い合わせ内容を解析できませんでした。可能な限りゆっくり話してください。",
                 "follow_up_question": "他にもご用件はございますか？",
+                "prompt_for_operator_dtmf": "オペレーターにお繋ぎする場合は1を、他のご用件がございましたら2を押してください。",
+                "transferring_to_operator": "オペレーターにお繋ぎします。少々お待ちください。",
                 "timeout_message": "タイムアウトしました。またご用件がございましたら、おかけ直しください。お電話ありがとうございました。",
                 "ending_message": "承知いたしました。お電話ありがとうございました。",
                 "system_error": "システムエラーのため、これ以上の対応はできません。申し訳ありません。"
@@ -29,6 +31,8 @@ class LingualManager:
                 "general_inquiry": "I will search the database, please wait a moment.",
                 "inquiry_not_understood": "I was unable to analyze your inquiry. Please try speaking as slowly as possible.",
                 "follow_up_question": "Is there anything else I can help you with?",
+                "prompt_for_operator_dtmf": "To speak with an operator, please press 1. For other inquiries, please press 2.",
+                "transferring_to_operator": "Connecting you to an operator. Please wait a moment.",
                 "timeout_message": "The session has timed out. If you have any other inquiries, please call again. Thank you for your call.",
                 "ending_message": "Understood. Thank you for your call.",
                 "system_error": "Due to a system error, I cannot process further requests. I apologize for the inconvenience."

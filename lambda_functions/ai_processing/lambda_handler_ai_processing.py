@@ -125,7 +125,75 @@ async def lambda_handler_async(event, context):
                 print(f"  Needs operator flag: {needs_operator_flag}")
                 print(f"  OpenAI Response ID: {current_openai_response_id}")
 
-                # TODO: needs_operator_flag が True の場合の処理を将来的に追加 (例: オペレーター転送)
+                # needs_operator_flag が True かどうかで応答を分岐
+                if needs_operator_flag:
+                    # オペレーター転送の選択肢を提示するTwiMLを生成
+                    operator_choice_twiml = VoiceResponse()
+                    # まず、AIからの提案（「オペレーターにお繋ぎしましょうか？」など）を再生
+                    operator_choice_twiml.say(assistant_text_to_speak, language=language, voice=voice)
+
+                    # 「1を押すか、2を押してください」というプロンプトを準備
+                    prompt_for_choice_text = lingual_mgr.get_message(language, "prompt_for_operator_dtmf")
+                    
+                    # DTMF(キー入力)を待つGather
+                    gather = TwilioGather(
+                        input='dtmf',
+                        num_digits=1, # 「1」か「2」の一桁を期待
+                        method='POST',
+                        timeout=7, # 少し長めに待つ
+                        # actionには、この選択を処理するLambda1のURLを指定し、どの応答かを伝えるクエリを追加
+                        action=f"{LAMBDA1_FUNCTION_URL}?language={language}&source=operator_choice_dtmf&previous_openai_response_id={current_openai_response_id}"
+                    )
+                    gather.say(prompt_for_choice_text, language=language, voice=voice)
+                    operator_choice_twiml.append(gather)
+
+                    # タイムアウトした場合のメッセージ
+                    timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                    operator_choice_twiml.say(timeout_msg, language=language, voice=voice)
+                    operator_choice_twiml.hangup()
+
+                    # 生成したTwiMLで通話を更新
+                    await update_twilio_call_async(twilio_client, call_sid, str(operator_choice_twiml))
+                    print("Prompted user for operator transfer choice (DTMF).")
+                    return {'status': 'completed', 'action': 'prompted_for_operator_choice_dtmf'}
+
+                else:
+                    # --- 元々の、通常の検索結果を返して次の質問を促す処理 ---
+                    # 3. 検索結果に基づいて次のTwiMLを生成
+                    results_twiml_obj = VoiceResponse()
+                    results_twiml_obj.say(assistant_text_to_speak, language=language, voice=voice)
+                    
+                    # Gatherのaction URLに、次のターンのための情報をクエリパラメータとして含める
+                    next_gather_action_url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
+                    if current_openai_response_id:
+                        next_gather_action_url += f"&previous_openai_response_id={current_openai_response_id}"
+
+                    gather = TwilioGather(
+                        input='speech', language=language, method='POST',
+                        action=next_gather_action_url, # ★ 更新された action URL
+                        timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3'
+                    )
+                    follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
+                    gather.say(follow_up_msg, language=language, voice=voice)
+                    results_twiml_obj.append(gather)
+
+                    timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                    results_twiml_obj.say(timeout_msg, language=language, voice=voice)
+                    results_twiml_obj.hangup()
+
+                    try:
+                        await update_twilio_call_async(twilio_client, call_sid, str(results_twiml_obj))
+                        print("Search results and follow-up prompt sent to user.")
+                        # 関数の戻り値に、取得した情報を追加することも検討できる (ImmediateResponseFunction側で利用する場合)
+                        return {
+                            'status': 'completed',
+                            'action': 'provided_search_results_and_gathered',
+                            'openai_response_id': current_openai_response_id,
+                            # 'needs_operator': needs_operator_flag
+                        }
+                    except Exception as e_results:
+                        print(f"Error sending search results to user: {e_results}")
+                        return {'status': 'error', 'message': f"Failed to send search results: {str(e_results)}"}
 
             except Exception as e_gather:
                 print(f"Error during announcement or vector search: {e_gather}")
@@ -138,42 +206,6 @@ async def lambda_handler_async(event, context):
                 except Exception as e_twil_err:
                     print(f"Failed to inform user about gather error: {e_twil_err}")
                 return {'status': 'error', 'message': f"Processing error during general inquiry: {str(e_gather)}"}
-
-            # 3. 検索結果に基づいて次のTwiMLを生成
-            results_twiml_obj = VoiceResponse()
-            results_twiml_obj.say(assistant_text_to_speak, language=language, voice=voice)
-            
-            # Gatherのaction URLに、次のターンのための情報をクエリパラメータとして含める
-            next_gather_action_url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
-            if current_openai_response_id:
-                next_gather_action_url += f"&previous_openai_response_id={current_openai_response_id}"
-
-            gather = TwilioGather(
-                input='speech', language=language, method='POST',
-                action=next_gather_action_url, # ★ 更新された action URL
-                timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3'
-            )
-            follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
-            gather.say(follow_up_msg, language=language, voice=voice)
-            results_twiml_obj.append(gather)
-
-            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-            results_twiml_obj.say(timeout_msg, language=language, voice=voice)
-            results_twiml_obj.hangup()
-
-            try:
-                await update_twilio_call_async(twilio_client, call_sid, str(results_twiml_obj))
-                print("Search results and follow-up prompt sent to user.")
-                # 関数の戻り値に、取得した情報を追加することも検討できる (ImmediateResponseFunction側で利用する場合)
-                return {
-                    'status': 'completed',
-                    'action': 'provided_search_results_and_gathered',
-                    'openai_response_id': current_openai_response_id,
-                    # 'needs_operator': needs_operator_flag
-                }
-            except Exception as e_results:
-                print(f"Error sending search results to user: {e_results}")
-                return {'status': 'error', 'message': f"Failed to send search results: {str(e_results)}"}
 
         elif urgency_result == "urgent":
             ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")

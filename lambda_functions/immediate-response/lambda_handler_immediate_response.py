@@ -31,9 +31,11 @@ def lambda_handler(event, context):
     query_params = event.get('queryStringParameters', {})
     language_preference = query_params.get('language', 'en-US') # 既存
     previous_openai_response_id_from_query = query_params.get('previous_openai_response_id')
+    source = query_params.get('source') # どのGatherからのリクエストかを取得
     
     print(f"  Query Param - language: {language_preference}")
     print(f"  Query Param - previous_openai_response_id: {previous_openai_response_id_from_query}")
+    print(f"  Query Param - source: {source}")
 
     speech_result = None
     call_sid = None
@@ -74,12 +76,39 @@ def lambda_handler(event, context):
 
     twilio_response = VoiceResponse()
 
-    # 状態を管理するためのシンプルな方法（例：URLクエリパラメータやセッション情報で言語を渡す）
-    # ここでは、digits_result があるか、speech_result があるかで処理を分岐
-    
-    current_action = event.get('queryStringParameters', {}).get('action', 'greet') # actionクエリパラメータで状態管理
+    # A. オペレーター選択プロンプト(DTMF)からの応答
+    if source == 'operator_choice_dtmf':
+        print("Handling response from 'operator_choice_dtmf' prompt.")
+        if digits_result == '1':
+            # オペレーターに転送
+            print("User pressed 1 for operator. Transferring...")
+            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+15005550006") # テスト用番号
+            transfer_message = lingual_mgr.get_message(language_preference, "transferring_to_operator")
+            twilio_response.say(transfer_message, language=language_preference)
+            twilio_response.dial(operator_phone_number)
+        elif digits_result == '2':
+            # 他の用件を伺う
+            print("User pressed 2 for other inquiries. Re-prompting.")
+            follow_up_msg = lingual_mgr.get_message(language_preference, "follow_up_question")
+            gather = Gather(
+                input='speech', method='POST', language=language_preference,
+                speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
+                action=f'?language={language_preference}&previous_openai_response_id={previous_openai_response_id_from_query}'
+            )
+            gather.say(follow_up_msg, language=language_preference)
+            twilio_response.append(gather)
+            twilio_response.hangup() # タイムアウトしたら通話終了
+        else:
+            # タイムアウトまたは無効な入力
+            print("Timeout or invalid input after operator choice prompt.")
+            twilio_response.say(lingual_mgr.get_message(language_preference, "timeout_message"), language=language_preference)
+            twilio_response.hangup()
 
-    if digits_result: # ユーザーが言語選択の番号を入力した場合
+    # B. ユーザーが言語選択の番号を入力した場合
+    elif digits_result:
+        # このブロックは言語選択専用
+        print("Handling language selection.")
+        language_selection_valid = True
         if digits_result == "1":
             language_preference = "en-US"
             print(f"Language selected: English (en-US)")
@@ -87,84 +116,35 @@ def lambda_handler(event, context):
             language_preference = "ja-JP"
             print(f"Language selected: Japanese (ja-JP)")
         else:
+            language_selection_valid = False
+            print(f"Invalid digit input: {digits_result}. Re-prompting for language.")
             # 不正な入力の場合、再度言語選択を促す
-            print(f"Invalid digit input: {digits_result}. Defaulting to bilingual messages")
-
-            # 言語選択用のGather
             gather_lang = Gather(input='dtmf', numDigits=1, method='POST', action='?action=language_selected')
-
-            # Gather内に音声プロンプトを配置することで、再生中でもボタン入力を検知できるようになる
             gather_lang.say("For English, press 1.", language="en-US", voice=lingual_mgr.get_voice("en-US"))
             gather_lang.say("日本語をご希望の場合は2を押してください。", language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
-
-            # 作成したGatherをレスポンスに追加
             twilio_response.append(gather_lang)
-            
-            # Gatherがタイムアウトした場合のフォールバック - バイリンガルでメッセージ
-            # 英語のエラーメッセージ
-            twilio_response.say(
-                "We could not understand your input. Please try calling again.",
-                language="en-US", voice=lingual_mgr.get_voice("en-US")
-            )
-            # 日本語のエラーメッセージ
-            twilio_response.say(
-                "入力が確認できませんでした。もう一度おかけ直しください。",
-                language="ja-JP", voice=lingual_mgr.get_voice("ja-JP") 
-            )
             twilio_response.hangup()
-            current_action = "language_selection_failed"
 
-        if current_action != "language_selection_failed":
-            # 言語選択成功後、用件を伺う
+        if language_selection_valid:
+            # 言語選択成功後、用件を伺う (リトライ処理は別途考慮が必要)
             welcome_message = lingual_mgr.get_message(language_preference, "welcome")
             voice = lingual_mgr.get_voice(language_preference)
-
-            # --- 1回目の用件伺い (割り込み可能) ---
-            gather_inquiry_1 = Gather(
-                input='speech',
-                method='POST',
-                language=language_preference,
-                speechTimeout='auto',
-                timeout=5,
-                speechModel='deepgram-nova-3',
-                action=f'?action=speech_captured&language={language_preference}&attempt=1'
+            gather_inquiry = Gather(
+                input='speech', method='POST', language=language_preference,
+                speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
+                action=f'?language={language_preference}&attempt=1'
             )
-            # Gather の中に Say をネストすることで、Say の再生中に割り込みが可能になる
-            gather_inquiry_1.say(welcome_message, language=language_preference, voice=voice)
-            twilio_response.append(gather_inquiry_1)
-
-            # --- 1回目のGatherが失敗した場合 (タイムアウト、無音など) ---
-            # 「聞き取れませんでした。もう一度お話しください」というメッセージを再生
-            retry_speech_prompt_text = lingual_mgr.get_message(language_preference, "could_not_understand")
-            twilio_response.say(retry_speech_prompt_text, language=language_preference, voice=voice)
-
-            # --- 2回目の用件伺い (リトライ) ---
-            # 再度聞き直すプロンプト (re_prompt_inquiry を使用)
-            prompt_inquiry_text_2 = lingual_mgr.get_message(language_preference, "re_prompt_inquiry")
-            gather_inquiry_2 = Gather(
-                input='speech',
-                method='POST',
-                language=language_preference,
-                speechTimeout='auto',
-                timeout=5,
-                speechModel='deepgram-nova-3',
-                action=f'?action=speech_captured&language={language_preference}&attempt=2'
-            )
-            gather_inquiry_2.say(prompt_inquiry_text_2, language=language_preference, voice=voice)
-            twilio_response.append(gather_inquiry_2)
-
-            # --- 2回目のGatherも失敗した場合 ---
-            # 「聞き取れませんでした。おかけ直しください」というメッセージを再生して通話終了
-            could_not_understand_text = lingual_mgr.get_message(language_preference, "could_not_understand")
-            hangup_text = lingual_mgr.get_message(language_preference, "hangup")
-            twilio_response.say(could_not_understand_text, language=language_preference, voice=voice)
-            twilio_response.say(hangup_text, language=language_preference, voice=voice)
+            gather_inquiry.say(welcome_message, language=language_preference, voice=voice)
+            twilio_response.append(gather_inquiry)
+            # Gatherがタイムアウトした場合の処理は、次のリクエストで attempt=1 を見て判断する
+            # ここでは、タイムアウトしたら通話が終了するようにhangupを追加しておく
             twilio_response.hangup()
 
-    elif speech_result and call_sid: # ユーザーの発話を受け取った場合 (言語選択後)
+    # C. ユーザーの発話を受け取った場合
+    elif speech_result and call_sid:
         # URLから言語設定を取得 (action URLに含めて渡す)
         language_preference = event.get('queryStringParameters', {}).get('language', language_preference) # speech_captured actionから渡された言語
-        print(f"Speech result received: '{speech_result}' in language '{language_preference}'. Invoking AI processing Lambda.")
+        print(f"Speech result received: '{speech_result}'. Invoking AI processing Lambda.")
 
         payload = {
             'speech_result': speech_result,
@@ -202,7 +182,8 @@ def lambda_handler(event, context):
         twilio_response.say(analyzing_message_text, language=language_preference, voice=analyzing_voice)
         twilio_response.pause(length=15)
 
-    else: # 初回呼び出し (current_action == 'greet')
+    # D. 初回呼び出し (GETリクエスト、または入力なしのPOST)
+    else:
         # 言語選択用のGather
         gather_lang = Gather(input='dtmf', numDigits=1, method='POST', action='?action=language_selected')
 
@@ -224,6 +205,7 @@ def lambda_handler(event, context):
         )
         twilio_response.hangup()
 
+    # TwiMLを返す
     twiml_body = str(twilio_response)
     print(f"ImmediateResponse Lambda Returning TwiML: {twiml_body}")
     return {
