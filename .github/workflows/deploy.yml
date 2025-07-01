@@ -61,7 +61,7 @@ jobs:
           echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
       
       - name: Update CloudFormation Stack with Function URL 
-        env: # このステップで再度環境変数を設定
+        env:
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
@@ -69,9 +69,24 @@ jobs:
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
 
+          # 1. SAMが管理するS3バケット名を取得
+          S3_BUCKET=$(aws cloudformation describe-stacks --stack-name obw-ai-lambda --query "Stacks[0].Outputs[?OutputKey=='SAMDeploymentBucket'].OutputValue" --output text 2>/dev/null || aws s3 ls | grep sam-cli-managed-default | cut -d ' ' -f 3)
+          if [ -z "$S3_BUCKET" ]; then
+            echo "Error: Could not determine SAM deployment S3 bucket."
+            exit 1
+          fi
+          echo "Using S3 bucket: $S3_BUCKET"
+
+          # 2. sam package を実行して、S3 URIを含むテンプレートを生成
+          sam package \
+            --template-file .aws-sam/build/template.yaml \
+            --s3-bucket "$S3_BUCKET" \
+            --output-template-file packaged.yaml
+
+          # 3. aws cloudformation deploy で、パッケージ済みのテンプレートを使用
           aws cloudformation deploy \
             --stack-name obw-ai-lambda \
-            --template-file .aws-sam/build/template.yaml \
+            --template-file packaged.yaml \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
