@@ -47,7 +47,8 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: layer_for_obw
-      Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.)
+      # ★★★ 説明を少しだけ変更して、CloudFormationに変更を強制的に認識させます ★★★
+      Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.) - v1.1
       ContentUri: layers/
       CompatibleRuntimes:
         - python3.13
