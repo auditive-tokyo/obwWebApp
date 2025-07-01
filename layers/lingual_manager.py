@@ -45,20 +45,26 @@ class LingualManager:
             # 他の言語のボイスも追加
         }
 
-    def get_message(self, language_code, message_key, default_lang="ja-JP"):
-        # 指定された言語のメッセージを取得、なければデフォルト言語、それもなければキー自体を返すかエラー
-        # Ensure that if a language is selected, I try to get messages for that language first.
+    def get_message(self, language_code, key):
+        """
+        指定された言語コードとキーに基づいてメッセージを取得します。
+        インスタンス変数に依存せず、引数のみを使用するように修正。
+        """
         lang_messages = self.messages.get(language_code)
-        if lang_messages and message_key in lang_messages:
-            return lang_messages[message_key]
+        if not lang_messages:
+            print(f"Warning: Language code '{language_code}' not found in messages. Returning key '{key}'.")
+            return key
         
-        # Fallback to default language if message_key not found in selected language
-        default_lang_messages = self.messages.get(default_lang)
-        if default_lang_messages and message_key in default_lang_messages:
-            return default_lang_messages[message_key]
+        message = lang_messages.get(key)
+        if not message:
+            print(f"Warning: Message key '{key}' not found for language '{language_code}'. Returning key itself.")
+            return key
             
-        return f"Message key '{message_key}' not found for language '{language_code}' or default '{default_lang}'"
+        return message
 
-    def get_voice(self, language_code, default_lang="en-US"):
-        # 指定された言語のボイスを取得、なければデフォルト言語、それもなければフォールバックボイスを返す
-        return self.voices.get(language_code) or self.voices.get(default_lang) or "Polly.Ruth-Neural"
+    def get_voice(self, language_code):
+        """
+        指定された言語コードに基づいて音声名を取得します。
+        インスタンス変数を変更しないように修正。
+        """
+        return self.voices.get(language_code, self.voices["en-US"]) # デフォルトは 'en-US'
