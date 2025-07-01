@@ -10,9 +10,6 @@ Globals:
     Runtime: python3.13
     Architectures:
       - x86_64
-    Layers:
-      - !Ref LayerForObw # SAMでビルド・デプロイされるレイヤーを参照
-      # - arn:aws:lambda:ap-northeast-1:816150604785:layer:layer_for_obw:5 # 特定の既存レイヤーバージョンを固定で使いたい場合は上記をコメントアウトし、こちらを有効化
 
 Parameters:
   OpenAiApiKey:
@@ -47,8 +44,7 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: layer_for_obw
-      # ★★★ 説明を少しだけ変更して、CloudFormationに変更を強制的に認識させます ★★★
-      Description: Common libraries for obwWebApp (Twilio, OpenAI, etc.) - v1.1
+      Description: Common libraries for obwWebApp (Twilio, OpenAI, lingual-manager, etc.)
       ContentUri: layers/
       CompatibleRuntimes:
         - python3.13
@@ -63,6 +59,8 @@ Resources:
   ImmediateResponseFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Layers:
+        - !Ref LayerForObw
       FunctionName: obw-immediate-response-function
       MemorySize: 128
       CodeUri: lambda_functions/immediate-response/
@@ -86,6 +84,8 @@ Resources:
   AiProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Layers:
+        - !Ref LayerForObw
       FunctionName: !Ref AiProcessingLambdaFunctionName
       MemorySize: 1024
       CodeUri: lambda_functions/ai_processing/
