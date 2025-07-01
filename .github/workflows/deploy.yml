@@ -50,7 +50,8 @@ jobs:
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
+            --no-fail-on-empty-changeset
 
       - name: Get Immediate Response Function URL from Alias
         id: get_function_url
