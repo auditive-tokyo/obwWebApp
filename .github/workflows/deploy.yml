@@ -70,13 +70,15 @@ jobs:
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
 
-          # 1. SAMが管理するS3バケット名を取得
-          S3_BUCKET=$(aws cloudformation describe-stacks --stack-name obw-ai-lambda --query "Stacks[0].Outputs[?OutputKey=='SAMDeploymentBucket'].OutputValue" --output text 2>/dev/null || aws s3 ls | grep sam-cli-managed-default | cut -d ' ' -f 3)
+          # ★★★ ここからが修正点 ★★★
+
+          # 1. samconfig.toml からS3バケット名を取得する (最も確実な方法)
+          S3_BUCKET=$(grep 's3_bucket' samconfig.toml | cut -d' ' -f3 | tr -d '"')
           if [ -z "$S3_BUCKET" ]; then
-            echo "Error: Could not determine SAM deployment S3 bucket."
+            echo "Error: Could not determine S3 bucket from samconfig.toml."
             exit 1
           fi
-          echo "Using S3 bucket: $S3_BUCKET"
+          echo "Using S3 bucket from samconfig.toml: $S3_BUCKET"
 
           # 2. sam package を実行して、S3 URIを含むテンプレートを生成
           sam package \
