@@ -32,7 +32,7 @@ jobs:
         run: pip install aws-sam-cli
 
       - name: SAM Build
-        run: sam build --use-container
+        run: sam build --clean --use-container
 
       - name: SAM Deploy
         env:
