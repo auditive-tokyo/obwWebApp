@@ -169,7 +169,7 @@ def lambda_handler(event, context):
             # エラー発生時
             error_message_text = lingual_mgr.get_message(language, "processing_error")
             voice = lingual_mgr.get_voice(language)
-            twilio_response.say(error_message_text, language, voice=voice)
+            twilio_response.say(error_message_text, language=language, voice=voice)
             twilio_response.hangup()
             # レスポンスを返す前に終了
             twiml_body_error = str(twilio_response)
