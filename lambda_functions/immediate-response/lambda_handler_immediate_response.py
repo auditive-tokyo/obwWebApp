@@ -183,7 +183,7 @@ def lambda_handler(event, context):
         # Twilioに即時応答
         analyzing_message_text = lingual_mgr.get_message(language, "received_and_analyzing")
         voice = lingual_mgr.get_voice(language)
-        twilio_response.say(analyzing_message_text, language, voice=voice)
+        twilio_response.say(analyzing_message_text, language=language, voice=voice)
         twilio_response.pause(length=15)
 
     # D. 初回呼び出し (GETリクエスト、または入力なしのPOST)
