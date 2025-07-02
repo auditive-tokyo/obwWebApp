@@ -13,7 +13,7 @@ class LingualManager:
                 "general_inquiry": "データベースを検索しますので、少々お待ちください。",
                 "inquiry_not_understood": "お問い合わせ内容を解析できませんでした。可能な限りゆっくり話してください。",
                 "follow_up_question": "他にもご用件はございますか？",
-                "prompt_for_operator_dtmf": "オペレーターにお繋ぎする場合は1を、他のご用件がございましたら2を押してください。",
+                "prompt_for_operator_dtmf": "オペレーターにお繋ぎする場合は「いち」を、他のご用件がございましたら「に」を押してください。",
                 "transferring_to_operator": "オペレーターにお繋ぎします。少々お待ちください。",
                 "timeout_message": "タイムアウトしました。またご用件がございましたら、おかけ直しください。お電話ありがとうございました。",
                 "ending_message": "承知いたしました。お電話ありがとうございました。",

@@ -62,7 +62,7 @@ async def lambda_handler_async(event, context):
         should_hangup_due_to_classification_error = False
 
         if previous_response_id_from_event:
-            # 2ターン目以降は、文脈があるとみなし、強制的に general ルートへ
+            # TODO: 2ターン目以降は、文脈があるとみなし、強制的に general ルートへ行ってるけど2回目で緊急になる可能性は？
             print(f"Previous response ID '{previous_response_id_from_event}' exists. Skipping classification and setting urgency_result to 'general'.")
             urgency_result = "general"
         else:
