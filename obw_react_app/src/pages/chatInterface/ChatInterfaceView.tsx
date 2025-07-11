@@ -28,10 +28,10 @@ const ChatInterfaceView: React.FC<Props> = ({
     <div className="chat">
       <div className="chat-title">
         <figure className="avatar">
-          <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
+          <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
         </figure>
-        <h1>Fabio Ottaviani</h1>
-        <h2>Supah</h2>
+        <h1>OSAKA BAY WHEEL AI</h1>
+        <h2>OBW</h2>
       </div>
       <div className="messages">
         <div className="messages-content">
@@ -39,7 +39,7 @@ const ChatInterfaceView: React.FC<Props> = ({
             msg.loading ? (
               <div key={idx} className="message loading new">
                 <figure className="avatar">
-                  <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
+                  <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                 </figure>
                 <span></span>
               </div>
@@ -50,7 +50,7 @@ const ChatInterfaceView: React.FC<Props> = ({
               >
                 {!msg.personal && (
                   <figure className="avatar">
-                    <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
+                    <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                   </figure>
                 )}
                 {msg.text}
