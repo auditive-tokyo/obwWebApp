@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { getTimestamp } from './chatInterface/utils'
+import { handleSend, handleInputKeyDown } from './chatInterface/messageHandlers'
+import ChatInterfaceView from './chatInterface/ChatInterfaceView'
 import './chatInterface/style.scss'
 
 type Message = {
@@ -49,23 +51,6 @@ const ChatInterface: React.FC = () => {
     setFakeIndex(1)
   }, [])
 
-  const handleSend = () => {
-    if (input.trim() === '') return
-    setMessages(prev => [
-      ...prev,
-      { text: input, personal: true, timestamp: getTimestamp() }
-    ])
-    setInput('')
-    setTimeout(addFakeMessage, 1200 + Math.random() * 1000)
-  }
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
   const addFakeMessage = (customIndex?: number) => {
     setMessages(prev => [
       ...prev,
@@ -93,62 +78,14 @@ const ChatInterface: React.FC = () => {
   }
 
   return (
-    <>
-      <div className="chat">
-        <div className="chat-title">
-          <figure className="avatar">
-            <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
-          </figure>
-          <h1>Fabio Ottaviani</h1>
-          <h2>Supah</h2>
-        </div>
-        <div className="messages">
-          <div className="messages-content">
-            {messages.map((msg, idx) =>
-              msg.loading ? (
-                <div key={idx} className="message loading new">
-                  <figure className="avatar">
-                    <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
-                  </figure>
-                  <span></span>
-                </div>
-              ) : (
-                <div
-                  key={idx}
-                  className={`message${msg.personal ? ' message-personal' : ''} new`}
-                >
-                  {!msg.personal && (
-                    <figure className="avatar">
-                      <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
-                    </figure>
-                  )}
-                  {msg.text}
-                  {msg.timestamp && <div className="timestamp">{msg.timestamp}</div>}
-                </div>
-              )
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-        <div className="message-box">
-          <textarea
-            className="message-input"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            placeholder="Type message..."
-          />
-          <button
-            type="submit"
-            className="message-submit"
-            onClick={handleSend}
-          >
-            Send
-          </button>
-        </div>
-      </div>
-      <div className="bg"></div>
-    </>
+    <ChatInterfaceView
+      messages={messages}
+      input={input}
+      setInput={setInput}
+      handleInputKeyDown={e => handleInputKeyDown(e, () => handleSend(input, setMessages, setInput, addFakeMessage))}
+      handleSend={() => handleSend(input, setMessages, setInput, addFakeMessage)}
+      messagesEndRef={messagesEndRef}
+    />
   )
 }
 
