@@ -7,22 +7,13 @@ function CheckinPage() {
   
   // URLパラメータを取得
   const room = searchParams.get('room')
-  const conf = searchParams.get('conf')
-  const checkIn = searchParams.get('in')
-  const checkOut = searchParams.get('out')
-  const outTime = searchParams.get('outtime')
-  
+
   useEffect(() => {
     // 必須パラメータのチェック
-    const requiredParams = { room, conf, checkIn, checkOut }
-    const hasAllParams = Object.values(requiredParams).every(param => param !== null && param !== '')
-    
-    // パラメータの検証ロジック (ここを拡張して実際の検証を行う)
-    const areParamsValid = hasAllParams
-    
-    setIsAuthorized(areParamsValid)
-  }, [room, conf, checkIn, checkOut])
-  
+    const isRoomValid = room !== null && room !== ''
+    setIsAuthorized(isRoomValid)
+  }, [room])
+
   // 認証状態確認中は読み込み表示
   if (isAuthorized === null) {
     return <div>Loading...</div>
@@ -40,11 +31,6 @@ function CheckinPage() {
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl mb-2">予約情報</h2>
         <p><strong>部屋番号:</strong> {room}</p>
-        <p><strong>確認番号:</strong> {conf}</p>
-        <p><strong>チェックイン日:</strong> {checkIn}</p>
-        <p><strong>チェックアウト日:</strong> {checkOut}</p>
-        {outTime && <p><strong>チェックアウト時間:</strong> {outTime}</p>}
-        
         {/* ここに追加のチェックイン機能を実装 */}
       </div>
     </div>
