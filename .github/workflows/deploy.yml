@@ -2,8 +2,7 @@ name: Deploy SAM Application
 
 on:
   push:
-    branches:
-      # - main # ローカルでフロントエンド開発中の為デプロイを止めている
+    branches: [] # 通常値 "main", ローカルでフロントエンド開発中の為デプロイを止めている
   workflow_dispatch:
 
 jobs:
