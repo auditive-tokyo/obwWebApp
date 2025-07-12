@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { getTimestamp, scrollToBottom } from './chatInterface/utils'
-import { handleSend, handleInputKeyDown } from './chatInterface/messageHandlers'
+import { flushSync } from 'react-dom'
 import ChatInterfaceView from './chatInterface/ChatInterfaceView'
 import './chatInterface/style.scss'
 
@@ -50,30 +50,50 @@ const ChatInterface: React.FC = () => {
     setFakeIndex(1)
   }, [])
 
-  const addFakeMessage = (customIndex?: number) => {
-    setMessages(prev => [
-      ...prev,
-      { text: '', personal: false, loading: true }
-    ])
+  const handleSendMessage = () => {
+    if (!input.trim()) return
+
+    // 1. ユーザーメッセージを追加して再レンダリング
+    const newUserMessage: Message = {
+      text: input,
+      personal: true,
+      timestamp: getTimestamp(),
+    }
+    // 1. flushSyncを使い、ユーザーメッセージの追加を同期的（即時）に実行し、再レンダリングを強制
+    flushSync(() => {
+      setMessages(prev => [...prev, newUserMessage])
+    })
+    setInput('')
+
+    // 2. 次の処理を少し遅らせる
     setTimeout(() => {
-      setMessages(prev => {
-        const msgs = prev.filter(msg => !msg.loading)
-        // customIndexが指定されていればそれを使う
-        const idx = typeof customIndex === 'number' ? customIndex : fakeIndex
-        return [
-          ...msgs,
-          {
-            text: FAKE_MESSAGES[idx % FAKE_MESSAGES.length],
-            personal: false,
-            timestamp: getTimestamp()
-          }
-        ]
+      // 3. flushSyncを使い、考え中バブルの追加も同期的に実行
+      flushSync(() => {
+        setMessages(prev => [...prev, { text: '', personal: false, loading: true }])
       })
-      // customIndexが指定されていればfakeIndexを更新しない
-      if (typeof customIndex !== 'number') {
-        setFakeIndex(idx => idx + 1)
-      }
-    }, 1000 + Math.random() * 1000)
+
+      // 4. AIからのレスポンスをシミュレート
+      setTimeout(() => {
+        // 5. 考え中バブルを削除し、最終的なレスポンスを追加して再レンダリング
+        setMessages(prev => {
+          const currentMessages = prev.filter(msg => !msg.loading)
+          const newFakeMessage: Message = {
+            text: FAKE_MESSAGES[fakeIndex % FAKE_MESSAGES.length],
+            personal: false,
+            timestamp: getTimestamp(),
+          }
+          return [...currentMessages, newFakeMessage]
+        })
+        setFakeIndex(prev => prev + 1)
+      }, 1000 + Math.random() * 1000)
+    }, 100) // ユーザーメッセージ表示後に少し間を置く（flushSyncを使うので短くてOK）
+  }
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
   }
 
   return (
@@ -81,8 +101,8 @@ const ChatInterface: React.FC = () => {
       messages={messages}
       input={input}
       setInput={setInput}
-      handleInputKeyDown={e => handleInputKeyDown(e, () => handleSend(input, setMessages, setInput, addFakeMessage))}
-      handleSend={() => handleSend(input, setMessages, setInput, addFakeMessage)}
+      handleInputKeyDown={handleInputKeyDown}
+      handleSend={handleSendMessage}
     />
   )
 }
