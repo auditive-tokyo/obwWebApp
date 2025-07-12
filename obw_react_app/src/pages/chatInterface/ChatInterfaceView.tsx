@@ -13,7 +13,6 @@ type Props = {
   setInput: (val: string) => void
   handleInputKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   handleSend: () => void
-  messagesEndRef: React.RefObject<HTMLDivElement | null>
 }
 
 const ChatInterfaceView: React.FC<Props> = ({
@@ -22,7 +21,6 @@ const ChatInterfaceView: React.FC<Props> = ({
   setInput,
   handleInputKeyDown,
   handleSend,
-  messagesEndRef
 }) => (
   <>
     <div className="chat">
@@ -58,7 +56,6 @@ const ChatInterfaceView: React.FC<Props> = ({
               </div>
             )
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
       <div className="message-box">

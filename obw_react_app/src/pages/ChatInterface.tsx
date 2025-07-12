@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { getTimestamp } from './chatInterface/utils'
+import React, { useState, useEffect } from 'react'
+import { getTimestamp, scrollToBottom } from './chatInterface/utils'
 import { handleSend, handleInputKeyDown } from './chatInterface/messageHandlers'
 import ChatInterfaceView from './chatInterface/ChatInterfaceView'
 import './chatInterface/style.scss'
@@ -33,10 +33,9 @@ const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [fakeIndex, setFakeIndex] = useState(0)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollToBottom();
   }, [messages])
 
   useEffect(() => {
@@ -84,7 +83,6 @@ const ChatInterface: React.FC = () => {
       setInput={setInput}
       handleInputKeyDown={e => handleInputKeyDown(e, () => handleSend(input, setMessages, setInput, addFakeMessage))}
       handleSend={() => handleSend(input, setMessages, setInput, addFakeMessage)}
-      messagesEndRef={messagesEndRef}
     />
   )
 }

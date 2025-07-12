@@ -12,7 +12,7 @@ export const handleSend = (
     { text: input, personal: true, timestamp: getTimestamp() }
   ])
   setInput('')
-  setTimeout(addFakeMessage, 1200 + Math.random() * 1000)
+  setTimeout(addFakeMessage, 500)
 }
 
 export const handleInputKeyDown = (
