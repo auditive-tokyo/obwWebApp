@@ -36,7 +36,7 @@ const ChatInterfaceView: React.FC<Props> = ({
         <div className="messages-content">
           {messages.map((msg) =>
             msg.loading ? (
-              <div key={msg.id} className="message loading new">
+              <div key={msg.id} className={`message new ${!msg.text ? 'loading' : ''}`}>
                 <figure className="avatar">
                   <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                 </figure>
