@@ -6,11 +6,11 @@
 ): Promise<void> {
   let streamedText = "";
 
-  const url = "https://m7o42vwvmkxp7557qxcqoeqiie0ozdku.lambda-url.ap-south-1.on.aws/";
+  const url = import.meta.env.VITE_LAMBDA_URL;
   const payload = { message, previous_response_id, filter_keys };
 
-  console.log("Sending request to:", url);
-  console.log("Payload:", payload);
+//   console.log("Sending request to:", url);
+//   console.log("Payload:", payload);
 
   const response = await fetch(url, {
     method: "POST",
@@ -42,15 +42,16 @@
         const obj = JSON.parse(line);
         if (obj.type === "response.output_text.delta" && obj.delta) {
           streamedText += obj.delta;
-          console.log("onDelta called (delta):", obj.delta);
+        //   console.log("onDelta called (delta):", obj.delta);
           onDelta(streamedText, false);
-        } else if (obj.type === "response.output_text.done" && obj.text) {
-          try {
-            const parsed = JSON.parse(obj.text);
-            onDelta(parsed.assistant_response_text ?? obj.text, true);
-          } catch {
-            onDelta(obj.text, true);
-          }
+        // 以下は、streamedTextと同じなので不要な可能性高い。
+        // } else if (obj.type === "response.output_text.done" && obj.text) {
+        //   try {
+        //     const parsed = JSON.parse(obj.text);
+        //     onDelta(parsed.assistant_response_text ?? obj.text, true);
+        //   } catch {
+        //     onDelta(obj.text, true);
+        //   }
         }
       } catch (e) {
         console.log("JSON parse error:", e, line);
