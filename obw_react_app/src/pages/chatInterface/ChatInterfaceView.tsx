@@ -1,6 +1,7 @@
 import React from 'react'
 
 type Message = {
+  id: number;
   text: string
   personal: boolean
   timestamp?: string
@@ -33,17 +34,17 @@ const ChatInterfaceView: React.FC<Props> = ({
       </div>
       <div className="messages">
         <div className="messages-content">
-          {messages.map((msg, idx) =>
+          {messages.map((msg) =>
             msg.loading ? (
-              <div key={idx} className="message loading new">
+              <div key={msg.id} className="message loading new">
                 <figure className="avatar">
                   <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                 </figure>
-                <span></span>
+                {msg.text ? msg.text : <span></span>}
               </div>
             ) : (
               <div
-                key={idx}
+                key={msg.id}
                 className={`message${msg.personal ? ' message-personal' : ''} new`}
               >
                 {!msg.personal && (

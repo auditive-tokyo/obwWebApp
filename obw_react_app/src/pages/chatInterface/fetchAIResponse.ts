@@ -1,9 +1,11 @@
-export async function fetchAIResponseStream(
+ export async function fetchAIResponseStream(
   message: string,
   previous_response_id: string = "",
   filter_keys: string[] = [],
   onDelta: (text: string, isDone?: boolean) => void
 ): Promise<void> {
+  let streamedText = "";
+
   const url = "https://m7o42vwvmkxp7557qxcqoeqiie0ozdku.lambda-url.ap-south-1.on.aws/";
   const payload = { message, previous_response_id, filter_keys };
 
@@ -31,18 +33,17 @@ export async function fetchAIResponseStream(
     const { done, value } = await reader.read();
     if (done) break;
     const chunkStr = decoder.decode(value, { stream: true });
-    console.log("Raw chunk received:", chunkStr);
+    // console.log("Raw chunk received:", chunkStr);
 
-    // chunk内のすべてのJSONオブジェクトを抽出
-    const jsonRegex = /{.*?}(?={|$)/gs;
-    let match;
-    while ((match = jsonRegex.exec(chunkStr)) !== null) {
-      const jsonStr = match[0];
+    const lines = chunkStr.split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
       try {
-        const obj = JSON.parse(jsonStr);
-        console.log("Parsed chunk object:", obj);
+        const obj = JSON.parse(line);
         if (obj.type === "response.output_text.delta" && obj.delta) {
-          onDelta(obj.delta, false);
+          streamedText += obj.delta;
+          console.log("onDelta called (delta):", obj.delta);
+          onDelta(streamedText, false);
         } else if (obj.type === "response.output_text.done" && obj.text) {
           try {
             const parsed = JSON.parse(obj.text);
@@ -52,7 +53,7 @@ export async function fetchAIResponseStream(
           }
         }
       } catch (e) {
-        console.log("JSON parse error:", e, jsonStr);
+        console.log("JSON parse error:", e, line);
       }
     }
   }
