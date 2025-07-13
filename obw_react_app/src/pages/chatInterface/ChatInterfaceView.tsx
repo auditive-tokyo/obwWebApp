@@ -14,6 +14,8 @@ type Props = {
   setInput: (val: string) => void
   handleInputKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   handleSend: () => void
+  handleCompositionStart: () => void
+  handleCompositionEnd: () => void
 }
 
 const ChatInterfaceView: React.FC<Props> = ({
@@ -22,6 +24,8 @@ const ChatInterfaceView: React.FC<Props> = ({
   setInput,
   handleInputKeyDown,
   handleSend,
+  handleCompositionStart,
+  handleCompositionEnd,
 }) => (
   <>
     <div className="chat">
@@ -65,6 +69,8 @@ const ChatInterfaceView: React.FC<Props> = ({
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleInputKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           placeholder="Type message..."
         />
         <button

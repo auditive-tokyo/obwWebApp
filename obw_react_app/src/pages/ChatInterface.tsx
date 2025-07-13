@@ -21,6 +21,7 @@ const WELCOME_MESSAGES = {
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [isComposing, setIsComposing] = useState(false);
   const nextId = useRef(0);
 
   useEffect(() => {
@@ -75,11 +76,14 @@ const ChatInterface: React.FC = () => {
   }
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+      e.preventDefault();
+      handleSendMessage();
     }
-  }
+  };
+
+  const handleCompositionStart = () => setIsComposing(true);
+  const handleCompositionEnd = () => setIsComposing(false);
 
   return (
     <ChatInterfaceView
@@ -88,6 +92,8 @@ const ChatInterface: React.FC = () => {
       setInput={setInput}
       handleInputKeyDown={handleInputKeyDown}
       handleSend={handleSendMessage}
+      handleCompositionStart={handleCompositionStart}
+      handleCompositionEnd={handleCompositionEnd}
     />
   )
 }
