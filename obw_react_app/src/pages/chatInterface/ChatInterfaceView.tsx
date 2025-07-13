@@ -1,12 +1,5 @@
 import React from 'react'
-
-type Message = {
-  id: number;
-  text: string
-  personal: boolean
-  timestamp?: string
-  loading?: boolean
-}
+import { Message } from './typeClass'
 
 type Props = {
   messages: Message[]

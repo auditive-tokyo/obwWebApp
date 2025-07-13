@@ -3,15 +3,8 @@ import { getTimestamp, scrollToBottom } from './chatInterface/utils'
 import { flushSync } from 'react-dom'
 import ChatInterfaceView from './chatInterface/ChatInterfaceView'
 import { fetchAIResponseStream } from './chatInterface/fetchAIResponse';
+import { Message } from './chatInterface/typeClass'
 import './chatInterface/style.scss'
-
-type Message = {
-  id: number;
-  text: string
-  personal: boolean
-  timestamp?: string
-  loading?: boolean
-}
 
 const WELCOME_MESSAGES = {
   ja: "ようこそ！Osaka Bay Wheel WebAppへ。",
@@ -63,7 +56,8 @@ const ChatInterface: React.FC = () => {
     });
     setInput('');
 
-    await fetchAIResponseStream(input, "", [], (delta, isDone = false) => {
+    // TODO: filter_keysはpageのstate（部屋番号などが割り当てらてから定義する
+    await fetchAIResponseStream(input, [], (delta, isDone = false) => {
       setMessages(prev => {
         // 考え中バブルを見つけて、そのテキストを更新する
         return prev.map(msg =>
