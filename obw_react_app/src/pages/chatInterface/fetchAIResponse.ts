@@ -1,4 +1,5 @@
 import { saveResponseId, loadResponseId } from './utils';
+import { parse } from 'best-effort-json-parser';
 
 export async function fetchAIResponseStream(
   message: string,
@@ -44,9 +45,11 @@ export async function fetchAIResponseStream(
         const obj = JSON.parse(line);
         if (obj.type === "response.output_text.delta" && obj.delta) {
           streamedText += obj.delta;
-          console.debug("onDelta called (delta):", obj.delta);
-          onDelta(streamedText, false);
-				}
+          // JSONパースしてみる
+          const parsed = parse(streamedText);
+          console.debug("Parsed JSON:", parsed);
+          onDelta(parsed, false); // 必要に応じてparsedを渡す
+        }
 				// responseId保存処理
 				else if (obj.responseId) {
 					saveResponseId(obj.responseId);
