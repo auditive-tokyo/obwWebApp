@@ -57,7 +57,7 @@ const ChatInterface: React.FC = () => {
     setInput('');
 
     // TODO: filter_keysはpageのstate（部屋番号などが割り当てらてから定義する
-    await fetchAIResponseStream(input, [], (delta, isDone = false) => {
+    await fetchAIResponseStream(input, ["201", "common"], (delta, isDone = false) => {
       setMessages(prev => {
         // 考え中バブルを見つけて、そのテキストを更新する
         return prev.map(msg =>
