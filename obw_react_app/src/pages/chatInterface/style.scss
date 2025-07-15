@@ -114,6 +114,29 @@ Messages
     text-shadow: 0 1px 1px rgba(0, 0, 0, .2);
     max-width: 70%;
     
+    .reference-files {
+      font-size: 11px;
+      color: lightblue;
+      margin-top: 6px;
+
+      strong {
+        font-size: 11px;
+        color: lightblue;
+        margin-right: 4px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 1em;
+      }
+
+      li {
+        list-style-type: disc;
+        margin: 0;
+        padding: 0;
+      }
+    }
+
     .timestamp {
       position: absolute;
       bottom: -15px;

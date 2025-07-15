@@ -4,10 +4,12 @@ import { parse } from 'best-effort-json-parser';
 export async function fetchAIResponseStream(
   message: string,
   filter_keys: string[] = [],
-  onDelta: (text: string, isDone?: boolean) => void
+  onDelta: (
+    text: string | { assistant_response_text: string; reference_files: string[] },
+    isDone?: boolean
+  ) => void
 ): Promise<void> {
   let streamedText = "";
-  let finalResult = "";
 
   const url = import.meta.env.VITE_LAMBDA_URL;
   const previous_response_id = loadResponseId();
@@ -53,13 +55,11 @@ export async function fetchAIResponseStream(
         else if (obj.type === "response.output_text.done" && obj.text) {
           try {
             const result = JSON.parse(obj.text);
-            if (result.reference_files && result.reference_files.length > 0) {
-              finalResult += `${result.assistant_response_text}\n\n${result.reference_files.join('\n')}`;
-            } else {
-              finalResult += result.assistant_response_text;
-            }
-            console.debug("Final result:", finalResult);
-            onDelta(finalResult, true);
+            // オブジェクトとして渡す
+            onDelta({
+              assistant_response_text: result.assistant_response_text,
+              reference_files: result.reference_files ?? []
+            }, true);
           } catch (e) {
             console.error("JSON parse error (done):", e, obj.text);
           }
