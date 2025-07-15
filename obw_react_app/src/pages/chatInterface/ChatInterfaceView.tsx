@@ -39,8 +39,15 @@ const ChatInterfaceView: React.FC<Props> = ({
                 </figure>
                 {msg.text
                   ? typeof msg.text === "object"
-                    ? <span>{msg.text.assistant_response_text}</span>
-                    : <span>{msg.text}</span>
+                    ? <span
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            msg.text.assistant_response_text
+                              ? msg.text.assistant_response_text.replace(/\n/g, "<br />")
+                              : ""
+                        }}
+                      />
+                    : <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
                   : <span></span>}
               </div>
             ) : (
@@ -54,8 +61,8 @@ const ChatInterfaceView: React.FC<Props> = ({
                   </figure>
                 )}
                 {typeof msg.text === "object"
-                  ? <span>{msg.text.assistant_response_text}</span>
-                  : <span>{msg.text}</span>
+                  ? <span dangerouslySetInnerHTML={{ __html: msg.text.assistant_response_text.replace(/\n/g, "<br />") }} />
+                  : <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
                 }
                 {msg.timestamp && <div className="timestamp">{msg.timestamp}</div>}
               </div>
