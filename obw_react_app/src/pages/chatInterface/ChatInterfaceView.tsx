@@ -37,7 +37,18 @@ const ChatInterfaceView: React.FC<Props> = ({
                 <figure className="avatar">
                   <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                 </figure>
-                {msg.text ? msg.text : <span></span>}
+                {msg.text
+                  ? typeof msg.text === "object"
+                    ? <span
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            msg.text.assistant_response_text
+                              ? msg.text.assistant_response_text.replace(/\n/g, "<br />")
+                              : ""
+                        }}
+                      />
+                    : <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
+                  : <span></span>}
               </div>
             ) : (
               <div
@@ -49,7 +60,10 @@ const ChatInterfaceView: React.FC<Props> = ({
                     <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                   </figure>
                 )}
-                {msg.text}
+                {typeof msg.text === "object"
+                  ? <span dangerouslySetInnerHTML={{ __html: msg.text.assistant_response_text.replace(/\n/g, "<br />") }} />
+                  : <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
+                }
                 {msg.timestamp && <div className="timestamp">{msg.timestamp}</div>}
               </div>
             )
