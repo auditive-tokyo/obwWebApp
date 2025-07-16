@@ -1,11 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { setLanguage, saveLang, loadLang } from "../i18n/languageUtils";
 
 function Header() {
   const [lang, setLang] = useState<'ja' | 'en'>('ja');
 
+  useEffect(() => {
+    const savedLang = loadLang();
+    if (savedLang === 'ja' || savedLang === 'en') {
+      setLang(savedLang);
+      setLanguage(savedLang);
+    }
+  }, []);
+
   const handleLangChange = (newLang: 'ja' | 'en') => {
     setLang(newLang);
-    document.documentElement.lang = newLang;
+    setLanguage(newLang);
+    saveLang(newLang);
   };
 
   return (
