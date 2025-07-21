@@ -102,7 +102,11 @@ const ChatInterfaceView: React.FC<Props> = ({
           className="message-submit"
           onClick={handleSend}
         >
-          Send
+          <img
+            src="/paper-plane-svgrepo-com.svg"
+            alt="Send"
+            style={{ width: '24px', height: '24px' }}
+          />
         </button>
       </div>
     </div>
