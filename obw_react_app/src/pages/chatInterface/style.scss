@@ -245,11 +245,28 @@ Message Box
     background: none;
     border: none;
     resize: none;
-    color: rgba(255, 255, 255, .7);
+    color: #fff;
     font-size: 14px;
     margin: 0;
     padding-right: 20px;
     width: 70%;
+  }
+
+  .message-input::placeholder {
+    color: #e0e0e0;
+    opacity: 1;
+  }
+  .message-input::-webkit-input-placeholder {
+    color: #e0e0e0;
+    opacity: 1;
+  }
+  .message-input:-ms-input-placeholder {
+    color: #e0e0e0;
+    opacity: 1;
+  }
+  .message-input::-ms-input-placeholder {
+    color: #e0e0e0;
+    opacity: 1;
   }
   
   textarea:focus:-webkit-placeholder{
