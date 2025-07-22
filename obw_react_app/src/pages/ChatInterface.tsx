@@ -11,10 +11,16 @@ const WELCOME_MESSAGES = {
   en: "Welcome to Osaka Bay Wheel WebApp."
 }
 
+const BASIC_USER = "obw_testuser"; // TODO: あとで削除
+const BASIC_PASS = "obw_testP@ss"; // TODO: あとで削除
+
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false);
+  const [authed, setAuthed] = useState(false); // TODO: あとで削除
+  const [user, setUser] = useState(''); // TODO: あとで削除
+  const [pass, setPass] = useState(''); // TODO: あとで削除
   const nextId = useRef(0);
 
   useEffect(() => {
@@ -78,6 +84,39 @@ const ChatInterface: React.FC = () => {
 
   const handleCompositionStart = () => setIsComposing(true);
   const handleCompositionEnd = () => setIsComposing(false);
+
+// TODO: あとで削除
+  if (!authed) {
+    return (
+      <div style={{ margin: "100px auto", maxWidth: 320, textAlign: "center" }}>
+        <h2>認証が必要です</h2>
+        <input
+          type="text"
+          placeholder="ユーザー名"
+          value={user}
+          onChange={e => setUser(e.target.value)}
+          style={{ margin: 8, padding: 8 }}
+        />
+        <input
+          type="password"
+          placeholder="パスワード"
+          value={pass}
+          onChange={e => setPass(e.target.value)}
+          style={{ margin: 8, padding: 8 }}
+        />
+        <button
+          onClick={() => {
+            if (user === BASIC_USER && pass === BASIC_PASS) setAuthed(true);
+            else alert("認証失敗");
+          }}
+          style={{ margin: 8, padding: 8 }}
+        >
+          ログイン
+        </button>
+      </div>
+    );
+  }
+// TODO: ここまで削除する
 
   return (
     <ChatInterfaceView
