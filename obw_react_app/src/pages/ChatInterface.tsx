@@ -88,35 +88,37 @@ const ChatInterface: React.FC = () => {
 // TODO: あとで削除
   if (!authed) {
     return (
-      <div style={{ margin: "100px auto", maxWidth: 320, textAlign: "center" }}>
-        <h2>認証が必要です</h2>
-        <input
-          type="text"
-          placeholder="ユーザー名"
-          value={user}
-          onChange={e => setUser(e.target.value)}
-          style={{ margin: 8, padding: 8 }}
-        />
-        <input
-          type="password"
-          placeholder="パスワード"
-          value={pass}
-          onChange={e => setPass(e.target.value)}
-          style={{ margin: 8, padding: 8 }}
-        />
-        <button
-          onClick={() => {
-            if (user === BASIC_USER && pass === BASIC_PASS) setAuthed(true);
-            else alert("認証失敗");
-          }}
-          style={{ margin: 8, padding: 8 }}
-        >
-          ログイン
-        </button>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-xs">
+          <h2 className="text-xl font-bold mb-6 text-center">認証が必要です</h2>
+          <input
+            type="text"
+            placeholder="ユーザー名"
+            value={user}
+            onChange={e => setUser(e.target.value)}
+            className="mb-4 px-4 py-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <input
+            type="password"
+            placeholder="パスワード"
+            value={pass}
+            onChange={e => setPass(e.target.value)}
+            className="mb-6 px-4 py-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <button
+            onClick={() => {
+              if (user === BASIC_USER && pass === BASIC_PASS) setAuthed(true);
+              else alert("認証失敗");
+            }}
+            className="w-full bg-blue-500 text-white font-semibold py-2 rounded hover:bg-blue-600 transition"
+          >
+            ログイン
+          </button>
+        </div>
       </div>
     );
   }
-// TODO: ここまで削除する
+// TODO: ここまで削除
 
   return (
     <ChatInterfaceView
