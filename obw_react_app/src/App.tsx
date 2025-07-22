@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import MainPage from './pages/MainPage'
 import CheckinPage from './pages/CheckinPage'
 import ErrorPage from './pages/ErrorPage'
@@ -7,7 +7,7 @@ import Header from './header/Header'
 
 function App() {
   return (
-    <BrowserRouter basename="/obwWebApp"> {/* TODO: ドメイン取得後、/ に戻す */}
+    <>
       {/* 背景は position: fixed で全体に表示 */}
       <div
         className="bg"
@@ -30,7 +30,7 @@ function App() {
           <Route path="*" element={<ErrorPage />} />
         </Routes>
       </div>
-    </BrowserRouter>
+    </>
   )
 }
 
