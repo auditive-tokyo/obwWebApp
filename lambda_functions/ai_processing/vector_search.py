@@ -59,7 +59,8 @@ async def openai_vector_search_with_file_search_tool(
                     "vector_store_ids": [vector_store_id],
                     "max_num_results": 10,
                     "ranking_options": {"score_threshold": 0.2},
-                    "filters": {"key": "room_number", "type": "eq", "value": "201"} # TODO: 動的に設定
+                    "filters": [{"key": "room_number", "type": "eq", "value": "201"}, # TODO: 動的に設定
+                                {"key": "room_number", "type": "eq", "value": "common"}]
                 }
             ],
             "tool_choice": "required",
