@@ -2,7 +2,7 @@ name: Deploy React Application
 
 on:
   push:
-    branches: [main]
+    branches: [feature/chat-frontend] # 本番では main ブランチを使用
   workflow_dispatch:
 
 jobs:
