@@ -103,7 +103,7 @@ const ChatInterfaceView: React.FC<Props> = ({
           onClick={handleSend}
         >
           <img
-            src="/paper-plane-svgrepo-com.svg"
+            src="/obwWebApp/paper-plane-svgrepo-com.svg" // TODO: ドメイン取得後は "/paper-plane-svgrepo-com.svg" に戻す
             alt="Send"
             style={{ width: '24px', height: '24px' }}
           />
