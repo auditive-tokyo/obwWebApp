@@ -1,11 +1,5 @@
 import React from 'react'
-
-type Message = {
-  text: string
-  personal: boolean
-  timestamp?: string
-  loading?: boolean
-}
+import { Message } from './typeClass'
 
 type Props = {
   messages: Message[]
@@ -13,7 +7,8 @@ type Props = {
   setInput: (val: string) => void
   handleInputKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   handleSend: () => void
-  messagesEndRef: React.RefObject<HTMLDivElement | null>
+  handleCompositionStart: () => void
+  handleCompositionEnd: () => void
 }
 
 const ChatInterfaceView: React.FC<Props> = ({
@@ -22,43 +17,74 @@ const ChatInterfaceView: React.FC<Props> = ({
   setInput,
   handleInputKeyDown,
   handleSend,
-  messagesEndRef
+  handleCompositionStart,
+  handleCompositionEnd,
 }) => (
   <>
     <div className="chat">
       <div className="chat-title">
         <figure className="avatar">
-          <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
+          <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
         </figure>
-        <h1>Fabio Ottaviani</h1>
-        <h2>Supah</h2>
+        <h1>OSAKA BAY WHEEL AI</h1>
+        <h2>OBW</h2>
       </div>
       <div className="messages">
         <div className="messages-content">
-          {messages.map((msg, idx) =>
+          {messages.map((msg) =>
             msg.loading ? (
-              <div key={idx} className="message loading new">
+              <div key={msg.id} className={`message new ${!msg.text ? 'loading' : ''}`}>
                 <figure className="avatar">
-                  <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
+                  <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                 </figure>
-                <span></span>
+                {msg.text
+                  ? typeof msg.text === "object"
+                    ? <span
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            msg.text.assistant_response_text
+                              ? msg.text.assistant_response_text.replace(/\n/g, "<br />")
+                              : ""
+                        }}
+                      />
+                    : <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
+                  : <span></span>}
               </div>
             ) : (
               <div
-                key={idx}
+                key={msg.id}
                 className={`message${msg.personal ? ' message-personal' : ''} new`}
               >
                 {!msg.personal && (
                   <figure className="avatar">
-                    <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/156381/profile/profile-80.jpg" alt="avatar" />
+                    <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                   </figure>
                 )}
-                {msg.text}
+                {typeof msg.text === "object" ? (
+                  <>
+                    <span
+                      dangerouslySetInnerHTML={{
+                        __html: msg.text.assistant_response_text.replace(/\n/g, "<br />")
+                      }}
+                    />
+                    {msg.text.reference_files && msg.text.reference_files.length > 0 && (
+                      <div className="reference-files">
+                        <strong>Reference(s):</strong>
+                        <ul>
+                          {msg.text.reference_files.map((file, idx) => (
+                            <li key={idx}>{file}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
+                )}
                 {msg.timestamp && <div className="timestamp">{msg.timestamp}</div>}
               </div>
             )
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
       <div className="message-box">
@@ -67,6 +93,8 @@ const ChatInterfaceView: React.FC<Props> = ({
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleInputKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           placeholder="Type message..."
         />
         <button
@@ -74,7 +102,11 @@ const ChatInterfaceView: React.FC<Props> = ({
           className="message-submit"
           onClick={handleSend}
         >
-          Send
+          <img
+            src="/paper-plane-svgrepo-com.svg"
+            alt="Send"
+            style={{ width: '24px', height: '24px' }}
+          />
         </button>
       </div>
     </div>

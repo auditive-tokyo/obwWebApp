@@ -1,90 +1,93 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { getTimestamp } from './chatInterface/utils'
-import { handleSend, handleInputKeyDown } from './chatInterface/messageHandlers'
+import React, { useState, useEffect, useRef } from 'react'
+import { getTimestamp, scrollToBottom } from './chatInterface/utils'
+import { flushSync } from 'react-dom'
 import ChatInterfaceView from './chatInterface/ChatInterfaceView'
+import { fetchAIResponseStream } from './chatInterface/fetchAIResponse';
+import { Message } from './chatInterface/typeClass'
 import './chatInterface/style.scss'
 
-type Message = {
-  text: string
-  personal: boolean
-  timestamp?: string
-  loading?: boolean
+const WELCOME_MESSAGES = {
+  ja: "ようこそ！Osaka Bay Wheel WebAppへ。",
+  en: "Welcome to Osaka Bay Wheel WebApp."
 }
-
-const FAKE_MESSAGES = [
-  "Hi there, I'm Fabio and you?",
-  "Nice to meet you",
-  "How are you?",
-  "Not too bad, thanks",
-  "What do you do?",
-  "That's awesome",
-  "Codepen is a nice place to stay",
-  "I think you're a nice person",
-  "Why do you think that?",
-  "Can you explain?",
-  "Anyway I've gotta go now",
-  "It was a pleasure chat with you",
-  "Time to make a new codepen",
-  "Bye",
-  ":)"
-]
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [fakeIndex, setFakeIndex] = useState(0)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isComposing, setIsComposing] = useState(false);
+  const nextId = useRef(0);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollToBottom();
   }, [messages])
 
   useEffect(() => {
-    // 初回は直接welcomeメッセージを追加
+    const lang = document.documentElement.lang as 'ja' | 'en'
     setMessages([
       {
-        text: FAKE_MESSAGES[0],
+        id: nextId.current++,
+        text: WELCOME_MESSAGES[lang] || WELCOME_MESSAGES.en,
         personal: false,
         timestamp: getTimestamp()
       }
     ])
-    setFakeIndex(1)
   }, [])
 
-  const addFakeMessage = (customIndex?: number) => {
-    setMessages(prev => [
-      ...prev,
-      { text: '', personal: false, loading: true }
-    ])
-    setTimeout(() => {
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    const newUserMessage: Message = {
+      id: nextId.current++,
+      text: input,
+      personal: true,
+      timestamp: getTimestamp(),
+    };
+
+    const aiMessageId = nextId.current++;
+    const newAiMessage: Message = {
+      id: aiMessageId,
+      text: '',
+      personal: false,
+      loading: true
+    };
+
+    flushSync(() => {
+      setMessages(prev => [...prev, newUserMessage, newAiMessage]);
+    });
+    setInput('');
+
+    // TODO: filter_keysはpageのstate（部屋番号などが割り当てらてから定義する
+    await fetchAIResponseStream(input, ["201", "common"], (delta, isDone = false) => {
       setMessages(prev => {
-        const msgs = prev.filter(msg => !msg.loading)
-        // customIndexが指定されていればそれを使う
-        const idx = typeof customIndex === 'number' ? customIndex : fakeIndex
-        return [
-          ...msgs,
-          {
-            text: FAKE_MESSAGES[idx % FAKE_MESSAGES.length],
-            personal: false,
-            timestamp: getTimestamp()
-          }
-        ]
-      })
-      // customIndexが指定されていればfakeIndexを更新しない
-      if (typeof customIndex !== 'number') {
-        setFakeIndex(idx => idx + 1)
-      }
-    }, 1000 + Math.random() * 1000)
+        // 考え中バブルを見つけて、そのテキストを更新する
+        return prev.map(msg =>
+          msg.id === aiMessageId
+            ? { ...msg, text: delta, loading: !isDone, timestamp: isDone ? getTimestamp() : undefined }
+            : msg
+        );
+      });
+    });
   }
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleCompositionStart = () => setIsComposing(true);
+  const handleCompositionEnd = () => setIsComposing(false);
 
   return (
     <ChatInterfaceView
       messages={messages}
       input={input}
       setInput={setInput}
-      handleInputKeyDown={e => handleInputKeyDown(e, () => handleSend(input, setMessages, setInput, addFakeMessage))}
-      handleSend={() => handleSend(input, setMessages, setInput, addFakeMessage)}
-      messagesEndRef={messagesEndRef}
+      handleInputKeyDown={handleInputKeyDown}
+      handleSend={handleSendMessage}
+      handleCompositionStart={handleCompositionStart}
+      handleCompositionEnd={handleCompositionEnd}
     />
   )
 }
