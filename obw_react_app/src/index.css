@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -37,7 +41,7 @@ Body
   top: 0;
   left: 0;
   z-index: 1;
-  background: url('https://osakabaywheel.com/img/logo_color.svg') no-repeat 0 0;
+  /* background: url('https://osakabaywheel.com/img/logo_color.svg') no-repeat 0 0; */
   filter: blur(10px) brightness(1.0);
   transform: scale(1.2);
 }

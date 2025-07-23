@@ -16,6 +16,7 @@ function Header() {
     setLang(newLang);
     setLanguage(newLang);
     saveLang(newLang);
+    window.location.reload();
   };
 
   return (
