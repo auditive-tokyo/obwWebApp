@@ -19,7 +19,8 @@ function Header() {
     }
   }, []);
 
-  const handleLangChange = (newLang: 'ja' | 'en') => {
+  const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLang = e.target.value as 'ja' | 'en';
     setLang(newLang);
     setLanguage(newLang);
     saveLang(newLang);
@@ -29,19 +30,15 @@ function Header() {
   return (
     <header ref={headerRef} className="w-full bg-white shadow p-4 mb-4 flex justify-center items-center">
       <h1 className="text-3xl font-bold text-center">Osaka Bay Wheel WebApp</h1>
-      <div className="ml-4 flex gap-2">
-        <button
-          onClick={() => handleLangChange('ja')}
-          className={`px-2 py-1 rounded ${lang === 'ja' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+      <div className="ml-4">
+        <select
+          value={lang}
+          onChange={handleLangChange}
+          className="px-3 py-2 rounded bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
         >
-          日本語
-        </button>
-        <button
-          onClick={() => handleLangChange('en')}
-          className={`px-2 py-1 rounded ${lang === 'en' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-        >
-          English
-        </button>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="en">🇺🇸 English</option>
+        </select>
       </div>
     </header>
   );
