@@ -45,13 +45,13 @@ Chat
 
   // スマホ
   @media (max-width: 600px) {
-    width: 70%;
-    height: 70%;
-    border-radius: 10;
-    // left: 0;
-    // top: 0;
-    // transform: none;
-    // position: fixed;
+    width: 100vw;
+    height: calc(100vh - var(--header-height));
+    border-radius: 0;
+    left: 0;
+    top: var(--header-height, 56px);
+    transform: none;
+    position: fixed;
   }
 }
 
