@@ -43,3 +43,8 @@ export const loadResponseId = (): string | null => {
   }
   return null;
 };
+
+export const setWindowHeightCSSVar = () => {
+  const vh = window.innerHeight;
+  document.documentElement.style.setProperty('--window-height', `${vh}px`);
+};
