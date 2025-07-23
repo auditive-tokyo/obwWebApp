@@ -104,6 +104,7 @@ const ChatInterfaceView: React.FC<Props> = ({
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
             placeholder="Type message..."
+            enterKeyHint="send"
           />
           <button
             type="submit"
