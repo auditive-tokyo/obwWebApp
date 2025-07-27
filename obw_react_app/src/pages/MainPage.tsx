@@ -2,7 +2,7 @@
 function MainPage() {
   return (
     <div className="container mx-auto p-4">
-      <p>ようこそ！こちらはパブリックなメインページです。</p>
+      <p>こちらはテスト用ページです。Commonな質問をチャットボットに質問することができます。</p>
     </div>
   )
 }

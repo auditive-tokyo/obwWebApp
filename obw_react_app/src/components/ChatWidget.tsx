@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import ChatInterface from './ChatInterface';
+import { RoomProps } from './chatInterface/typeClass';
 
-const ChatWidget = () => {
+const ChatWidget = ({ roomId }: RoomProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -23,7 +24,7 @@ const ChatWidget = () => {
             overflow: 'hidden',
           }}
         >
-          <ChatInterface />
+          <ChatInterface roomId={roomId} />
         </div>
       )}
     </>
