@@ -40,10 +40,9 @@ Body
   height: 100%;
   top: 0;
   left: 0;
-  z-index: 1;
   /* background: url('https://osakabaywheel.com/img/logo_color.svg') no-repeat 0 0; */
-  filter: blur(10px) brightness(1.0);
-  transform: scale(1.2);
+  /* filter: blur(10px) brightness(1.0); */
+  /* transform: scale(1.2); */
 }
 
 html,

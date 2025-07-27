@@ -1,8 +1,14 @@
+/**
+ * 現在時刻（HH:mm形式）を返す
+ */
 export const getTimestamp = () => {
   const d = new Date()
   return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`
 }
 
+/**
+ * メッセージ一覧（.messages）を一番下までスクロールする
+ */
 export const scrollToBottom = () => {
   const messages = document.querySelector('.messages');
   if (messages) {
@@ -10,6 +16,10 @@ export const scrollToBottom = () => {
   }
 };
 
+/**
+ * レスポンスIDをlocalStorageまたはcookieに保存する
+ * 保存できない場合はアラート表示
+ */
 export const saveResponseId = (responseId: string) => {
   let saved = false;
   try {
@@ -31,6 +41,10 @@ export const saveResponseId = (responseId: string) => {
   console.debug("Response ID saved:", responseId, "Status:", saved ? "Success" : "Failed");
 };
 
+/**
+ * レスポンスIDをlocalStorageまたはcookieから取得する
+ * 取得できない場合はnullを返す
+ */
 export const loadResponseId = (): string | null => {
   // まずlocalStorageから取得
   try {
@@ -42,9 +56,4 @@ export const loadResponseId = (): string | null => {
     if (match) return match[1];
   }
   return null;
-};
-
-export const setWindowHeightCSSVar = () => {
-  const vh = window.innerHeight;
-  document.documentElement.style.setProperty('--window-height', `${vh}px`);
 };

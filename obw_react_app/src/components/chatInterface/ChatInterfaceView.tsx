@@ -1,6 +1,4 @@
-import React, { useEffect } from 'react'
 import { Message } from './typeClass'
-import { setWindowHeightCSSVar } from './utils'
 
 type Props = {
   messages: Message[]
@@ -21,12 +19,6 @@ const ChatInterfaceView: React.FC<Props> = ({
   handleCompositionStart,
   handleCompositionEnd,
 }) => {
-  useEffect(() => {
-    setWindowHeightCSSVar();
-    window.addEventListener('resize', setWindowHeightCSSVar);
-    return () => window.removeEventListener('resize', setWindowHeightCSSVar);
-  }, []);
-
   return (
     <>
       <div className="chat">
@@ -112,7 +104,7 @@ const ChatInterfaceView: React.FC<Props> = ({
             onClick={handleSend}
           >
             <img
-              src="/obwWebApp/paper-plane-svgrepo-com.svg" // TODO: ドメイン取得後は "/paper-plane-svgrepo-com.svg" に戻す
+              src="/paper-plane-svgrepo-com.svg"
               alt="Send"
               style={{ width: '24px', height: '24px' }}
             />

@@ -11,16 +11,10 @@ const WELCOME_MESSAGES = {
   en: "Welcome to Osaka Bay Wheel WebApp."
 }
 
-const BASIC_USER = "obw_testuser"; // TODO: あとで削除
-const BASIC_PASS = "obw_testP@ss"; // TODO: あとで削除
-
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false);
-  const [authed, setAuthed] = useState(() => localStorage.getItem("obw_authed") === "true"); // TODO: あとで削除
-  const [user, setUser] = useState(''); // TODO: あとで削除
-  const [pass, setPass] = useState(''); // TODO: あとで削除
   const nextId = useRef(0);
 
   useEffect(() => {
@@ -84,55 +78,6 @@ const ChatInterface: React.FC = () => {
 
   const handleCompositionStart = () => setIsComposing(true);
   const handleCompositionEnd = () => setIsComposing(false);
-
-// TODO: あとで削除
-  // ログイン処理
-  const handleLogin = () => {
-    if (user === BASIC_USER && pass === BASIC_PASS) {
-      setAuthed(true);
-      localStorage.setItem("obw_authed", "true");
-    } else {
-      alert("認証失敗");
-    }
-  };
-
-  // ログアウト処理（必要なら）
-  // const handleLogout = () => {
-  //   setAuthed(false);
-  //   localStorage.removeItem("obw_authed");
-  // };
-  if (!authed) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-xs">
-          <h2 className="text-xl font-bold mb-6 text-center">認証が必要です</h2>
-          <div className="flex flex-col space-y-4">
-            <input
-              type="text"
-              placeholder="ユーザー名"
-              value={user}
-              onChange={e => setUser(e.target.value)}
-              className="w-full px-4 py-3 border rounded text-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <input
-              type="password"
-              placeholder="パスワード"
-              value={pass}
-              onChange={e => setPass(e.target.value)}
-              className="w-full px-4 py-3 border rounded text-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              onClick={handleLogin}
-              className="w-full"
-            >
-              ログイン
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-// TODO: ここまで削除
 
   return (
     <ChatInterfaceView
