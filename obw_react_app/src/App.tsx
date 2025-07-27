@@ -6,24 +6,28 @@ import ErrorPage from './pages/ErrorPage'
 import Header from './header/Header'
 import ChatWidget from './components/ChatWidget'
 
+const allowedRooms = ['201', '304']
+
 function App() {
-  // ルートからroomIdを取得
   const location = useLocation();
   const match = matchPath("/:roomId", location.pathname);
   const roomId = match?.params?.roomId;
+  const isValidRoom = roomId && allowedRooms.includes(roomId);
 
   return (
     <>
-      {/* コンテンツは position: relative, zIndex: 1 で背景の上に表示 */}
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Header />
         <Routes>
           <Route path="/" element={<MainPage />} />
-          <Route path=":roomId" element={<RoomPage />} />
+          <Route
+            path=":roomId"
+            element={isValidRoom ? <RoomPage /> : <ErrorPage />}
+          />
           <Route path="/checkin" element={<CheckinPage />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
-        <ChatWidget roomId={roomId ?? ""} /> {/* roomIdを渡す */}
+        <ChatWidget roomId={isValidRoom ? roomId! : ""} />
       </div>
     </>
   )
