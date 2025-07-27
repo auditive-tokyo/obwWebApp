@@ -16,7 +16,7 @@ export default defineConfig({
       }
     }
   ],
-  base: '/obwWebApp/',
+  base: '/',
   build: {
     outDir: 'dist',
   },
