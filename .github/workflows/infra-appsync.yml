@@ -1,0 +1,33 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [feature/chat-frontend] # 本番では main ブランチを使用
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infra-appsync.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-infra:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudformation.yaml \
+            --stack-name obw-appsync-stack \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
