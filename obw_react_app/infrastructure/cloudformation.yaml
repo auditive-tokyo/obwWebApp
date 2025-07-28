@@ -203,7 +203,7 @@ Resources:
   PassportImageBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: guest-passport-images-${AWS::AccountId}-${AWS::Region}
+      BucketName: guest-passport-images
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
