@@ -27,7 +27,8 @@ function App() {
           <Route path="/checkin" element={<CheckinPage />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
-        <ChatWidget roomId={isValidRoom ? roomId! : ""} />
+        {/* ルートがRoomPage以外のときだけグローバル用ChatWidgetを表示 */}
+        {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" />}
       </div>
     </>
   )
