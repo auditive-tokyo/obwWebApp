@@ -23,7 +23,8 @@ Resources:
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
-        type Guest {
+        type Guest
+          @auth(rules: [{ allow: public, provider: iam }]) {
           id: ID!
           name: String!
           address: String!
@@ -33,8 +34,8 @@ Resources:
           passportImageUrl: String
           checkInDate: AWSDate!
           checkOutDate: AWSDate!
-          approvalStatus: String! # pending, approved, rejected
-          promoConsent: Boolean! # Consent for promotional communications
+          approvalStatus: String!
+          promoConsent: Boolean!
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
         }
