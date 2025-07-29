@@ -23,8 +23,7 @@ Resources:
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
-        type Guest
-          @auth(rules: [{ allow: public, provider: iam }]) {
+        type Guest @auth(rules: [{ allow: public, provider: iam }]) {
           id: ID!
           name: String!
           address: String!
