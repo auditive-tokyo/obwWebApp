@@ -34,15 +34,15 @@ function RoomPage() {
         promoConsent: false
       }
     }
-    console.log("送信クエリ:", query)
-    console.log("送信変数:", variables)
+    console.debug("送信クエリ:", query)
+    console.debug("送信変数:", variables)
     try {
       const res = await client.graphql({
         query,
         variables,
         authMode: 'iam'
       })
-      console.log("GraphQLレスポンス:", res)
+      console.debug("GraphQLレスポンス:", res)
       setMessage("登録しました")
     } catch (e) {
       console.error("GraphQLエラー:", e)

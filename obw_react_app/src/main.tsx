@@ -12,7 +12,7 @@ Amplify.configure(amplifyConfig)
 // セッション情報を表示
 fetchAuthSession()
   .then(session => {
-    console.log("現在のセッション (main.tsx):", session)
+    console.debug("現在のセッション (main.tsx):", session)
   })
   .catch(error => {
     console.error("セッション取得エラー (main.tsx):", error)

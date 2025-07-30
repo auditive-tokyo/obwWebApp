@@ -2,7 +2,7 @@ name: Deploy Infrastructure
 
 on:
   push:
-    branches: [feature/chat-frontend] # 本番では main ブランチを使用
+    branches: [main, feature/chat-frontend] # 本番では main ブランチを使用
     paths:
       - 'obw_react_app/infrastructure/cloudformation.yaml'
       - '.github/workflows/infra-appsync.yml'
