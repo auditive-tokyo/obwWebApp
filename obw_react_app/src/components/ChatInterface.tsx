@@ -3,7 +3,7 @@ import { getTimestamp, scrollToBottom } from './chatInterface/utils'
 import { flushSync } from 'react-dom'
 import ChatInterfaceView from './chatInterface/ChatInterfaceView'
 import { fetchAIResponseStream } from './chatInterface/fetchAIResponse';
-import { Message } from './chatInterface/typeClass'
+import { Message, RoomProps } from './chatInterface/typeClass'
 import './chatInterface/style.scss'
 
 const WELCOME_MESSAGES = {
@@ -11,7 +11,7 @@ const WELCOME_MESSAGES = {
   en: "Welcome to Osaka Bay Wheel WebApp."
 }
 
-const ChatInterface: React.FC = () => {
+const ChatInterface: React.FC<RoomProps> = ({ roomId }) => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false);
@@ -56,17 +56,20 @@ const ChatInterface: React.FC = () => {
     });
     setInput('');
 
-    // TODO: filter_keysはpageのstate（部屋番号などが割り当てらてから定義する
-    await fetchAIResponseStream(input, ["201", "common"], (delta, isDone = false) => {
-      setMessages(prev => {
-        // 考え中バブルを見つけて、そのテキストを更新する
-        return prev.map(msg =>
-          msg.id === aiMessageId
-            ? { ...msg, text: delta, loading: !isDone, timestamp: isDone ? getTimestamp() : undefined }
-            : msg
-        );
+    // roomIdを使ってAIにリクエスト
+    await fetchAIResponseStream(
+      input,
+      roomId ? [roomId, "common"] : ["common"],
+      (delta, isDone = false) => {
+        setMessages(prev => {
+          // 考え中バブルを見つけて、そのテキストを更新する
+          return prev.map(msg =>
+            msg.id === aiMessageId
+              ? { ...msg, text: delta, loading: !isDone, timestamp: isDone ? getTimestamp() : undefined }
+              : msg
+          );
+        });
       });
-    });
   }
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

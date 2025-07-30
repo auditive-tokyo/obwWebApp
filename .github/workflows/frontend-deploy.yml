@@ -1,0 +1,63 @@
+name: Deploy React Application
+
+on:
+  workflow_run: # AppSyncのデプロイが完了したら実行
+    workflows: [Deploy Infrastructure]
+    types:
+      - completed
+  # push:
+  #   branches: [main, feature/chat-frontend] # 本番では workflow_run を使うからpush:はコメントアウト
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    defaults:
+      run:
+        working-directory: obw_react_app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Get CloudFormation Outputs
+        id: cfn-outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name obw-appsync-stack \
+            --query "Stacks[0].Outputs" \
+            --output json > outputs.json
+          echo "VITE_APPSYNC_ENDPOINT=$(jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue' outputs.json)" >> $GITHUB_ENV
+          echo "VITE_COGNITO_IDENTITY_POOL_ID=$(jq -r '.[] | select(.OutputKey=="CognitoIdentityPoolId") | .OutputValue' outputs.json)" >> $GITHUB_ENV
+
+      - name: Create .env file
+        run: |
+          echo "VITE_APPSYNC_ENDPOINT=${{ env.VITE_APPSYNC_ENDPOINT }}" > .env
+          echo "VITE_COGNITO_IDENTITY_POOL_ID=${{ env.VITE_COGNITO_IDENTITY_POOL_ID }}" >> .env
+          echo "VITE_LAMBDA_URL=${{ secrets.VITE_LAMBDA_URL }}" >> .env
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: obw_react_app/dist
+          cname: app.osakabaywheel.com

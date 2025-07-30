@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  AppSyncApi:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: GuestCheckinAPI
+      AuthenticationType: AWS_IAM
+
+  GuestTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      TableName: guest-checkin-table
+
+  AppSyncSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Definition: |
+        type Guest {
+          id: ID!
+          roomNumber: String! 
+          name: String!
+          address: String!
+          phone: String!
+          occupation: String
+          nationality: String!
+          passportImageUrl: String
+          checkInDate: AWSDate!
+          checkOutDate: AWSDate!
+          approvalStatus: String! # pending, approved, rejected
+          promoConsent: Boolean! # Consent for promotional communications
+          createdAt: AWSDateTime
+          updatedAt: AWSDateTime
+        }
+
+        input CreateGuestInput {
+          roomNumber: String!
+          name: String!
+          address: String!
+          phone: String!
+          occupation: String
+          nationality: String!
+          passportImageUrl: String
+          checkInDate: AWSDate!
+          checkOutDate: AWSDate!
+          promoConsent: Boolean!
+        }
+
+        input UpdateGuestInput {
+          id: ID!
+          approvalStatus: String
+          passportImageUrl: String
+          checkInDate: AWSDate
+          checkOutDate: AWSDate
+          promoConsent: Boolean
+        }
+
+        type Mutation {
+          createGuest(input: CreateGuestInput!): Guest
+          updateGuest(input: UpdateGuestInput!): Guest
+        }
+
+        type Query {
+          getGuest(id: ID!): Guest
+          listGuests: [Guest]
+        }
+
+  GuestTableDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: guestcheckintable
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: !GetAtt AppSyncDynamoDBRole.Arn
+      DynamoDBConfig:
+        TableName: !Ref GuestTable
+        AwsRegion: !Ref AWS::Region
+
+  AppSyncDynamoDBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+
+  CreateGuestResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: createGuest
+      DataSourceName: !GetAtt GuestTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "PutItem",
+          "key": {
+            "id": $util.dynamodb.toDynamoDBJson($util.autoId())
+          },
+          "attributeValues": {
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
+            "name": $util.dynamodb.toDynamoDBJson($ctx.args.input.name),
+            "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
+            "phone": $util.dynamodb.toDynamoDBJson($ctx.args.input.phone),
+            "occupation": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.occupation, "")),
+            "nationality": $util.dynamodb.toDynamoDBJson($ctx.args.input.nationality),
+            "passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
+            "checkInDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate),
+            "checkOutDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate),
+            "approvalStatus": $util.dynamodb.toDynamoDBJson("pending"),
+            "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
+            "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
+            "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+
+  UpdateGuestResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: updateGuest
+      DataSourceName: !GetAtt GuestTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "id": $util.dynamodb.toDynamoDBJson($ctx.args.input.id)
+          },
+          "update": {
+            "expression": "SET #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl, #checkInDate = :checkInDate, #checkOutDate = :checkOutDate, #promoConsent = :promoConsent, #updatedAt = :updatedAt",
+            "expressionNames": {
+              "#approvalStatus": "approvalStatus",
+              "#passportImageUrl": "passportImageUrl",
+              "#checkInDate": "checkInDate",
+              "#checkOutDate": "checkOutDate",
+              "#promoConsent": "promoConsent",
+              "#updatedAt": "updatedAt"
+            },
+            "expressionValues": {
+              ":approvalStatus": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.approvalStatus, "pending")),
+              ":passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
+              ":checkInDate": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.checkInDate, "")),
+              ":checkOutDate": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.checkOutDate, "")),
+              ":promoConsent": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.promoConsent, false)),
+              ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+            }
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+
+  GetGuestResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: getGuest
+      DataSourceName: !GetAtt GuestTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "GetItem",
+          "key": {
+            "id": $util.dynamodb.toDynamoDBJson($ctx.args.id)
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+
+  ListGuestsResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: listGuests
+      DataSourceName: !GetAtt GuestTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Scan"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
+
+  PassportImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: obw-guest-passport-images
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      AllowUnauthenticatedIdentities: true
+
+  UnauthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+      Policies:
+        - PolicyName: AppSyncPublicAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - appsync:GraphQL
+                Resource: "*"
+
+  IdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        unauthenticated: !GetAtt UnauthRole.Arn
+
+Outputs:
+  ApiEndpoint:
+    Description: "AppSync API Endpoint"
+    Value: !GetAtt AppSyncApi.GraphQLUrl
+  CognitoIdentityPoolId:
+    Description: "Cognito Identity Pool ID"
+    Value: !Ref IdentityPool

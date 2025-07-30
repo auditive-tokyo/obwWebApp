@@ -1,8 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { copyFileSync, existsSync } from 'fs'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
-  base: '/obwWebApp/',
+  plugins: [
+    react(),
+    {
+      name: 'copy-404',
+      closeBundle() {
+        const indexPath = 'dist/index.html'
+        const notFoundPath = 'dist/404.html'
+        if (existsSync(indexPath)) {
+          copyFileSync(indexPath, notFoundPath)
+        }
+      }
+    }
+  ],
+  base: '/',
+  build: {
+    outDir: 'dist',
+  },
 })
