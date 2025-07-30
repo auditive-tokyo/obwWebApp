@@ -2,7 +2,7 @@ name: Deploy React Application
 
 on:
   workflow_run: # AppSyncのデプロイが完了したら実行
-    workflows: ["Deploy Infrastructure"]
+    workflows: [Deploy Infrastructure]
     types:
       - completed
   # push:
