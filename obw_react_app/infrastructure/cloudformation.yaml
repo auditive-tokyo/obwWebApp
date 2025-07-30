@@ -25,6 +25,7 @@ Resources:
       Definition: |
         type Guest {
           id: ID!
+          roomNumber: String! 
           name: String!
           address: String!
           phone: String!
@@ -40,6 +41,7 @@ Resources:
         }
 
         input CreateGuestInput {
+          roomNumber: String!
           name: String!
           address: String!
           phone: String!
@@ -110,6 +112,7 @@ Resources:
             "id": $util.dynamodb.toDynamoDBJson($util.autoId())
           },
           "attributeValues": {
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
             "name": $util.dynamodb.toDynamoDBJson($ctx.args.input.name),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
             "phone": $util.dynamodb.toDynamoDBJson($ctx.args.input.phone),
@@ -249,6 +252,6 @@ Outputs:
   ApiEndpoint:
     Description: "AppSync API Endpoint"
     Value: !GetAtt AppSyncApi.GraphQLUrl
-  Region:
-    Description: "AWS Region"
-    Value: !Ref AWS::Region
+  CognitoIdentityPoolId:
+    Description: "Cognito Identity Pool ID"
+    Value: !Ref IdentityPool

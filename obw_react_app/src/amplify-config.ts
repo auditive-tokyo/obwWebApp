@@ -1,14 +1,22 @@
+const endpoint = import.meta.env.VITE_APPSYNC_ENDPOINT;
+const identityPoolId = import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID;
+
+if (!endpoint || !identityPoolId) {
+  throw new Error("必要な環境変数が設定されていません: VITE_APPSYNC_ENDPOINT, VITE_COGNITO_IDENTITY_POOL_ID");
+}
+
 export const amplifyConfig = {
   API: {
     GraphQL: {
-      endpoint: 'https://3tbtd2z3jzarbgw7herqcgxdaq.appsync-api.ap-northeast-1.amazonaws.com/graphql',
+      endpoint,
       region: 'ap-northeast-1',
       defaultAuthMode: 'iam' as const,
     }
   },
   Auth: {
     Cognito: {
-      identityPoolId: 'ap-northeast-1:49e62c1e-b677-431b-8f59-0e552044a1fe'
+      identityPoolId,
+      allowGuestAccess: true
     }
   }
 } as const;

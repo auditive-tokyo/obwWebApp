@@ -1,9 +1,13 @@
 name: Deploy React Application
 
 on:
-  push:
-    branches: [feature/chat-frontend] # 本番では main ブランチを使用
-  workflow_dispatch:
+  workflow_run: # AppSyncのデプロイが完了したら実行
+    workflows: ["infra-appsync.yml"]
+    types:
+      - completed
+  # push:
+  #   branches: [feature/chat-frontend] # 本番では main ブランチを使用
+  # workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -23,8 +27,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create .env file from secret
-        run: echo "VITE_LAMBDA_URL=${{ secrets.VITE_LAMBDA_URL }}" > .env
+      - name: Get CloudFormation Outputs
+        id: cfn-outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name obw-appsync-stack \
+            --query "Stacks[0].Outputs" \
+            --output json > outputs.json
+          echo "VITE_APPSYNC_ENDPOINT=$(jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue' outputs.json)" >> $GITHUB_ENV
+          echo "VITE_COGNITO_IDENTITY_POOL_ID=$(jq -r '.[] | select(.OutputKey=="CognitoIdentityPoolId") | .OutputValue' outputs.json)" >> $GITHUB_ENV
+
+      - name: Create .env file
+        run: |
+          echo "VITE_APPSYNC_ENDPOINT=${{ env.VITE_APPSYNC_ENDPOINT }}" > .env
+          echo "VITE_COGNITO_IDENTITY_POOL_ID=${{ env.VITE_COGNITO_IDENTITY_POOL_ID }}" >> .env
+          echo "VITE_LAMBDA_URL=${{ secrets.VITE_LAMBDA_URL }}" >> .env
 
       - name: Build
         run: npm run build

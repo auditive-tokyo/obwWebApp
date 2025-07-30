@@ -1,27 +1,14 @@
 import { useParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import ChatWidget from '../components/ChatWidget'
 import { generateClient } from 'aws-amplify/api'
-import { fetchAuthSession } from 'aws-amplify/auth'
 
 function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const [name, setName] = useState("")
   const [message, setMessage] = useState("")
 
-  const client = generateClient()
-
-  useEffect(() => {
-    const getSession = async () => {
-      try {
-        const session = await fetchAuthSession()
-        console.log("現在のセッション:", session)
-      } catch (error) {
-        console.error("セッション取得エラー:", error)
-      }
-    }
-    getSession()
-  }, [])
+  const client = useMemo(() => generateClient(), [])
 
   const handleRegister = async () => {
     const query = `
@@ -29,11 +16,13 @@ function RoomPage() {
         createGuest(input: $input) {
           id
           name
+          roomNumber
         }
       }
     `
     const variables = {
       input: {
+        roomNumber: roomId || "",
         name,
         address: "dummy",
         phone: "dummy",
