@@ -1,13 +1,13 @@
 name: Deploy React Application
 
 on:
-  workflow_run: # AppSyncのデプロイが完了したら実行
-    workflows: [Deploy Infrastructure]
-    types:
-      - completed
-  # push:
-  #   branches: [feature/chat-frontend] # 本番では main ブランチを使用
-  # workflow_dispatch:
+  # workflow_run: # AppSyncのデプロイが完了したら実行
+  #   workflows: [Deploy Infrastructure]
+  #   types:
+  #     - completed
+  push:
+    branches: [feature/chat-frontend] # 本番では main ブランチを使用
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
