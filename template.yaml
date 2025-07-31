@@ -102,7 +102,7 @@ Resources:
   PassportUploadBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "obw-passport-upload"
+      BucketName: !Sub "privacy-obw-passport-upload"
 
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
