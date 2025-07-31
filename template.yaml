@@ -111,6 +111,7 @@ Resources:
               - PUT
               - POST
               - GET
+              - OPTIONS
             AllowedHeaders:
               - "*"
             ExposedHeaders:
