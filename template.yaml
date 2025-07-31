@@ -119,9 +119,13 @@ Resources:
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
-          AllowOrigins: [ "*" ]
-          AllowMethods: [ "POST" ]
-          AllowHeaders: [ "Content-Type" ]
+          AllowOrigins:
+            - http://localhost:5173
+          AllowHeaders:
+            - content-type
+          AllowMethods:
+            - POST
+          AllowCredentials: false
       Policies:
         - S3WritePolicy:
             BucketName: !Ref PassportUploadBucket
