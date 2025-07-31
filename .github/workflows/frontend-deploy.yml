@@ -1,12 +1,16 @@
 name: Deploy React Application
 
 on:
-  workflow_run: # AppSyncのデプロイが完了したら実行
-    workflows: [Deploy Infrastructure]
-    types:
-      - completed
-  # push:
-  #   branches: [main, feature/chat-frontend] # 本番では workflow_run を使うからpush:はコメントアウト
+  # workflow_run: # 本番ではコメントアウト外して、AppSyncのデプロイが完了したら実行
+  #   workflows: [Deploy Infrastructure]
+  #   types:
+  #     - completed
+  push:
+    branches: [main, feature/chat-frontend] # 本番では workflow_run を使うからpush:はコメントアウト
+    paths:
+      - 'obw_react_app/**'
+      - '.github/workflows/frontend-deploy.yml'
+      - '!obw_react_app/infrastructure/cloudformation.yaml'
   workflow_dispatch:
 
 jobs:

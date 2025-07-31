@@ -1,12 +1,12 @@
-name: Deploy SAM Application for Twilio
+name: Deploy Lambda Functions
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/chat-frontend] # 本番では main ブランチを使用
     paths:
       - 'lambda_functions/**'
       - 'layers/**'
-      - '.github/workflows/lambda-twilio-deploy.yml'
+      - '.github/workflows/lambda-deploy.yml'
   workflow_dispatch:
 
 jobs:

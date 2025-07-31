@@ -98,6 +98,34 @@ Resources:
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
           LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam
 
+  # S3バケットの作成
+  PassportUploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "obw-passport-upload"
+
+  GetPresignedUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: obw-get-presigned-url-function
+      MemorySize: 128
+      CodeUri: lambda_functions/get_presigned_url/
+      Handler: lambda_handler_get_presigned_url.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      Environment:
+        Variables:
+          UPLOAD_BUCKET: !Ref PassportUploadBucket
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins: [ "*" ]
+          AllowMethods: [ "POST" ]
+          AllowHeaders: [ "Content-Type" ]
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref PassportUploadBucket
+
 Outputs:
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
@@ -105,3 +133,9 @@ Outputs:
   AiProcessingFunctionArn:
     Description: "ARN for AI Processing function"
     Value: !GetAtt AiProcessingFunction.Arn
+  GetPresignedUrlFunctionUrl:
+    Description: "Function URL for GetPresignedUrl Lambda"
+    Value: !GetAtt GetPresignedUrlFunction.FunctionUrl
+  PassportUploadBucketName:
+    Description: "S3 bucket for passport uploads"
+    Value: !Ref PassportUploadBucket

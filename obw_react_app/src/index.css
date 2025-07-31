@@ -40,9 +40,6 @@ Body
   height: 100%;
   top: 0;
   left: 0;
-  /* background: url('https://osakabaywheel.com/img/logo_color.svg') no-repeat 0 0; */
-  /* filter: blur(10px) brightness(1.0); */
-  /* transform: scale(1.2); */
 }
 
 html,
@@ -73,7 +70,6 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
 }
