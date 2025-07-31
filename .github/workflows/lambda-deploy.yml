@@ -7,6 +7,7 @@ on:
       - 'lambda_functions/**'
       - 'layers/**'
       - '.github/workflows/lambda-deploy.yml'
+      - 'template.yaml'
   workflow_dispatch:
 
 jobs:
