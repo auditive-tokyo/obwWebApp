@@ -103,6 +103,19 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "privacy-obw-passport-upload"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - http://localhost:5173
+            AllowedMethods:
+              - PUT
+              - POST
+              - GET
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
 
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
