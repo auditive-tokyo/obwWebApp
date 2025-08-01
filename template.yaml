@@ -138,6 +138,7 @@ Resources:
             - content-type
           AllowMethods:
             - POST
+            - OPTIONS
           AllowCredentials: false
       Policies:
         - S3WritePolicy:
