@@ -20,7 +20,7 @@ export function PassportUpload({ onUploaded }: { onUploaded: (url: string) => vo
       const webpFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp"
 
       // 2. presigned URL取得
-      const res = await fetch('https://pppejs6z7k74obu6wxzo64zwmq0pxoer.lambda-url.ap-northeast-1.on.aws/', { // TODO: Lambda URLに変更
+      const res = await fetch('https://gk76nywrt6v6twjkkzrimwcate0rtizt.lambda-url.ap-northeast-1.on.aws/', { // TODO: Lambda URLに変更
         method: 'POST',
         body: JSON.stringify({ filename: webpFileName }),
         headers: { 'Content-Type': 'application/json' }

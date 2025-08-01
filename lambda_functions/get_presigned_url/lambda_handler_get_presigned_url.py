@@ -21,7 +21,7 @@ def lambda_handler(event, context):
 
     s3 = boto3.client('s3')
     # presigned URLを生成（有効期限: 10分）
-    url = s3.generate_presigned_url(
+    put_url = s3.generate_presigned_url(
         ClientMethod='put_object',
         Params={
             'Bucket': bucket,
@@ -31,8 +31,17 @@ def lambda_handler(event, context):
         ExpiresIn=600,
         HttpMethod='PUT'
     )
+    get_url = s3.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={
+            'Bucket': bucket,
+            'Key': filename
+        },
+        ExpiresIn=600,
+        HttpMethod='GET'
+    )
 
     return {
         "statusCode": 200,
-        "body": json.dumps({"url": url})
+        "body": json.dumps({"put_url": put_url, "get_url": get_url})
     }
