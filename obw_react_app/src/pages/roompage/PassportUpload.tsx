@@ -20,20 +20,20 @@ export function PassportUpload({ onUploaded }: { onUploaded: (url: string) => vo
       const webpFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp"
 
       // 2. presigned URL取得
-      const res = await fetch('https://gk76nywrt6v6twjkkzrimwcate0rtizt.lambda-url.ap-northeast-1.on.aws/', { // TODO: Lambda URLに変更
+      const res = await fetch('https://gk76nywrt6v6twjkkzrimwcate0rtizt.lambda-url.ap-northeast-1.on.aws/', {
         method: 'POST',
         body: JSON.stringify({ filename: webpFileName }),
         headers: { 'Content-Type': 'application/json' }
       })
-      const { url } = await res.json()
+      const { put_url, get_url } = await res.json()
 
       // 3. webp画像をアップロード
-      await fetch(url, {
+      await fetch(put_url, {
         method: 'PUT',
         body: webpBlob,
         headers: { 'Content-Type': 'image/webp' }
       })
-      onUploaded(url.split('?')[0])
+      onUploaded(get_url) // ← ここでGET用presigned URLを渡す
     } catch (e) {
       setError("アップロードに失敗しました")
     }

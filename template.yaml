@@ -142,6 +142,8 @@ Resources:
       Policies:
         - S3WritePolicy:
             BucketName: !Ref PassportUploadBucket
+        - S3ReadPolicy:
+            BucketName: !Ref PassportUploadBucket
 
 Outputs:
   ImmediateResponseFunctionArn:
