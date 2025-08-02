@@ -106,7 +106,8 @@ Resources:
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins:
-              - http://localhost:5173
+              - http://localhost:5173 # テスト終わったら削除
+              - https://app.osakabaywheel.com
             AllowedMethods:
               - PUT
               - POST
@@ -133,7 +134,8 @@ Resources:
         AuthType: NONE
         Cors:
           AllowOrigins:
-            - http://localhost:5173
+            - http://localhost:5173 # テスト終わったら削除
+            - https://app.osakabaywheel.com
           AllowHeaders:
             - content-type
           AllowMethods:
