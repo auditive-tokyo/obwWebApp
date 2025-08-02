@@ -120,7 +120,7 @@ function RoomPage() {
           className="ml-1"
         />
         <label className="ml-2">パスポート写真: </label>
-        <PassportUpload onUploaded={setPassportImageUrl} />
+        <PassportUpload onUploaded={setPassportImageUrl} roomId={roomId || ""} />
         {passportImageUrl && (
           <div className="mt-2">
             <img src={passportImageUrl} alt="パスポート写真" className="max-w-xs" />

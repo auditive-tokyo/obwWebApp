@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { convertToWebp } from './utils'
 
-export function PassportUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
+export function PassportUpload({ onUploaded, roomId }: { onUploaded: (url: string) => void, roomId: string }) {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
@@ -18,11 +18,16 @@ export function PassportUpload({ onUploaded }: { onUploaded: (url: string) => vo
       // 1. 画像をwebpに変換
       const webpBlob = await convertToWebp(file)
       const webpFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp"
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
       // 2. presigned URL取得
       const res = await fetch('https://gk76nywrt6v6twjkkzrimwcate0rtizt.lambda-url.ap-northeast-1.on.aws/', {
         method: 'POST',
-        body: JSON.stringify({ filename: webpFileName }),
+        body: JSON.stringify({ 
+          filename: webpFileName,
+          roomId,
+          timestamp
+        }),
         headers: { 'Content-Type': 'application/json' }
       })
       const { put_url, get_url } = await res.json()
