@@ -11,7 +11,7 @@ export async function fetchAIResponseStream(
 ): Promise<void> {
   let streamedText = "";
 
-  const url = import.meta.env.VITE_LAMBDA_URL;
+  const url = import.meta.env.VITE_CHAT_LAMBDA_URL;
   const previous_response_id = loadResponseId();
   const payload = { message, previous_response_id, filter_keys };
 

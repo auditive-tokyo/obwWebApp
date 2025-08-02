@@ -21,7 +21,7 @@ export function PassportUpload({ onUploaded, roomId }: { onUploaded: (url: strin
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
       // 2. presigned URL取得
-      const res = await fetch('https://gk76nywrt6v6twjkkzrimwcate0rtizt.lambda-url.ap-northeast-1.on.aws/', {
+      const res = await fetch(import.meta.env.VITE_UPLOAD_LAMBDA_URL, {
         method: 'POST',
         body: JSON.stringify({ 
           filename: webpFileName,
