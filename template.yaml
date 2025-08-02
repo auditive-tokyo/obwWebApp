@@ -156,7 +156,7 @@ Outputs:
     Value: !GetAtt AiProcessingFunction.Arn
   GetPresignedUrlFunctionUrl:
     Description: "Function URL for GetPresignedUrl Lambda"
-    Value: !GetAtt GetPresignedUrlFunction.Arn
+    Value: !GetAtt GetPresignedUrlFunctionUrl.FunctionUrl
   PassportUploadBucketName:
     Description: "S3 bucket for passport uploads"
     Value: !Ref PassportUploadBucket
