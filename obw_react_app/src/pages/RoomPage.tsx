@@ -60,7 +60,7 @@ function RoomPage() {
       const query = `
         mutation CreateGuest($input: CreateGuestInput!) {
           createGuest(input: $input) {
-            id
+            roomNumber
             name
             roomNumber
           }
