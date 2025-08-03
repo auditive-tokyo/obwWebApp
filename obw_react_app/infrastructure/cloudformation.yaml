@@ -125,9 +125,9 @@ Resources:
             "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
             "phone": $util.dynamodb.toDynamoDBJson($ctx.args.input.phone),
-            "occupation": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.occupation, "")),
+            "occupation": $util.dynamodb.toDynamoDBJson($ctx.args.input.occupation),
             "nationality": $util.dynamodb.toDynamoDBJson($ctx.args.input.nationality),
-            "passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
+            "passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl),
             "checkInDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate),
             "checkOutDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate),
             "approvalStatus": $util.dynamodb.toDynamoDBJson("waitingForPassportImage"),
@@ -163,10 +163,15 @@ Resources:
             "expressionValues": {
               ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
             }
-            #if($ctx.args.input.name)
-              #set($expression = "$expression, #name = :name")
-              #set($expressionNames["#name"] = "name")
-              #set($expressionValues[":name"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.name))
+            #if($ctx.args.input.approvalStatus)
+              #set($expression = "$expression, #approvalStatus = :approvalStatus")
+              #set($expressionNames["#approvalStatus"] = "approvalStatus")
+              #set($expressionValues[":approvalStatus"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus))
+            #end
+            #if($ctx.args.input.passportImageUrl)
+              #set($expression = "$expression, #passportImageUrl = :passportImageUrl")
+              #set($expressionNames["#passportImageUrl"] = "passportImageUrl")
+              #set($expressionValues[":passportImageUrl"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl))
             #end
             #if($ctx.args.input.address)
               #set($expression = "$expression, #address = :address")
@@ -188,11 +193,6 @@ Resources:
               #set($expressionNames["#nationality"] = "nationality")
               #set($expressionValues[":nationality"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.nationality))
             #end
-            #if($ctx.args.input.passportImageUrl)
-              #set($expression = "$expression, #passportImageUrl = :passportImageUrl")
-              #set($expressionNames["#passportImageUrl"] = "passportImageUrl")
-              #set($expressionValues[":passportImageUrl"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl))
-            #end
             #if($ctx.args.input.checkInDate)
               #set($expression = "$expression, #checkInDate = :checkInDate")
               #set($expressionNames["#checkInDate"] = "checkInDate")
@@ -202,11 +202,6 @@ Resources:
               #set($expression = "$expression, #checkOutDate = :checkOutDate")
               #set($expressionNames["#checkOutDate"] = "checkOutDate")
               #set($expressionValues[":checkOutDate"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate))
-            #end
-            #if($ctx.args.input.approvalStatus)
-              #set($expression = "$expression, #approvalStatus = :approvalStatus")
-              #set($expressionNames["#approvalStatus"] = "approvalStatus")
-              #set($expressionValues[":approvalStatus"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus))
             #end
             #if($ctx.args.input.promoConsent != $null)
               #set($expression = "$expression, #promoConsent = :promoConsent")
