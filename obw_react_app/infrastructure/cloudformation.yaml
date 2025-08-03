@@ -55,6 +55,12 @@ Resources:
 
         input UpdateGuestInput {
           id: ID!
+          roomNumber: String
+          name: String
+          address: String
+          phone: String
+          occupation: String
+          nationality: String
           approvalStatus: String
           passportImageUrl: String
           checkInDate: AWSDate
