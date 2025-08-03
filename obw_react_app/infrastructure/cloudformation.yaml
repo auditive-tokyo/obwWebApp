@@ -13,9 +13,13 @@ Resources:
       AttributeDefinitions:
         - AttributeName: roomNumber
           AttributeType: S
+        - AttributeName: guestName
+          AttributeType: S
       KeySchema:
         - AttributeName: roomNumber
           KeyType: HASH
+        - AttributeName: guestName
+          KeyType: RANGE
       TableName: guest-checkin-table
 
   AppSyncSchema:
@@ -25,7 +29,7 @@ Resources:
       Definition: |
         type Guest {
           roomNumber: String! 
-          name: String!
+          guestName: String!
           address: String!
           phone: String!
           occupation: String
@@ -41,7 +45,7 @@ Resources:
 
         input CreateGuestInput {
           roomNumber: String!
-          name: String!
+          guestName: String!
           address: String!
           phone: String!
           occupation: String
@@ -53,8 +57,8 @@ Resources:
         }
 
         input UpdateGuestInput {
-          roomNumber: String!  # ← 必須にする（プライマリキー）
-          name: String
+          roomNumber: String!
+          guestName: String!
           address: String
           phone: String
           occupation: String
@@ -72,7 +76,8 @@ Resources:
         }
 
         type Query {
-          getGuest(roomNumber: String!): Guest
+          getGuest(roomNumber: String!, guestName: String!): Guest
+          listGuestsByRoom(roomNumber: String!): [Guest]
           listGuests: [Guest]
         }
 
@@ -113,10 +118,11 @@ Resources:
           "version": "2017-02-28",
           "operation": "PutItem",
           "key": {
-            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
           },
           "attributeValues": {
-            "name": $util.dynamodb.toDynamoDBJson($ctx.args.input.name),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
             "phone": $util.dynamodb.toDynamoDBJson($ctx.args.input.phone),
             "occupation": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.occupation, "")),
@@ -124,7 +130,7 @@ Resources:
             "passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
             "checkInDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate),
             "checkOutDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate),
-            "approvalStatus": $util.dynamodb.toDynamoDBJson("pending"),
+            "approvalStatus": $util.dynamodb.toDynamoDBJson("waitingForPassportImage"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
@@ -146,7 +152,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "UpdateItem",
           "key": {
-            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
           },
           "update": {
             "expression": "SET #updatedAt = :updatedAt",
@@ -224,7 +231,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "GetItem",
           "key": {
-            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.guestName)
           }
         }
       ResponseMappingTemplate: |
@@ -242,6 +250,28 @@ Resources:
         {
           "version": "2017-02-28",
           "operation": "Scan"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
+
+  ListGuestsByRoomResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: listGuestsByRoom
+      DataSourceName: !GetAtt GuestTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "roomNumber = :roomNumber",
+            "expressionValues": {
+              ":roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber)
+            }
+          }
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result.items)
