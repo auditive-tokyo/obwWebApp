@@ -11,10 +11,10 @@ Resources:
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: id
+        - AttributeName: roomNumber
           AttributeType: S
       KeySchema:
-        - AttributeName: id
+        - AttributeName: roomNumber
           KeyType: HASH
       TableName: guest-checkin-table
 
@@ -24,7 +24,6 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
         type Guest {
-          id: ID!
           roomNumber: String! 
           name: String!
           address: String!
@@ -54,8 +53,7 @@ Resources:
         }
 
         input UpdateGuestInput {
-          id: ID!
-          roomNumber: String
+          roomNumber: String!  # ← 必須にする（プライマリキー）
           name: String
           address: String
           phone: String
@@ -74,7 +72,7 @@ Resources:
         }
 
         type Query {
-          getGuest(id: ID!): Guest
+          getGuest(roomNumber: String!): Guest
           listGuests: [Guest]
         }
 
@@ -115,10 +113,9 @@ Resources:
           "version": "2017-02-28",
           "operation": "PutItem",
           "key": {
-            "id": $util.dynamodb.toDynamoDBJson($util.autoId())
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber)
           },
           "attributeValues": {
-            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
             "name": $util.dynamodb.toDynamoDBJson($ctx.args.input.name),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
             "phone": $util.dynamodb.toDynamoDBJson($ctx.args.input.phone),
@@ -149,26 +146,66 @@ Resources:
           "version": "2017-02-28",
           "operation": "UpdateItem",
           "key": {
-            "id": $util.dynamodb.toDynamoDBJson($ctx.args.input.id)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber)
           },
           "update": {
-            "expression": "SET #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl, #checkInDate = :checkInDate, #checkOutDate = :checkOutDate, #promoConsent = :promoConsent, #updatedAt = :updatedAt",
+            "expression": "SET #updatedAt = :updatedAt",
             "expressionNames": {
-              "#approvalStatus": "approvalStatus",
-              "#passportImageUrl": "passportImageUrl",
-              "#checkInDate": "checkInDate",
-              "#checkOutDate": "checkOutDate",
-              "#promoConsent": "promoConsent",
               "#updatedAt": "updatedAt"
             },
             "expressionValues": {
-              ":approvalStatus": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.approvalStatus, "pending")),
-              ":passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
-              ":checkInDate": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.checkInDate, "")),
-              ":checkOutDate": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.checkOutDate, "")),
-              ":promoConsent": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.promoConsent, false)),
               ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
             }
+            #if($ctx.args.input.name)
+              #set($expression = "$expression, #name = :name")
+              #set($expressionNames["#name"] = "name")
+              #set($expressionValues[":name"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.name))
+            #end
+            #if($ctx.args.input.address)
+              #set($expression = "$expression, #address = :address")
+              #set($expressionNames["#address"] = "address")
+              #set($expressionValues[":address"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.address))
+            #end
+            #if($ctx.args.input.phone)
+              #set($expression = "$expression, #phone = :phone")
+              #set($expressionNames["#phone"] = "phone")
+              #set($expressionValues[":phone"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.phone))
+            #end
+            #if($ctx.args.input.occupation)
+              #set($expression = "$expression, #occupation = :occupation")
+              #set($expressionNames["#occupation"] = "occupation")
+              #set($expressionValues[":occupation"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.occupation))
+            #end
+            #if($ctx.args.input.nationality)
+              #set($expression = "$expression, #nationality = :nationality")
+              #set($expressionNames["#nationality"] = "nationality")
+              #set($expressionValues[":nationality"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.nationality))
+            #end
+            #if($ctx.args.input.passportImageUrl)
+              #set($expression = "$expression, #passportImageUrl = :passportImageUrl")
+              #set($expressionNames["#passportImageUrl"] = "passportImageUrl")
+              #set($expressionValues[":passportImageUrl"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl))
+            #end
+            #if($ctx.args.input.checkInDate)
+              #set($expression = "$expression, #checkInDate = :checkInDate")
+              #set($expressionNames["#checkInDate"] = "checkInDate")
+              #set($expressionValues[":checkInDate"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate))
+            #end
+            #if($ctx.args.input.checkOutDate)
+              #set($expression = "$expression, #checkOutDate = :checkOutDate")
+              #set($expressionNames["#checkOutDate"] = "checkOutDate")
+              #set($expressionValues[":checkOutDate"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate))
+            #end
+            #if($ctx.args.input.approvalStatus)
+              #set($expression = "$expression, #approvalStatus = :approvalStatus")
+              #set($expressionNames["#approvalStatus"] = "approvalStatus")
+              #set($expressionValues[":approvalStatus"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus))
+            #end
+            #if($ctx.args.input.promoConsent != $null)
+              #set($expression = "$expression, #promoConsent = :promoConsent")
+              #set($expressionNames["#promoConsent"] = "promoConsent")
+              #set($expressionValues[":promoConsent"] = $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent))
+            #end
           }
         }
       ResponseMappingTemplate: |
@@ -187,7 +224,7 @@ Resources:
           "version": "2017-02-28",
           "operation": "GetItem",
           "key": {
-            "id": $util.dynamodb.toDynamoDBJson($ctx.args.id)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber)
           }
         }
       ResponseMappingTemplate: |
