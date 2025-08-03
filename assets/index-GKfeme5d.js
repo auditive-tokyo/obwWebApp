@@ -113,7 +113,7 @@ Please change the parent <Route path="${j}"> to <Route path="${j==="/"?"*":`${j}
     `,oe={input:{roomNumber:n||"",passportImageUrl:L}};try{const pe=await N.graphql({query:Z,variables:oe,authMode:"iam"});console.debug("パスポート画像更新完了:",pe),V("登録が完了しました！")}catch(pe){console.error("パスポート画像更新エラー:",pe),V("パスポート画像の更新に失敗しました")}},F=async()=>{if(te){V("基本情報を登録中...");const Z=`
         mutation CreateGuest($input: CreateGuestInput!) {
           createGuest(input: $input) {
-            id
+            roomNumber
             name
             roomNumber
           }
