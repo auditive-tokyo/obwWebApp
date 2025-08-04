@@ -1,7 +1,17 @@
 import { useState } from 'react'
 import { convertToWebp } from './utils'
 
-export function PassportUpload({ onUploaded, roomId }: { onUploaded: (url: string) => void, roomId: string }) {
+export function PassportUpload({ 
+  onUploaded, 
+  roomId, 
+  guestName, 
+  client 
+}: { 
+  onUploaded: (url: string) => void
+  roomId: string
+  guestName: string
+  client: any
+}) {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
@@ -38,8 +48,36 @@ export function PassportUpload({ onUploaded, roomId }: { onUploaded: (url: strin
         body: webpBlob,
         headers: { 'Content-Type': 'image/webp' }
       })
-      onUploaded(get_url) // ← ここでGET用presigned URLを渡す
+
+      // 4. DynamoDBを更新 ← 追加
+      const updateQuery = `
+        mutation UpdateGuest($input: UpdateGuestInput!) {
+          updateGuest(input: $input) {
+            roomNumber
+            guestName
+            passportImageUrl
+            approvalStatus
+          }
+        }
+      `
+      
+      await client.graphql({
+        query: updateQuery,
+        variables: {
+          input: {
+            roomNumber: roomId,
+            guestName: guestName,
+            passportImageUrl: get_url,
+            approvalStatus: 'pending'
+          }
+        },
+        authMode: 'iam'
+      })
+
+      // 5. 親コンポーネントに通知
+      onUploaded(get_url)
     } catch (e) {
+      console.error('Upload error:', e)
       setError("アップロードに失敗しました")
     }
     setUploading(false)

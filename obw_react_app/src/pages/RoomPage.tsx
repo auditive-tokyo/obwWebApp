@@ -1,8 +1,9 @@
 import { useParams } from 'react-router-dom'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import ChatWidget from '../components/ChatWidget'
 import { generateClient } from 'aws-amplify/api'
 import { PassportUpload } from './roompage/PassportUpload'
+import { saveGuestSession, loadGuestSession, type ApprovalStatus } from './roompage/sessionUtils'
 
 function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -17,8 +18,36 @@ function RoomPage() {
   const [passportImageUrl, setPassportImageUrl] = useState("")
   const [message, setMessage] = useState("")
   const [currentStep, setCurrentStep] = useState<'info' | 'upload'>('info')
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('waitingForPassportImage')
+
+  // ページロード時のセッション復旧
+  useEffect(() => {
+    if (roomId && name) {
+      const session = loadGuestSession(roomId, name)
+      if (session) {
+        setApprovalStatus(session.approvalStatus)
+        // ← 他のstateも復元
+        setPhone(session.phone)
+        
+        // ← ステップも復旧
+        if (session.approvalStatus !== 'waitingForPassportImage') {
+          setCurrentStep('upload')
+        }
+      }
+    }
+  }, [roomId, name])
 
   const client = useMemo(() => generateClient(), [])
+
+  // 署名付きURLからパス部分だけ抽出
+  let s3Url = passportImageUrl
+  try {
+    const url = new URL(passportImageUrl)
+    console.debug("Extracted URL:", url)
+    s3Url = `${url.origin}${url.pathname}`
+  } catch (e) {
+    console.error("Invalid URL format:", passportImageUrl, e)
+  }
 
   const handleRegister = async () => {
     setMessage("パスポート画像を更新中...")
@@ -27,17 +56,23 @@ function RoomPage() {
       mutation UpdateGuest($input: UpdateGuestInput!) {
         updateGuest(input: $input) {
           roomNumber
-          name
+          guestName
           passportImageUrl
+          approvalStatus
         }
       }
     `
     const variables = {
       input: {
-        roomNumber: roomId || "", // IDとして使用
-        passportImageUrl
+        roomNumber: roomId || "",
+        guestName: name,
+        passportImageUrl: s3Url,
+        approvalStatus: 'pending'
       }
     }
+    
+    console.log("=== DynamoDB Update Debug ===")
+    console.log("Variables:", JSON.stringify(variables, null, 2))
     
     try {
       const res = await client.graphql({
@@ -45,10 +80,23 @@ function RoomPage() {
         variables,
         authMode: 'iam'
       })
-      console.debug("パスポート画像更新完了:", res)
+      
+      console.log("=== Update Response ===")
+      console.log("Response:", JSON.stringify(res, null, 2))
+
+      // LocalStorage更新
+      const session = loadGuestSession(roomId || "", name)
+      if (session) {
+        session.approvalStatus = 'pending'
+        session.lastUpdated = new Date().toISOString()
+        saveGuestSession(session)
+      }
+      
+      setApprovalStatus('pending')
       setMessage("登録が完了しました！")
     } catch (e) {
-      console.error("パスポート画像更新エラー:", e)
+      console.error("=== Update Error ===")
+      console.error("Error details:", e)
       setMessage("パスポート画像の更新に失敗しました")
     }
   }
@@ -61,15 +109,14 @@ function RoomPage() {
         mutation CreateGuest($input: CreateGuestInput!) {
           createGuest(input: $input) {
             roomNumber
-            name
-            roomNumber
+            guestName
           }
         }
       `
       const variables = {
         input: {
           roomNumber: roomId || "",
-          name,
+          guestName: name,
           address,
           phone,
           occupation,
@@ -87,6 +134,19 @@ function RoomPage() {
           variables,
           authMode: 'iam'
         })
+
+        // ← saveGuestSessionを追加
+        saveGuestSession({
+          roomNumber: roomId || "",
+          guestName: name,
+          phone,
+          registrationDate: new Date().toISOString().split('T')[0],
+          approvalStatus: 'waitingForPassportImage',
+          lastUpdated: new Date().toISOString()
+        })
+        
+        setApprovalStatus('waitingForPassportImage')
+
         console.debug("基本情報登録完了:", res)
         setMessage("基本情報を登録しました。パスポート写真をアップロードしてください。")
         setCurrentStep('upload')
@@ -107,6 +167,7 @@ function RoomPage() {
   return (
     <div className="container mx-auto p-4">
       <p>{roomId}号室のページです。</p>
+      <p>現在のステータス: {approvalStatus}</p>
       
       {currentStep === 'info' && (
         <div className="mb-4">
@@ -180,7 +241,12 @@ function RoomPage() {
       {currentStep === 'upload' && (
         <div className="mb-4">
           <h3>パスポート写真をアップロードしてください</h3>
-          <PassportUpload onUploaded={setPassportImageUrl} roomId={roomId || ""} />
+          <PassportUpload 
+            onUploaded={setPassportImageUrl} 
+            roomId={roomId || ""} 
+            guestName={name}     // ← 追加
+            client={client}      // ← 追加
+          />
           {passportImageUrl && (
             <div className="mt-2">
               <img src={passportImageUrl} alt="パスポート写真" className="max-w-xs" />
