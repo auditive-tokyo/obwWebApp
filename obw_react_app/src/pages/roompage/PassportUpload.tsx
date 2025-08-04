@@ -27,10 +27,14 @@ export function PassportUpload({
     try {
       // 1. 画像をwebpに変換
       const webpBlob = await convertToWebp(file)
-      const webpFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp"
+      
+      // 2. ファイル名をguestNameベースに変更
+      const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
+      const webpFileName = `${sanitizedGuestName}_passport.webp`  // ← 元のファイル名ではなくguestName使用
+      
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-      // 2. presigned URL取得
+      // 3. presigned URL取得
       const res = await fetch(import.meta.env.VITE_UPLOAD_LAMBDA_URL, {
         method: 'POST',
         body: JSON.stringify({ 
@@ -42,14 +46,14 @@ export function PassportUpload({
       })
       const { put_url, get_url } = await res.json()
 
-      // 3. webp画像をアップロード
+      // 4. webp画像をアップロード
       await fetch(put_url, {
         method: 'PUT',
         body: webpBlob,
         headers: { 'Content-Type': 'image/webp' }
       })
 
-      // 4. DynamoDBを更新 ← 追加
+      // 5. DynamoDBを更新
       const updateQuery = `
         mutation UpdateGuest($input: UpdateGuestInput!) {
           updateGuest(input: $input) {
@@ -74,7 +78,7 @@ export function PassportUpload({
         authMode: 'iam'
       })
 
-      // 5. 親コンポーネントに通知
+      // 6. 親コンポーネントに通知
       onUploaded(get_url)
     } catch (e) {
       console.error('Upload error:', e)
