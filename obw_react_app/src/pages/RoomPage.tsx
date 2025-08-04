@@ -39,18 +39,18 @@ function RoomPage() {
 
   const client = useMemo(() => generateClient(), [])
 
-  // 署名付きURLからパス部分だけ抽出
-  let s3Url = passportImageUrl
-  try {
-    const url = new URL(passportImageUrl)
-    console.debug("Extracted URL:", url)
-    s3Url = `${url.origin}${url.pathname}`
-  } catch (e) {
-    console.error("Invalid URL format:", passportImageUrl, e)
-  }
-
   const handleRegister = async () => {
     setMessage("パスポート画像を更新中...")
+
+    // 署名付きURLからパス部分だけ抽出
+    let s3Url = passportImageUrl
+    try {
+      const url = new URL(passportImageUrl)
+      console.debug("Extracted URL:", url)
+      s3Url = `${url.origin}${url.pathname}`
+    } catch (e) {
+      console.error("Invalid URL format:", passportImageUrl, e)
+    }
     
     const query = `
       mutation UpdateGuest($input: UpdateGuestInput!) {
