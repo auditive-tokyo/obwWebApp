@@ -77,7 +77,7 @@ export function RoomPageView(props: RoomPageViewProps) {
       <p>現在のステータス: {approvalStatus}</p>
       
       {currentStep === 'info' && (
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col gap-2">
           <label>名前: </label>
           <input
             type="text"
@@ -85,60 +85,59 @@ export function RoomPageView(props: RoomPageViewProps) {
             onChange={e => setName(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">住所: </label>
+          <label>住所: </label>
           <input
             type="text"
             value={address}
             onChange={e => setAddress(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">電話番号: </label>
+          <label>電話番号: </label>
           <input
             type="text"
             value={phone}
             onChange={e => setPhone(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">職業: </label>
+          <label>職業: </label>
           <input
             type="text"
             value={occupation}
             onChange={e => setOccupation(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">国籍: </label>
+          <label>国籍: </label>
           <input
             type="text"
             value={nationality}
             onChange={e => setNationality(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">チェックイン日: </label>
+          <label>チェックイン日: </label>
           <input
             type="date"
             value={checkInDate}
             onChange={e => setCheckInDate(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">チェックアウト日: </label>
+          <label>チェックアウト日: </label>
           <input
             type="date"
             value={checkOutDate}
             onChange={e => setCheckOutDate(e.target.value)}
             className="border px-2 py-1"
           />
-          <label className="ml-2">プロモーション同意: </label>
+          <label>プロモーション同意: </label>
           <input
             type="checkbox"
             checked={promoConsent}
             onChange={e => setPromoConsent(e.target.checked)}
             className="ml-1"
           />
-          
           <button
             onClick={handleNext}
             disabled={!isInfoComplete}
-            className="ml-2 px-4 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300"
+            className="mt-2 px-4 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300"
           >
             パスポート写真アップロードへ進む
           </button>
