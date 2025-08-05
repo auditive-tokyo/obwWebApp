@@ -1,6 +1,8 @@
 import { PassportUpload } from './PassportUpload'
 import ChatWidget from '../../components/ChatWidget'
 import type { ApprovalStatus } from './sessionUtils'
+import Select from 'react-select'
+import countryList from 'react-select-country-list'
 
 interface RoomPageViewProps {
   roomId: string
@@ -71,6 +73,8 @@ export function RoomPageView(props: RoomPageViewProps) {
     client
   } = props
 
+  const options = countryList().getData()
+
   return (
     <div className="container mx-auto p-4">
       <p>{roomId}号室のページです。</p>
@@ -107,11 +111,14 @@ export function RoomPageView(props: RoomPageViewProps) {
             className="border px-2 py-1"
           />
           <label>国籍: </label>
-          <input
-            type="text"
-            value={nationality}
-            onChange={e => setNationality(e.target.value)}
-            className="border px-2 py-1"
+          <Select
+            options={options}
+            value={options.find(opt => opt.label === nationality) || null}
+            onChange={opt => setNationality(opt?.label || "")}
+            className="basic-single"
+            classNamePrefix="select"
+            placeholder="国籍を選択"
+            isClearable
           />
           <label>チェックイン日: </label>
           <input
