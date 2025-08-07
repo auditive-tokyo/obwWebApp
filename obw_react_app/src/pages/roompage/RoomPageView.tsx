@@ -3,6 +3,8 @@ import ChatWidget from '../../components/ChatWidget'
 import type { ApprovalStatus } from './sessionUtils'
 import Select from 'react-select'
 import countryList from 'react-select-country-list'
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 
 interface RoomPageViewProps {
   roomId: string
@@ -74,6 +76,11 @@ export function RoomPageView(props: RoomPageViewProps) {
   } = props
 
   const options = countryList().getData()
+  // バリデーション
+  const phoneError =
+    phone && !isValidPhoneNumber(phone)
+      ? "正しい電話番号を入力してください"
+      : ""
 
   return (
     <div className="container mx-auto p-4">
@@ -97,12 +104,17 @@ export function RoomPageView(props: RoomPageViewProps) {
             className="border px-2 py-1"
           />
           <label>電話番号: </label>
-          <input
-            type="text"
+          <PhoneInput
+            international
+            defaultCountry="JP"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={value => setPhone(value || "")}
             className="border px-2 py-1"
+            placeholder="電話番号を入力"
           />
+          {phoneError && (
+            <span className="text-red-500 text-sm">{phoneError}</span>
+          )}
           <label>職業: </label>
           <input
             type="text"
