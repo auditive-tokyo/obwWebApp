@@ -1,6 +1,12 @@
 import { saveGuestSession } from './sessionUtils'
 import type { HandleNextParams, HandleRegisterParams } from './types'
 
+/**
+ * 基本情報登録処理
+ * - 入力されたゲスト情報をGraphQL経由でDBに登録
+ * - ローカルセッションを保存
+ * - ステータスや画面ステップを更新
+ */
 export const handleNext = async (params: HandleNextParams) => {
   const {
     roomId,
@@ -50,6 +56,7 @@ export const handleNext = async (params: HandleNextParams) => {
       authMode: 'iam'
     })
 
+    // ローカルストレージにゲストセッションを保存
     saveGuestSession({
       roomNumber: roomId,
       guestName: name,
@@ -69,6 +76,12 @@ export const handleNext = async (params: HandleNextParams) => {
   }
 }
 
+/**
+ * パスポート画像登録処理
+ * - アップロードされたパスポート画像URLをGraphQL経由でDBに登録
+ * - ローカルセッションのステータスを更新
+ * - ステータスや画面メッセージを更新
+ */
 export const handleRegister = async (params: HandleRegisterParams) => {
   const {
     roomId,
@@ -83,7 +96,7 @@ export const handleRegister = async (params: HandleRegisterParams) => {
 
   setMessage("パスポート画像を更新中...")
 
-  // 署名付きURLからパス部分だけ抽出
+  // 署名付きURLからS3パス部分だけ抽出
   let s3Url = passportImageUrl
   if (passportImageUrl) {
     try {
@@ -122,7 +135,7 @@ export const handleRegister = async (params: HandleRegisterParams) => {
 
     console.debug("パスポート画像更新完了:", res)
 
-    // LocalStorage更新
+    // ローカルストレージのセッション情報を更新
     const session = loadGuestSession(roomId, name)
     if (session) {
       session.approvalStatus = 'pending'

@@ -1,3 +1,9 @@
+/**
+ * 画像ファイルをWebP形式に変換する関数
+ * - Fileオブジェクトを受け取り、WebP形式のBlobを返す
+ * - 変換にはcanvasを利用
+ * - 変換失敗時はエラーをreject
+ */
 export function convertToWebp(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new window.Image()
