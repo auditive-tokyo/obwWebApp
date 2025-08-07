@@ -1,31 +1,5 @@
-import { saveGuestSession, loadGuestSession, type ApprovalStatus } from './sessionUtils'
-
-interface HandleNextParams {
-  roomId: string
-  name: string
-  address: string
-  phone: string
-  occupation: string
-  nationality: string
-  checkInDate: string
-  checkOutDate: string
-  promoConsent: boolean
-  client: any
-  setMessage: (message: string) => void
-  setApprovalStatus: (status: ApprovalStatus) => void
-  setCurrentStep: (step: 'info' | 'upload') => void
-}
-
-interface HandleRegisterParams {
-  roomId: string
-  name: string
-  passportImageUrl: string
-  client: any
-  setMessage: (message: string) => void
-  setApprovalStatus: (status: ApprovalStatus) => void
-  loadGuestSession: typeof loadGuestSession
-  saveGuestSession: typeof saveGuestSession
-}
+import { saveGuestSession } from './sessionUtils'
+import type { HandleNextParams, HandleRegisterParams } from './types'
 
 export const handleNext = async (params: HandleNextParams) => {
   const {
