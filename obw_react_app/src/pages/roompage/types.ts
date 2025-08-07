@@ -1,13 +1,16 @@
 import type { ApprovalStatus } from './sessionUtils'
 import { loadGuestSession, saveGuestSession } from './sessionUtils'
 
-// RoomPageView用の型
+/**
+ * RoomPageViewコンポーネント用のprops型
+ * - 宿泊者情報や画面状態、各種ハンドラーを管理
+ */
 export interface RoomPageViewProps {
-  roomId: string
-  approvalStatus: ApprovalStatus
-  currentStep: 'info' | 'upload'
-  
-  // Info step props
+  roomId: string // 部屋番号
+  approvalStatus: ApprovalStatus // 承認ステータス
+  currentStep: 'info' | 'upload' // 現在の画面ステップ
+
+  // 基本情報入力欄
   name: string
   setName: (value: string) => void
   address: string
@@ -24,23 +27,26 @@ export interface RoomPageViewProps {
   setCheckOutDate: (value: string) => void
   promoConsent: boolean
   setPromoConsent: (value: boolean) => void
-  
-  // Upload step props
+
+  // パスポート画像アップロード欄
   passportImageUrl: string
   setPassportImageUrl: (url: string) => void
-  
-  // Handlers
+
+  // 画面遷移・登録ハンドラー
   handleNext: () => void
   handleBack: () => void
   handleRegister: () => void
-  
-  // State
+
+  // 画面状態
   isInfoComplete: boolean
   message: string
-  client: any
+  client: any // GraphQLクライアント等
 }
 
-// ハンドラー用の型
+/**
+ * 基本情報登録処理用のパラメータ型
+ * - GraphQL登録や画面遷移に必要な値をまとめる
+ */
 export interface HandleNextParams {
   roomId: string
   name: string
@@ -51,19 +57,37 @@ export interface HandleNextParams {
   checkInDate: string
   checkOutDate: string
   promoConsent: boolean
-  client: any
-  setMessage: (message: string) => void
-  setApprovalStatus: (status: ApprovalStatus) => void
-  setCurrentStep: (step: 'info' | 'upload') => void
+  client: any // GraphQLクライアント等
+  setMessage: (message: string) => void // メッセージ表示用
+  setApprovalStatus: (status: ApprovalStatus) => void // ステータス更新用
+  setCurrentStep: (step: 'info' | 'upload') => void // 画面ステップ更新用
 }
 
+/**
+ * パスポート画像登録処理用のパラメータ型
+ * - GraphQL登録やセッション保存に必要な値をまとめる
+ */
 export interface HandleRegisterParams {
   roomId: string
   name: string
   passportImageUrl: string
-  client: any
-  setMessage: (message: string) => void
-  setApprovalStatus: (status: ApprovalStatus) => void
-  loadGuestSession: typeof loadGuestSession
-  saveGuestSession: typeof saveGuestSession
+  client: any // GraphQLクライアント等
+  setMessage: (message: string) => void // メッセージ表示用
+  setApprovalStatus: (status: ApprovalStatus) => void // ステータス更新用
+  loadGuestSession: typeof loadGuestSession // セッション読込関数
+  saveGuestSession: typeof saveGuestSession // セッション保存関数
+}
+
+/**
+ * パスポートアップロード画面用のprops型
+ * - 画面表示・アップロード・画面遷移に必要な値をまとめる
+ */
+export interface PassportUploadScreenProps {
+  roomId: string // 部屋番号
+  name: string // 宿泊者名
+  client: any // GraphQLクライアント等
+  passportImageUrl: string // アップロード済み画像URL
+  setPassportImageUrl: (url: string) => void // 画像URL更新用
+  onBack: () => void // 戻るボタン用
+  onRegister: () => void // 登録完了ボタン用
 }
