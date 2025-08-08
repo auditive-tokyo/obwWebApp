@@ -7,6 +7,16 @@ import type { RoomPageViewProps } from './types'
 import { PassportUploadScreen } from './PassportUploadScreen'
 import { SecurityInfoCards } from './SecurityInfoCards'
 
+function CustomPhoneInput(props: any) {
+  return (
+    <input
+      {...props}
+      className="w-full px-2 py-2 border-none focus:ring-0 focus:outline-none text-base"
+      style={{ fontSize: 'inherit', height: 'auto' }}
+    />
+  )
+}
+
 export function RoomPageView(props: RoomPageViewProps) {
   const {
     roomId,
@@ -105,7 +115,8 @@ export function RoomPageView(props: RoomPageViewProps) {
                   defaultCountry="JP"
                   value={phone}
                   onChange={value => setPhone(value || "")}
-                  className="w-full"
+                  className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  inputComponent={CustomPhoneInput}
                   placeholder="電話番号を入力"
                   style={{
                     '--PhoneInputCountryFlag-height': '1.2em',
