@@ -21,10 +21,10 @@ export interface RoomPageViewProps {
   setOccupation: (value: string) => void
   nationality: string
   setNationality: (value: string) => void
-  checkInDate: string
-  setCheckInDate: (value: string) => void
-  checkOutDate: string
-  setCheckOutDate: (value: string) => void
+  checkInDate: Date | null
+  setCheckInDate: (value: Date | null) => void
+  checkOutDate: Date | null
+  setCheckOutDate: (value: Date | null) => void
   promoConsent: boolean
   setPromoConsent: (value: boolean) => void
 
@@ -54,8 +54,8 @@ export interface HandleNextParams {
   phone: string
   occupation: string
   nationality: string
-  checkInDate: string
-  checkOutDate: string
+  checkInDate: Date | null
+  checkOutDate: Date | null
   promoConsent: boolean
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
