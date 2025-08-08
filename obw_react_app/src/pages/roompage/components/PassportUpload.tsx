@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { convertToWebp } from './utils'
+import { convertToWebp } from '../utils'
 
 export function PassportUpload({ 
   onUploaded, 

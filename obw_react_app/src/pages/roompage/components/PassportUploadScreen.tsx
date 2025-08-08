@@ -1,5 +1,5 @@
 import { PassportUpload } from './PassportUpload'
-import type { PassportUploadScreenProps } from './types'
+import type { PassportUploadScreenProps } from '../types'
 
 export function PassportUploadScreen({
   roomId,
