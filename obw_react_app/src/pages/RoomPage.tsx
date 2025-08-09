@@ -8,6 +8,7 @@ import { handleNext as handleNextAction, handleRegister as handleRegisterAction 
 function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
   const [address, setAddress] = useState("")
   const [phone, setPhone] = useState("")
   const [occupation, setOccupation] = useState("")
@@ -25,6 +26,7 @@ function RoomPage() {
       await handleNextAction({
         roomId: roomId || "",
         name,
+        email,
         address,
         phone,
         occupation,
@@ -44,6 +46,7 @@ function RoomPage() {
     await handleRegisterAction({
       roomId: roomId || "",
       name,
+      email,
       passportImageUrl,
       client,
       setMessage,
@@ -75,6 +78,7 @@ function RoomPage() {
   // バリデーション
   const isInfoComplete = Boolean(
     name.trim() && 
+    email.trim() && 
     address.trim() && 
     phone.trim() && 
     occupation.trim() && 
@@ -94,6 +98,8 @@ function RoomPage() {
       currentStep={currentStep}
       name={name}
       setName={setName}
+      email={email}
+      setEmail={setEmail}
       address={address}
       setAddress={setAddress}
       phone={phone}

@@ -11,6 +11,7 @@ export const handleNext = async (params: HandleNextParams) => {
   const {
     roomId,
     name,
+    email,
     address,
     phone,
     occupation,
@@ -34,17 +35,22 @@ export const handleNext = async (params: HandleNextParams) => {
       }
     }
   `
+
+  const formatDate = (date: Date | null) =>
+    date ? date.toISOString().slice(0, 10) : null;
+
   const variables = {
     input: {
       roomNumber: roomId,
       guestName: name,
+      email,
       address,
       phone,
       occupation,
       nationality,
       passportImageUrl: "",
-      checkInDate,
-      checkOutDate,
+      checkInDate: formatDate(checkInDate),
+      checkOutDate: formatDate(checkOutDate),
       promoConsent
     }
   }

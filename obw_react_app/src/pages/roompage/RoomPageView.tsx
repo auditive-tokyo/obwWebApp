@@ -25,6 +25,8 @@ export function RoomPageView(props: RoomPageViewProps) {
     currentStep,
     name,
     setName,
+    email,
+    setEmail,
     address,
     setAddress,
     phone,
@@ -55,6 +57,9 @@ export function RoomPageView(props: RoomPageViewProps) {
     phone && !isValidPhoneNumber(phone)
       ? "正しい電話番号を入力してください"
       : ""
+  const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ? "正しいメールアドレスを入力してください"
+    : ""
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -90,6 +95,24 @@ export function RoomPageView(props: RoomPageViewProps) {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="山田太郎"
                 />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="sample@example.com"
+                  required
+                />
+                {emailError && (
+                  <p className="mt-2 text-sm text-red-600">{emailError}</p>
+                )}
               </div>
 
               {/* 住所 */}

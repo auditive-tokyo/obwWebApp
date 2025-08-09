@@ -13,6 +13,8 @@ export interface RoomPageViewProps {
   // 基本情報入力欄
   name: string
   setName: (value: string) => void
+  email: string
+  setEmail: (value: string) => void
   address: string
   setAddress: (value: string) => void
   phone: string
@@ -50,6 +52,7 @@ export interface RoomPageViewProps {
 export interface HandleNextParams {
   roomId: string
   name: string
+  email: string
   address: string
   phone: string
   occupation: string
@@ -70,6 +73,7 @@ export interface HandleNextParams {
 export interface HandleRegisterParams {
   roomId: string
   name: string
+  email: string
   passportImageUrl: string
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
