@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { Amplify } from 'aws-amplify'
-import { amplifyConfig } from './amplify-config'
+import { amplifyConfig } from './amplify-config.ts'
 import { fetchAuthSession } from 'aws-amplify/auth'
 
 Amplify.configure(amplifyConfig)

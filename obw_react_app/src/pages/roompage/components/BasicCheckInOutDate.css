@@ -1,0 +1,192 @@
+@charset "UTF-8";
+.react-datepicker__navigation-icon::before, .react-datepicker__year-read-view--down-arrow,
+.react-datepicker__month-read-view--down-arrow,
+.react-datepicker__month-year-read-view--down-arrow {
+  border-color: #ccc;
+  border-style: solid;
+  border-width: 3px 3px 0 0;
+  content: "";
+  display: block;
+  height: 9px;
+  position: absolute;
+  top: 15px;
+  width: 9px;
+}
+
+.react-datepicker {
+  font-size: 1.5em;
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #aeaeae;
+  border-radius: 0.3rem;
+  display: inline-block;
+  position: relative;
+  line-height: initial;
+}
+
+.react-datepicker__header {
+  text-align: center;
+  border-bottom: 1px solid #aeaeae;
+  border-top-left-radius: 0.3rem;
+  padding: 8px 0;
+  position: relative;
+}
+
+.react-datepicker__current-month,
+.react-datepicker-year-header {
+  margin-top: 0;
+  color: #000;
+  font-weight: bold;
+  font-size: 1.5em;
+}
+
+h2.react-datepicker__current-month {
+  padding-bottom: 10px;
+  margin: 0;
+}
+
+.react-datepicker__navigation {
+  align-items: center;
+  background: none;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  position: absolute;
+  top: 10px;
+  padding: 0;
+  border: none;
+  z-index: 1;
+  height: 32px;
+  width: 32px;
+}
+.react-datepicker__navigation--previous {
+  left: 8px;
+}
+.react-datepicker__navigation--next {
+  right: 8px;
+}
+
+.react-datepicker__navigation:hover *::before {
+  border-color: rgb(165.75, 165.75, 165.75);
+}
+
+.react-datepicker__navigation-icon {
+  position: static;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.react-datepicker__navigation-icon--next,
+.react-datepicker__navigation-icon--previous {
+  left: 0;
+  right: 0;
+  font-size: 0;
+}
+
+.react-datepicker__navigation-icon--next::before {
+  position: static;
+  margin: auto;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-width: 3px 3px 0 0;
+  border-style: solid;
+  border-color: #ccc;
+  content: "";
+  transform: rotate(45deg);
+  left: -7px;
+}
+
+.react-datepicker__navigation-icon--previous::before {
+  position: static;
+  margin: auto;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-width: 3px 3px 0 0;
+  border-style: solid;
+  border-color: #ccc;
+  content: "";
+  transform: rotate(225deg);
+  right: -7px;
+}
+
+.react-datepicker__navigation:focus {
+  outline: 2px solid #646cff;
+  outline-offset: 0;
+  border-radius: 8px;
+}
+
+.react-datepicker__day-names {
+  white-space: nowrap;
+  margin-bottom: -8px;
+}
+
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__time-name {
+  color: #000;
+  display: inline-block;
+  width: 1.7rem;
+  line-height: 1.7rem;
+  text-align: center;
+  margin: 0.5em;
+}
+
+.react-datepicker__day,
+.react-datepicker__month-text,
+.react-datepicker__quarter-text,
+.react-datepicker__year-text {
+  cursor: pointer;
+}
+
+.react-datepicker__day--today,
+.react-datepicker__month-text--today,
+.react-datepicker__quarter-text--today,
+.react-datepicker__year-text--today {
+  font-weight: bold;
+  background-color: #ffe4e1;
+  border-radius: 50%;  
+}
+
+.react-datepicker__day--selected, .react-datepicker__day--in-selecting-range, .react-datepicker__day--in-range,
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--in-selecting-range,
+.react-datepicker__month-text--in-range,
+.react-datepicker__quarter-text--selected,
+.react-datepicker__quarter-text--in-selecting-range,
+.react-datepicker__quarter-text--in-range,
+.react-datepicker__year-text--selected,
+.react-datepicker__year-text--in-selecting-range,
+.react-datepicker__year-text--in-range {
+  background-color: #38e2ee;
+  color: #000;
+  position: relative;
+  box-shadow: -8px 0 0 #38e2ee, 8px 0 0 #38e2ee;
+}
+
+/* .react-datepicker__today-button {
+  background: #f0f0f0;
+  border-top: 1px solid #aeaeae;
+  cursor: pointer;
+  text-align: center;
+  font-weight: bold;
+  padding: 5px 0;
+  clear: left;
+} */
+
+.react-datepicker__aria-live {
+  position: absolute;
+  clip-path: circle(0);
+  border: 0;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  width: 1px;
+  white-space: nowrap;
+}

@@ -40,9 +40,6 @@ Body
   height: 100%;
   top: 0;
   left: 0;
-  /* background: url('https://osakabaywheel.com/img/logo_color.svg') no-repeat 0 0; */
-  /* filter: blur(10px) brightness(1.0); */
-  /* transform: scale(1.2); */
 }
 
 html,
@@ -55,7 +52,6 @@ body {
   font-family: 'Open Sans', sans-serif;
   font-size: 12px;
   line-height: 1.3;
-  overflow: hidden;
   background-color: #ffffff;
   color: #213547;
 }
@@ -73,7 +69,6 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -85,15 +80,8 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-/* @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+:root {
+  color-scheme: light;
+  background-color: #fff;
+  color: #213547;
+}
