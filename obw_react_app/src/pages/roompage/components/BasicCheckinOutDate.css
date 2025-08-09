@@ -149,7 +149,7 @@ h2.react-datepicker__current-month {
 .react-datepicker__quarter-text--today,
 .react-datepicker__year-text--today {
   font-weight: bold;
-  background-color: #ffe4e1;   /* 淡いピンク */
+  background-color: #ffe4e1;
   border-radius: 50%;  
 }
 
