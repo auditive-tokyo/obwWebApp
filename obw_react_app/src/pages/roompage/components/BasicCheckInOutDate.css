@@ -60,6 +60,8 @@ h2.react-datepicker__current-month {
   height: 32px;
   width: 32px;
   text-indent: -999em;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .react-datepicker__navigation--previous {
   left: 8px;
