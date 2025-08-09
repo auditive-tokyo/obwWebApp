@@ -121,7 +121,6 @@ h2.react-datepicker__current-month {
   border-radius: 8px;
 }
 
-.react-datepicker__navigation > span,
 .react-datepicker__navigation-text {
   position: absolute !important;
   width: 1px !important;
