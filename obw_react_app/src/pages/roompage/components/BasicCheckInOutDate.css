@@ -60,8 +60,6 @@ h2.react-datepicker__current-month {
   height: 32px;
   width: 32px;
   text-indent: -999em;
-  overflow: hidden;
-  white-space: nowrap;
 }
 .react-datepicker__navigation--previous {
   left: 8px;
@@ -121,6 +119,19 @@ h2.react-datepicker__current-month {
   outline: 2px solid #646cff;
   outline-offset: 0;
   border-radius: 8px;
+}
+
+.react-datepicker__navigation > span,
+.react-datepicker__navigation-text {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0,0,0,0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .react-datepicker__day-names {
