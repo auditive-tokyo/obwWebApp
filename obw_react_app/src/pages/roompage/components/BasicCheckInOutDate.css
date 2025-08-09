@@ -59,7 +59,7 @@ h2.react-datepicker__current-month {
   z-index: 1;
   height: 32px;
   width: 32px;
-  text-indent: -999em;
+  /* text-indent: -999em; */
 }
 .react-datepicker__navigation--previous {
   left: 8px;
