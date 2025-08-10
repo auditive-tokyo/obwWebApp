@@ -1,5 +1,23 @@
-import type { ApprovalStatus } from './sessionUtils'
-import { loadGuestSession, saveGuestSession } from './sessionUtils'
+// import { loadGuestSession, saveGuestSession } from './sessionUtils'
+
+export type ApprovalStatus =
+  | 'waitingForPassportImage'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+
+export interface GuestSession {
+  roomNumber: string
+  guestName: string
+  phone: string
+  registrationDate: string    // YYYY-MM-DD
+  approvalStatus: ApprovalStatus
+  lastUpdated: string
+}
+
+// 実装に依存しない関数型を宣言
+export type LoadGuestSessionFn = (roomNumber: string, guestName: string) => GuestSession | null
+export type SaveGuestSessionFn = (data: GuestSession) => void
 
 /**
  * RoomPageViewコンポーネント用のprops型
@@ -78,8 +96,8 @@ export interface HandleRegisterParams {
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
   setApprovalStatus: (status: ApprovalStatus) => void // ステータス更新用
-  loadGuestSession: typeof loadGuestSession // セッション読込関数
-  saveGuestSession: typeof saveGuestSession // セッション保存関数
+  loadGuestSession: LoadGuestSessionFn // セッション読込関数
+  saveGuestSession: SaveGuestSessionFn // セッション保存関数
 }
 
 /**

@@ -1,16 +1,27 @@
-export type ApprovalStatus = 
-  | 'waitingForPassportImage'
-  | 'pending'
-  | 'approved'
-  | 'rejected'
+import { GuestSession } from "./types"
 
-export interface GuestSession {
-  roomNumber: string
-  guestName: string
-  phone: string
-  registrationDate: string    // YYYY-MM-DD
-  approvalStatus: ApprovalStatus
-  lastUpdated: string
+/**
+ * 指定ルームに紐づく全ゲストセッションをlocalStorageから列挙
+ */
+export function listGuestSessionsByRoom(roomNumber: string): GuestSession[] {
+  const list: GuestSession[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (!key) continue
+    if (key.startsWith(`guest_${roomNumber}_`)) {
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      try {
+        const sess = JSON.parse(raw) as GuestSession
+        list.push(sess)
+      } catch {
+        // 破損データはスキップ
+      }
+    }
+  }
+  return list.sort(
+    (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+  )
 }
 
 // LocalStorage優先、fallbackでCookie
