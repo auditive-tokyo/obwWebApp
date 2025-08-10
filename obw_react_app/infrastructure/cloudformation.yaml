@@ -61,7 +61,7 @@ Resources:
         input UpdateGuestInput {
           roomNumber: String!
           guestName: String!
-          email: String!
+          email: String
           address: String
           phone: String
           occupation: String
