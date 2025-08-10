@@ -1,12 +1,13 @@
 import ChatWidget from '../../components/ChatWidget'
-import Select from 'react-select'
-import countryList from 'react-select-country-list'
+import CountrySelect from './components/CountrySelect'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import type { RoomPageViewProps } from './types'
 import { PassportUploadScreen } from './components/PassportUploadScreen'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import { BasicCheckInOutDate } from './components/BasicCheckInOutDate'
+import StructuredAddressInput from './components/StructuredAddressInput'
+import { useState, useMemo } from 'react'
 
 function CustomPhoneInput(props: any) {
   return (
@@ -51,7 +52,19 @@ export function RoomPageView(props: RoomPageViewProps) {
     client
   } = props
 
-  const options = countryList().getData()
+  const [addrOpen, setAddrOpen] = useState(false)
+  const addrSummary = useMemo(() => {
+    if (!address) return ''
+    try {
+      const a = JSON.parse(address)
+      return [a.addressLine2, a.addressLine1, a.city, a.state, a.country, a.zipcode]
+        .filter(Boolean)
+        .join(', ')
+    } catch {
+      return address
+    }
+  }, [address])
+
   // バリデーション
   const phoneError =
     phone && !isValidPhoneNumber(phone)
@@ -120,13 +133,23 @@ export function RoomPageView(props: RoomPageViewProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   住所 <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="東京都渋谷区..."
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-gray-600 truncate">{addrSummary || '未入力'}</div>
+                  <button
+                    type="button"
+                    className="text-sm text-blue-600"
+                    onClick={() => setAddrOpen(v => !v)}
+                  >
+                    {addrOpen ? '閉じる' : '入力・編集'}
+                  </button>
+                </div>
+                {addrOpen && (
+                  <StructuredAddressInput
+                    value={address}
+                    onChange={setAddress}
+                    onValidityChange={(valid) => { if (!valid) { setAddrOpen(true) } }}
+                  />
+                )}
               </div>
 
               {/* 電話番号 */}
@@ -171,26 +194,10 @@ export function RoomPageView(props: RoomPageViewProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   国籍 <span className="text-red-500">*</span>
                 </label>
-                <Select
-                  options={options}
-                  value={options.find(opt => opt.label === nationality) || null}
-                  onChange={opt => setNationality(opt?.label || "")}
-                  className="react-select-container"
-                  classNamePrefix="react-select"
+                <CountrySelect
+                  value={nationality}
+                  onChange={setNationality}
                   placeholder="国籍を選択してください"
-                  isClearable
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      minHeight: '48px',
-                      borderColor: '#D1D5DB',
-                      '&:hover': { borderColor: '#9CA3AF' },
-                      '&:focus-within': {
-                        borderColor: '#3B82F6',
-                        boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.2)'
-                      }
-                    })
-                  }}
                 />
               </div>
 
