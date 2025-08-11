@@ -165,10 +165,11 @@ Resources:
   ResponseApiFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: obw-response-api-function
       CodeUri: external/ServerlessResponseAPI/lambda_function/
       Handler: chat_handler.handler
       Runtime: nodejs22.x
-      Timeout: 15
+      Timeout: 30
       MemorySize: 512
       Environment:
         Variables:
