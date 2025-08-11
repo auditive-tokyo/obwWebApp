@@ -105,7 +105,7 @@ Resources:
   PassportUploadBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "privacy-obw-passport-upload"
+      BucketName: !Sub "privacy-obw-id-upload"
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins:
