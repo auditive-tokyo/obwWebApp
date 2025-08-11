@@ -234,14 +234,6 @@ Resources:
       ResponseMappingTemplate: |
         $util.toJson($ctx.result.items)
 
-  PassportImageBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: obw-guest-passport-images
-      AccessControl: Private
-      VersioningConfiguration:
-        Status: Enabled
-
   IdentityPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
