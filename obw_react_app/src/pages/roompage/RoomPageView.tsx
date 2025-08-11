@@ -62,7 +62,7 @@ export function RoomPageView(props: RoomPageViewProps) {
 
   const handleRegisterWrapper = async (rid: string, gname: string) => {
     try {
-      await handleRegister(rid, gname) // handleRegisterはPromiseを返すように
+      await handleRegister(rid, gname)
       alert('登録が完了しました。')
       window.location.reload()
     } catch (e) {

@@ -55,7 +55,7 @@ export interface RoomPageViewProps {
   // 画面遷移・登録ハンドラー
   handleNext: () => void
   handleBack: () => void
-  handleRegister: (roomId: string, guestName: string) => void
+  handleRegister: (roomId: string, guestName: string) => Promise<void>
 
   // 画面状態
   isInfoComplete: boolean
