@@ -8,8 +8,9 @@ export function PassportUploadScreen({
   passportImageUrl,
   setPassportImageUrl,
   onBack,
-  onRegister
-}: PassportUploadScreenProps) {
+  onRegister,
+  showEditInfo // ← 追加
+}: PassportUploadScreenProps & { showEditInfo?: boolean }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">
@@ -36,12 +37,21 @@ export function PassportUploadScreen({
         )}
         
         <div className="flex space-x-4">
-          <button 
-            onClick={onBack} 
-            className="flex-1 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors duration-200"
-          >
-            戻る
-          </button>
+          {showEditInfo ? (
+            <button
+              onClick={onBack}
+              className="flex-1 py-3 px-4 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors duration-200"
+            >
+              基本情報を編集
+            </button>
+          ) : (
+            <button
+              onClick={onBack}
+              className="flex-1 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors duration-200"
+            >
+              戻る
+            </button>
+          )}
           <button
             onClick={() => onRegister(roomId, name)}   // ここで値を渡す
             disabled={!passportImageUrl}

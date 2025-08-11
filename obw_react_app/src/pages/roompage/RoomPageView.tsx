@@ -41,6 +41,7 @@ export function RoomPageView(props: RoomPageViewProps) {
 
   // 申請リストから選択された人
   const [selectedSession, setSelectedSession] = useState<any | null>(null)
+  const [editSession, setEditSession] = useState<any | null>(null)
 
   // クリック選択時の表示判定
   const shouldShowUploadForSession = (g: any) => {
@@ -60,12 +61,22 @@ export function RoomPageView(props: RoomPageViewProps) {
     return null
   }
 
+  const handleRegisterWrapper = async (rid: string, gname: string) => {
+    try {
+      await handleRegister(rid, gname) // handleRegisterはPromiseを返すように
+      alert('登録が完了しました。')
+      window.location.reload()
+    } catch (e) {
+      alert('登録に失敗しました。もう一度お試しください。')
+    }
+  }
+
   const showForm = !selectedSession && currentStep === 'info'
   const showUpload = selectedSession ? shouldShowUploadForSession(selectedSession) : currentStep === 'upload'
   const showStatus = selectedSession && !showUpload && !!getStatusMessage(selectedSession)
 
-  console.log('selectedSession:', selectedSession)
-  console.log('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  console.debug('selectedSession:', selectedSession)
+  console.debug('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
 
   const clearSelection = () => setSelectedSession(null)
 
@@ -146,26 +157,29 @@ export function RoomPageView(props: RoomPageViewProps) {
         {/* 基本情報入力フォーム（新規 or 未選択時のみ） */}
         {showForm && (
           <BasicInfoForm
-            name={name}
+            name={editSession?.guestName ?? name}
             setName={setName}
-            email={email}
-            setEmail={setEmail}
-            address={address}
-            setAddress={setAddress}
-            phone={phone}
+            phone={editSession?.phone ?? phone}
             setPhone={setPhone}
-            occupation={occupation}
+            email={editSession?.email ?? email}
+            setEmail={setEmail}
+            address={editSession?.address ?? address}
+            setAddress={setAddress}
+            occupation={editSession?.occupation ?? occupation}
             setOccupation={setOccupation}
-            nationality={nationality}
+            nationality={editSession?.nationality ?? nationality}
             setNationality={setNationality}
-            checkInDate={checkInDate}
+            checkInDate={editSession?.checkInDate ?? checkInDate}
             setCheckInDate={setCheckInDate}
-            checkOutDate={checkOutDate}
+            checkOutDate={editSession?.checkOutDate ?? checkOutDate}
             setCheckOutDate={setCheckOutDate}
-            promoConsent={promoConsent}
+            promoConsent={editSession?.promoConsent ?? promoConsent}
             setPromoConsent={setPromoConsent}
             isInfoComplete={isInfoComplete}
-            onNext={handleNext}
+            onNext={() => {
+              setEditSession(null) // ← ここで編集モード解除
+              handleNext()
+            }}
           />
         )}
 
@@ -188,14 +202,27 @@ export function RoomPageView(props: RoomPageViewProps) {
               client={client}
               passportImageUrl={passportImageUrl}
               setPassportImageUrl={setPassportImageUrl}
-              onBack={selectedSession ? clearSelection : handleBack}
-              onRegister={(rid, gname) => {
-                if (!rid || !gname) {
-                  alert('部屋番号または宿泊者名が未選択です。')
-                  return
-                }
-                handleRegister(rid, gname)  // 明示的に渡す
-              }}
+              onBack={
+                selectedSession
+                  ? () => {
+                      setEditSession(selectedSession);
+                      setSelectedSession(null);
+
+                      // ここでeditSessionの値をstateに反映
+                      setName(selectedSession.guestName ?? "");
+                      setPhone(selectedSession.phone ?? "");
+                      setEmail(selectedSession.email ?? "");
+                      setAddress(selectedSession.address ?? "");
+                      setOccupation(selectedSession.occupation ?? "");
+                      setNationality(selectedSession.nationality ?? "");
+                      setCheckInDate(selectedSession.checkInDate ?? null);
+                      setCheckOutDate(selectedSession.checkOutDate ?? null);
+                      setPromoConsent(selectedSession.promoConsent ?? false);
+                    }
+                  : handleBack
+              }
+              onRegister={handleRegisterWrapper}
+              showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
             />
           </div>
         )}
