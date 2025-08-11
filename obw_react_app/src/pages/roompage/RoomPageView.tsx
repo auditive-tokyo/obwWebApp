@@ -1,23 +1,9 @@
 import ChatWidget from '../../components/ChatWidget'
-import CountrySelect from './components/CountrySelect'
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
 import type { RoomPageViewProps } from './types'
 import { PassportUploadScreen } from './components/PassportUploadScreen'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
-import { BasicCheckInOutDate } from './components/BasicCheckInOutDate'
-import StructuredAddressInput from './components/StructuredAddressInput'
-import { useState, useMemo } from 'react'
-
-function CustomPhoneInput(props: any) {
-  return (
-    <input
-      {...props}
-      className="w-full px-2 py-2 border-none focus:ring-0 focus:outline-none text-base"
-      style={{ fontSize: 'inherit', height: 'auto' }}
-    />
-  )
-}
+import BasicInfoForm from './components/BasicInfoForm'
+import { useState } from 'react'
 
 export function RoomPageView(props: RoomPageViewProps) {
   const {
@@ -53,27 +39,39 @@ export function RoomPageView(props: RoomPageViewProps) {
     guestSessions
   } = props
 
-  const [addrOpen, setAddrOpen] = useState(false)
-  const addrSummary = useMemo(() => {
-    if (!address) return ''
-    try {
-      const a = JSON.parse(address)
-      return [a.addressLine2, a.addressLine1, a.city, a.state, a.country, a.zipcode]
-        .filter(Boolean)
-        .join(', ')
-    } catch {
-      return address
-    }
-  }, [address])
+  // 申請リストから選択された人
+  const [selectedSession, setSelectedSession] = useState<any | null>(null)
 
-  // バリデーション
-  const phoneError =
-    phone && !isValidPhoneNumber(phone)
-      ? "正しい電話番号を入力してください"
-      : ""
-  const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ? "正しいメールアドレスを入力してください"
-    : ""
+  // クリック選択時の表示判定
+  const shouldShowUploadForSession = (g: any) => {
+    const step = g?.currentStep || g?.step || g?.statusStep
+    const status = g?.approvalStatus
+    return (
+      step === 'waitingForPassportImage' ||
+      step === 'upload' ||
+      status === 'waitingForPassportImage'
+    )
+  }
+  const getStatusMessage = (g: any): string | null => {
+    const status = g?.approvalStatus
+    if (status === 'pending') return '現在承認待ちです。'
+    if (status === 'approved') return '承認されました。'
+    if (status === 'rejected' || status === 'refected') return '承認されませんでした。'
+    return null
+  }
+
+  const showForm = !selectedSession && currentStep === 'info'
+  const showUpload = selectedSession ? shouldShowUploadForSession(selectedSession) : currentStep === 'upload'
+  const showStatus = selectedSession && !showUpload && !!getStatusMessage(selectedSession)
+
+  console.log('selectedSession:', selectedSession)
+  console.log('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+
+  const clearSelection = () => setSelectedSession(null)
+
+  // 選択中の人/未選択時の有効値
+  const effectiveRoomId = (selectedSession?.roomNumber ?? roomId) || ""
+  const effectiveGuestName = selectedSession?.guestName ?? name
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -83,27 +81,52 @@ export function RoomPageView(props: RoomPageViewProps) {
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
             <h3 className="text-sm font-medium text-gray-700 mb-2">この部屋の申請状況</h3>
             <ul className="divide-y divide-gray-200">
-              {guestSessions.map(g => (
-                <li key={`${g.roomNumber}_${g.guestName}`} className="py-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-800 truncate">{g.guestName}</span>
-                  <span
+              {guestSessions.map(g => {
+                const isSelected = selectedSession &&
+                  selectedSession.roomNumber === g.roomNumber &&
+                  selectedSession.guestName === g.guestName
+                return (
+                  <li
+                    key={`${g.roomNumber}_${g.guestName}`}
                     className={
-                      'text-xs px-2 py-0.5 rounded-full ' +
-                      (g.approvalStatus === 'approved'
-                        ? 'bg-green-100 text-green-700'
-                        : g.approvalStatus === 'rejected'
-                        ? 'bg-red-100 text-red-700'
-                        : g.approvalStatus === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-blue-100 text-blue-700')
+                      "py-2 px-2 flex items-center justify-between cursor-pointer select-none " +
+                      (isSelected ? "bg-blue-50 ring-1 ring-blue-300 rounded-md" : "hover:bg-gray-50")
                     }
+                    onClick={() => setSelectedSession(g)}
+                    aria-selected={isSelected}
                     title={new Date(g.lastUpdated).toLocaleString()}
                   >
-                    {g.approvalStatus}
-                  </span>
-                </li>
-              ))}
+                    <span className="text-sm text-gray-800 truncate">{g.guestName}</span>
+                    <span
+                      className={
+                        'text-xs px-2 py-0.5 rounded-full ' +
+                        (g.approvalStatus === 'approved'
+                          ? 'bg-green-100 text-green-700'
+                          : g.approvalStatus === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : g.approvalStatus === 'pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-blue-100 text-blue-700')
+                      }
+                    >
+                      {g.approvalStatus}
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
+
+            {selectedSession && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  className="text-sm text-blue-600 hover:underline"
+                  onClick={clearSelection}
+                >
+                  選択をクリア
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -120,178 +143,61 @@ export function RoomPageView(props: RoomPageViewProps) {
         {/* セキュリティ・法的情報カード */}
         <SecurityInfoCards />
 
-        {/* 基本情報入力フォーム */}
-        {currentStep === 'info' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">基本情報を入力してください</h2>
-            
-            <div className="space-y-4">
-              {/* 名前 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  お名前 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="山田太郎"
-                />
-              </div>
+        {/* 基本情報入力フォーム（新規 or 未選択時のみ） */}
+        {showForm && (
+          <BasicInfoForm
+            name={name}
+            setName={setName}
+            email={email}
+            setEmail={setEmail}
+            address={address}
+            setAddress={setAddress}
+            phone={phone}
+            setPhone={setPhone}
+            occupation={occupation}
+            setOccupation={setOccupation}
+            nationality={nationality}
+            setNationality={setNationality}
+            checkInDate={checkInDate}
+            setCheckInDate={setCheckInDate}
+            checkOutDate={checkOutDate}
+            setCheckOutDate={setCheckOutDate}
+            promoConsent={promoConsent}
+            setPromoConsent={setPromoConsent}
+            isInfoComplete={isInfoComplete}
+            onNext={handleNext}
+          />
+        )}
 
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="sample@example.com"
-                  required
-                />
-                {emailError && (
-                  <p className="mt-2 text-sm text-red-600">{emailError}</p>
-                )}
-              </div>
-
-              {/* プロモーション同意（Emailに紐づく案内） */}
-              <div
-                className={
-                  `rounded-md border border-gray-200 px-3 py-2 ` +
-                  (promoConsent ? 'bg-pink-50' : 'bg-gray-50')
-                }
-              >
-                <label className="flex items-start gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={promoConsent}
-                    onChange={e => setPromoConsent(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    aria-describedby="promo-consent-help"
-                  />
-                  <div className="text-xs text-gray-700">
-                    <div className="font-medium flex items-center gap-1">
-                      <span role="img" aria-label="mail">📩</span>
-                      最新情報をメールで受け取る
-                    </div>
-                    <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
-                      プロモーションや特別割引、近隣イベント情報などをお送りします。<br />
-                      受取りをご希望されない場合はチェックは外したままにして下さい。
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {/* 住所 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  住所 <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm text-gray-600 truncate">{addrSummary || '未入力'}</div>
-                  <button
-                    type="button"
-                    className="text-sm text-blue-600"
-                    onClick={() => setAddrOpen(v => !v)}
-                  >
-                    {addrOpen ? '閉じる' : '入力・編集'}
-                  </button>
-                </div>
-                {addrOpen && (
-                  <StructuredAddressInput
-                    value={address}
-                    onChange={setAddress}
-                    onValidityChange={(valid) => { if (!valid) { setAddrOpen(true) } }}
-                  />
-                )}
-              </div>
-
-              {/* 電話番号 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  電話番号 <span className="text-red-500">*</span>
-                </label>
-                <PhoneInput
-                  international
-                  defaultCountry="JP"
-                  value={phone}
-                  onChange={value => setPhone(value || "")}
-                  className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  inputComponent={CustomPhoneInput}
-                  placeholder="電話番号を入力"
-                  style={{
-                    '--PhoneInputCountryFlag-height': '1.2em',
-                    '--PhoneInput-color--focus': '#3B82F6'
-                  } as React.CSSProperties}
-                />
-                {phoneError && (
-                  <p className="mt-2 text-sm text-red-600">{phoneError}</p>
-                )}
-              </div>
-
-              {/* 職業 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  職業 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={occupation}
-                  onChange={e => setOccupation(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="会社員"
-                />
-              </div>
-
-              {/* 国籍 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  国籍 <span className="text-red-500">*</span>
-                </label>
-                <CountrySelect
-                  value={nationality}
-                  onChange={setNationality}
-                  placeholder="国籍を選択してください"
-                />
-              </div>
-
-              {/* チェックイン・アウト日 */}
-              <BasicCheckInOutDate
-                checkInDate={checkInDate}
-                setCheckInDate={setCheckInDate}
-                checkOutDate={checkOutDate}
-                setCheckOutDate={setCheckOutDate}
-              />
-
-              {/* 次へボタン */}
-              <div className="pt-4">
-                <button
-                  onClick={handleNext}
-                  disabled={!isInfoComplete}
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
-                >
-                  パスポート写真アップロードへ進む
-                </button>
-              </div>
-            </div>
+        {/* クリック選択: ステータスメッセージ表示 */}
+        {showStatus && (
+          <div className="bg-white rounded-lg shadow-md p-6 mt-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
+              {selectedSession?.guestName} さんの状況
+            </h2>
+            <p className="text-gray-700">{getStatusMessage(selectedSession)}</p>
           </div>
         )}
 
-       {/* パスポートアップロード画面 */}
-        {currentStep === 'upload' && (
-          <PassportUploadScreen
-            roomId={roomId || ""}
-            name={name}
-            client={client}
-            passportImageUrl={passportImageUrl}
-            setPassportImageUrl={setPassportImageUrl}
-            onBack={handleBack}
-            onRegister={handleRegister}
-          />
+        {/* パスポートアップロード画面（クリック選択 or 従来ステップ） */}
+        {showUpload && (
+          <div className="mt-4">
+            <PassportUploadScreen
+              roomId={effectiveRoomId}
+              name={effectiveGuestName}
+              client={client}
+              passportImageUrl={passportImageUrl}
+              setPassportImageUrl={setPassportImageUrl}
+              onBack={selectedSession ? clearSelection : handleBack}
+              onRegister={(rid, gname) => {
+                if (!rid || !gname) {
+                  alert('部屋番号または宿泊者名が未選択です。')
+                  return
+                }
+                handleRegister(rid, gname)  // 明示的に渡す
+              }}
+            />
+          </div>
         )}
 
         {/* メッセージ表示 */}

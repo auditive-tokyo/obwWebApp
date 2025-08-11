@@ -49,13 +49,13 @@ export interface RoomPageViewProps {
   setPromoConsent: (value: boolean) => void
 
   // パスポート画像アップロード欄
-  passportImageUrl: string
-  setPassportImageUrl: (url: string) => void
+  passportImageUrl: string | null
+  setPassportImageUrl: (url: string | null) => void
 
   // 画面遷移・登録ハンドラー
   handleNext: () => void
   handleBack: () => void
-  handleRegister: () => void
+  handleRegister: (roomId: string, guestName: string) => void
 
   // 画面状態
   isInfoComplete: boolean
@@ -95,7 +95,7 @@ export interface HandleRegisterParams {
   roomId: string
   name: string
   email: string
-  passportImageUrl: string
+  passportImageUrl: string | null
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
   setApprovalStatus: (status: ApprovalStatus) => void // ステータス更新用
@@ -107,12 +107,12 @@ export interface HandleRegisterParams {
  * パスポートアップロード画面用のprops型
  * - 画面表示・アップロード・画面遷移に必要な値をまとめる
  */
-export interface PassportUploadScreenProps {
-  roomId: string // 部屋番号
-  name: string // 宿泊者名
-  client: any // GraphQLクライアント等
-  passportImageUrl: string // アップロード済み画像URL
-  setPassportImageUrl: (url: string) => void // 画像URL更新用
-  onBack: () => void // 戻るボタン用
-  onRegister: () => void // 登録完了ボタン用
+export type PassportUploadScreenProps = {
+  roomId: string
+  name: string
+  client: any
+  passportImageUrl: string | null
+  setPassportImageUrl: (url: string | null) => void
+  onBack: () => void
+  onRegister: (roomId: string, guestName: string) => void
 }

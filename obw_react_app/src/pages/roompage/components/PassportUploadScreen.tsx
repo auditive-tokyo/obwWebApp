@@ -18,7 +18,7 @@ export function PassportUploadScreen({
       
       <div className="space-y-6">
         <PassportUpload 
-          onUploaded={setPassportImageUrl} 
+          onUploaded={(url) => setPassportImageUrl(url)} // 型の明示ラップ（stringのみ渡す）
           roomId={roomId} 
           guestName={name}
           client={client}
@@ -43,7 +43,7 @@ export function PassportUploadScreen({
             戻る
           </button>
           <button
-            onClick={onRegister}
+            onClick={() => onRegister(roomId, name)}   // ここで値を渡す
             disabled={!passportImageUrl}
             className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           >

@@ -17,7 +17,7 @@ function RoomPage() {
   const [checkInDate, setCheckInDate] = useState<Date | null>(null)
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null)
   const [promoConsent, setPromoConsent] = useState(false)
-  const [passportImageUrl, setPassportImageUrl] = useState("")
+  const [passportImageUrl, setPassportImageUrl] = useState<string | null>(null)
   const [message, setMessage] = useState("")
   const [currentStep, setCurrentStep] = useState<'info' | 'upload'>('info')
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('waitingForPassportImage')
@@ -56,10 +56,10 @@ function RoomPage() {
     }
   }
 
-  const handleRegister = async () => {
+  const handleRegister = async (rid: string, gname: string) => {
     await handleRegisterAction({
-      roomId: roomId || "",
-      name,
+      roomId: rid,              // ← クリック選択または現在の部屋IDを使用
+      name: gname,              // ← クリック選択の宿泊者名を使用（親stateのnameは使わない）
       email,
       passportImageUrl,
       client,
@@ -68,7 +68,6 @@ function RoomPage() {
       loadGuestSession,
       saveGuestSession
     })
-    // 保存後に一覧を再取得
     if (roomId) setGuestSessions(listGuestSessionsByRoom(roomId))
   }
 
