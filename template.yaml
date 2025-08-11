@@ -40,6 +40,7 @@ Parameters:
     Default: ""
 
 Resources:
+  # TwilioのLambda用レイヤー
   LayerForObw:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -56,6 +57,7 @@ Resources:
       BuildMethod: python3.13
       BuildArchitecture: x86_64
 
+  # TwilioのLambda1
   ImmediateResponseFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -81,6 +83,7 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref AiProcessingLambdaFunctionName
 
+  # TwilioのLambda2
   AiProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -118,6 +121,7 @@ Resources:
               - ETag
             MaxAge: 3000
 
+  # 署名付きURL用Lambda
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -147,6 +151,50 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref PassportUploadBucket
 
+  # AI Chat用のLambda
+  LayerForResponseAPI:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: external/ServerlessResponseAPI/layer
+      CompatibleRuntimes:
+        - nodejs22.x
+    Metadata:
+      BuildMethod: nodejs22.x
+      BuildArchitecture: x86_64
+
+  ResponseApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: external/ServerlessResponseAPI/lambda_function/
+      Handler: chat_handler.handler
+      Runtime: nodejs22.x
+      Timeout: 15
+      MemorySize: 512
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          PROMPT_TEMPLATE: pmpt_6869c81bfcd48196aefab179a363858906185093870d0335
+          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+          VECTOR_SEARCH_FILTER_KEY: room_number
+      Layers:
+        - !Ref LayerForResponseAPI
+
+  ChatFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt ResponseApiFunction.Arn
+      AuthType: NONE
+      InvokeMode: RESPONSE_STREAM
+      Cors:
+        AllowOrigins:
+          - http://localhost:5173 # テスト終わったら削除
+          - https://app.osakabaywheel.com
+        AllowHeaders:
+          - content-type
+        AllowMethods:
+          - POST
+        AllowCredentials: false
+
 Outputs:
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
@@ -157,6 +205,9 @@ Outputs:
   GetPresignedUrlFunctionUrl:
     Description: "Function URL for GetPresignedUrl Lambda"
     Value: !GetAtt GetPresignedUrlFunctionUrl.FunctionUrl
+  ChatFunctionUrl:
+    Description: "Function URL for ResponseApiFunction"
+    Value: !GetAtt ChatFunctionUrl.FunctionUrl
   PassportUploadBucketName:
     Description: "S3 bucket for passport uploads"
     Value: !Ref PassportUploadBucket
