@@ -43,7 +43,7 @@ export function CountrySelect({ value, onChange, placeholder = '国を選択し�
         }),
         singleValue: (base) => ({
           ...base,
-          fontSize: '0.875rem',
+          fontSize: '0.75rem',
           lineHeight: '1.5rem',
         }),
         placeholder: (base) => ({
@@ -56,7 +56,7 @@ export function CountrySelect({ value, onChange, placeholder = '国を選択し�
           ...base,
           margin: 0,
           padding: 0,
-          fontSize: '0.875rem',
+          fontSize: '0.75rem',
         }),
         clearIndicator: (base) => ({
           ...base,

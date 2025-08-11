@@ -61,6 +61,9 @@ export interface RoomPageViewProps {
   isInfoComplete: boolean
   message: string
   client: any // GraphQLクライアント等
+
+  // この部屋の申請状況一覧（任意）
+  guestSessions?: GuestSession[]
 }
 
 /**

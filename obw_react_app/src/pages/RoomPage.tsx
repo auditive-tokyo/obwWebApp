@@ -109,38 +109,6 @@ function RoomPage() {
 
   return (
     <>
-      {/* この部屋の申請状況（RoomPageViewを使わずに表示） */}
-      {guestSessions.length > 0 && (
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">この部屋の申請状況</h3>
-            <ul className="divide-y divide-gray-200">
-              {guestSessions.map(g => (
-                <li key={`${g.roomNumber}_${g.guestName}`} className="py-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-800 truncate">{g.guestName}</span>
-                  <span
-                    className={
-                      'text-xs px-2 py-0.5 rounded-full ' +
-                      (g.approvalStatus === 'approved'
-                        ? 'bg-green-100 text-green-700'
-                        : g.approvalStatus === 'rejected'
-                        ? 'bg-red-100 text-red-700'
-                        : g.approvalStatus === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-blue-100 text-blue-700')
-                    }
-                    title={new Date(g.lastUpdated).toLocaleString()}
-                  >
-                    {g.approvalStatus}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* 既存のページ本体 */}
       <RoomPageView 
         roomId={roomId || ""}
         approvalStatus={approvalStatus}
@@ -171,7 +139,7 @@ function RoomPage() {
         isInfoComplete={isInfoComplete}
         message={message}
         client={client}
-        // guestSessions={guestSessions} // ← 一覧を表示する場合はRoomPageViewのpropsに追加して渡す
+        guestSessions={guestSessions}
       />
     </>
   )
