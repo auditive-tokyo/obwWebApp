@@ -39,6 +39,17 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Build ServerlessResponseAPI Lambda (TypeScript)
+        run: |
+          cd external/ServerlessResponseAPI
+          npm install
+          npm run build
+
+      - name: Build ServerlessResponseAPI Layer (Node.js)
+        run: |
+          cd external/ServerlessResponseAPI/layer
+          npm install
+
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 

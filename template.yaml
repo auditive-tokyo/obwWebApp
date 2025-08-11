@@ -166,7 +166,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: obw-response-api-function
-      CodeUri: external/ServerlessResponseAPI/lambda_function/
+      CodeUri: external/ServerlessResponseAPI/dist/lambda_function/
       Handler: chat_handler.handler
       Runtime: nodejs22.x
       Timeout: 30
