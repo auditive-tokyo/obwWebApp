@@ -41,7 +41,6 @@ export function RoomPageView(props: RoomPageViewProps) {
 
   // 申請リストから選択された人
   const [selectedSession, setSelectedSession] = useState<any | null>(null)
-  const [editSession, setEditSession] = useState<any | null>(null)
 
   // クリック選択時の表示判定
   const shouldShowUploadForSession = (g: any) => {
@@ -157,29 +156,26 @@ export function RoomPageView(props: RoomPageViewProps) {
         {/* 基本情報入力フォーム（新規 or 未選択時のみ） */}
         {showForm && (
           <BasicInfoForm
-            name={editSession?.guestName ?? name}
+            name={name}
             setName={setName}
-            phone={editSession?.phone ?? phone}
+            phone={phone}
             setPhone={setPhone}
-            email={editSession?.email ?? email}
+            email={email}
             setEmail={setEmail}
-            address={editSession?.address ?? address}
+            address={address}
             setAddress={setAddress}
-            occupation={editSession?.occupation ?? occupation}
+            occupation={occupation}
             setOccupation={setOccupation}
-            nationality={editSession?.nationality ?? nationality}
+            nationality={nationality}
             setNationality={setNationality}
-            checkInDate={editSession?.checkInDate ?? checkInDate}
+            checkInDate={checkInDate}
             setCheckInDate={setCheckInDate}
-            checkOutDate={editSession?.checkOutDate ?? checkOutDate}
+            checkOutDate={checkOutDate}
             setCheckOutDate={setCheckOutDate}
-            promoConsent={editSession?.promoConsent ?? promoConsent}
+            promoConsent={promoConsent}
             setPromoConsent={setPromoConsent}
             isInfoComplete={isInfoComplete}
-            onNext={() => {
-              setEditSession(null) // ← ここで編集モード解除
-              handleNext()
-            }}
+            onNext={handleNext}
           />
         )}
 
@@ -205,7 +201,7 @@ export function RoomPageView(props: RoomPageViewProps) {
               onBack={
                 selectedSession
                   ? () => {
-                      setEditSession(selectedSession);
+                      // setEditSession(selectedSession);
                       setSelectedSession(null);
 
                       // ここでeditSessionの値をstateに反映
