@@ -55,7 +55,7 @@ export function RoomPageView(props: RoomPageViewProps) {
     const status = g?.approvalStatus
     if (status === 'pending') return '現在承認待ちです。'
     if (status === 'approved') return '承認されました。'
-    if (status === 'rejected' || status === 'refected') return '承認されませんでした。'
+    if (status === 'rejected') return '承認されませんでした。'
     return null
   }
 
@@ -179,7 +179,7 @@ export function RoomPageView(props: RoomPageViewProps) {
         {showStatus && (
           <div className="bg-white rounded-lg shadow-md p-6 mt-4">
             <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              {selectedSession?.guestName} さんの状況
+              {selectedSession?.guestName} | Status
             </h2>
             <p className="text-gray-700">{getStatusMessage(selectedSession)}</p>
           </div>

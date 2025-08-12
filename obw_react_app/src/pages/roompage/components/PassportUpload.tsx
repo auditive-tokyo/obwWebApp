@@ -82,7 +82,7 @@ export function PassportUpload({
       onUploaded(get_url)
     } catch (e) {
       console.error('Upload error:', e)
-      setError("アップロードに失敗しました")
+      setError("Failed to upload passport image.")
     }
     setUploading(false)
   }
@@ -91,7 +91,7 @@ export function PassportUpload({
     <div>
       <input type="file" accept="image/*" onChange={handleFileChange} />
       <button onClick={handleUpload} disabled={!file || uploading}>
-        {uploading ? "アップロード中..." : "アップロード"}
+        {uploading ? "Uploading..." : "Upload"}
       </button>
       {error && <div className="text-red-500">{error}</div>}
     </div>

@@ -118,7 +118,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
             buildAndSetAddress({ addressLine1: v })
           }}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          placeholder={getMessage("addressLine1Placeholder")}
+          placeholder={getMessage("addressLine1Placeholder") as string}
         />
       </div>
       <div className="space-y-1">
@@ -135,7 +135,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
             buildAndSetAddress({ addressLine2: v })
           }}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          placeholder={getMessage("addressLine2Placeholder")}
+          placeholder={getMessage("addressLine2Placeholder") as string}
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -154,7 +154,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
               buildAndSetAddress({ city: v })
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder={getMessage("city")}
+            placeholder={getMessage("city") as string}
           />
         </div>
         <div className="space-y-1">
@@ -172,7 +172,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
               buildAndSetAddress({ stateProv: v })
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder={getMessage("state")}
+            placeholder={getMessage("state") as string}
           />
         </div>
       </div>
@@ -184,7 +184,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
           <CountrySelect
             value={country}
             onChange={(label) => { setCountry(label); buildAndSetAddress({ country: label }) }}
-            placeholder={getMessage("countryPlaceholder")}
+            placeholder={getMessage("countryPlaceholder") as string}
           />
         </div>
         <div className="space-y-1">
@@ -202,7 +202,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
               buildAndSetAddress({ zipcode: v })
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder={getMessage("zipcode")}
+            placeholder={getMessage("zipcode") as string}
           />
         </div>
       </div>

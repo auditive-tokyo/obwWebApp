@@ -92,7 +92,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             value={name}
             onChange={e => setName(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder={getMessage("namePlaceholder")}
+            placeholder={getMessage("namePlaceholder") as string}
           />
         </div>
 
@@ -135,7 +135,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
                 {getMessage("emailConsent")}
               </div>
               <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
-                {getMessage("promoConsent").split('\n').map((line, i) => (
+                {(getMessage("promoConsent") as string).split('\n').map((line, i) => (
                   <span key={i}>
                     {line}
                     <br />
@@ -202,7 +202,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             value={occupation}
             onChange={e => setOccupation(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder={getMessage("occupationPlaceholder")}
+            placeholder={getMessage("occupationPlaceholder") as string}
           />
         </div>
 
@@ -214,7 +214,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
           <CountrySelect
             value={nationality}
             onChange={setNationality}
-            placeholder={getMessage("nationalityPlaceholder")}
+            placeholder={getMessage("nationalityPlaceholder") as string}
           />
         </div>
 
@@ -233,7 +233,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             disabled={!isInfoComplete}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           >
-            パスポート写真アップロードへ進む
+            {getMessage("proceedToPassportImageUpload")}
           </button>
         </div>
       </div>

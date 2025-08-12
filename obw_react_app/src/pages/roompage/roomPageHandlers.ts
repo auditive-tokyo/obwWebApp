@@ -1,5 +1,6 @@
 import { saveGuestSession } from './sessionUtils'
 import type { HandleNextParams, HandleRegisterParams } from './types'
+import { getMessage } from '../../i18n/messages'
 
 /**
  * 基本情報登録処理
@@ -73,7 +74,7 @@ export const handleNext = async (params: HandleNextParams) => {
     
     // setApprovalStatus('waitingForPassportImage')
     console.debug("基本情報登録完了:", res)
-    setMessage("基本情報を登録しました。パスポート写真をアップロードしてください。")
+    setMessage(getMessage("basicInfoSaved") as string)
     setCurrentStep('upload')
   } catch (e) {
     console.error("基本情報登録エラー:", e)

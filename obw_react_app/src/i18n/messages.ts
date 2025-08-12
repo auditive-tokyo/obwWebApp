@@ -2,14 +2,18 @@ export type SupportedLang =
   | "ja"
   | "en";
 
-type MessageKeys =
+  type MessageKeys =
   | "close"
+  | "back"
   | "edit"
   | "welcome"
+  | "basicInfoSaved"
+  | "CompleteRegistration"
   | "uploadSuccess"
   | "uploadError"
   | "enterBasicInfo"
   | "enterPassportImage"
+  | "passportUploaded"
   | "name"
   | "namePlaceholder"
   | "email"
@@ -36,23 +40,80 @@ type MessageKeys =
   | "checkInOutDate"
   | "selectCheckInOutDate"
   | "checkInDate"
-  | "checkOutDate";
+  | "checkOutDate"
+  | "editBasicInfo"
+  | "proceedToPassportImageUpload"
+  | "aboutPassport"
+  | "aboutSecurity"
+  | "lawInfoShort"
+  | "lawInfo"
+  | "securityInfoShort"
+  | "securityInfo";
 
 type Messages = {
   [lang in SupportedLang]: {
-    [key in MessageKeys]: string;
+    close: string;
+    back: string;
+    edit: string;
+    welcome: string;
+    basicInfoSaved: string;
+    CompleteRegistration: string;
+    uploadSuccess: string;
+    uploadError: string;
+    enterBasicInfo: string;
+    enterPassportImage: string;
+    passportUploaded: string;
+    name: string;
+    namePlaceholder: string;
+    email: string;
+    emailValidation: string;
+    emailConsent: string;
+    promoConsent: string;
+    address: string;
+    addressNotSet: string;
+    addressLine1: string;
+    addressLine1Placeholder: string;
+    addressLine2: string;
+    addressLine2Placeholder: string;
+    city: string;
+    state: string;
+    country: string;
+    countryPlaceholder: string;
+    zipcode: string;
+    phone: string;
+    phoneValidation: string;
+    occupation: string;
+    occupationPlaceholder: string;
+    nationality: string;
+    nationalityPlaceholder: string;
+    checkInOutDate: string;
+    selectCheckInOutDate: string;
+    checkInDate: string;
+    checkOutDate: string;
+    editBasicInfo: string;
+    proceedToPassportImageUpload: string;
+    aboutPassport: string;
+    aboutSecurity: string;
+    lawInfoShort: string;
+    lawInfo: string[];
+    securityInfoShort: string;
+    securityInfo: string[];
   }
 };
 
 const messages: Messages = {
   ja: {
     close: "閉じる",
+    back: "戻る",
     edit: "入力・編集",
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
+    basicInfoSaved: "基本情報を登録しました。パスポート写真をアップロードしてください。",
+    CompleteRegistration: "登録完了",
     uploadSuccess: "登録が完了しました。",
     uploadError: "登録に失敗しました。もう一度お試しください。",
     enterBasicInfo: "基本情報を入力してください",
     enterPassportImage: "パスポート画像をアップロードしてください",
+    passportUploaded: "アップロード完了",
     name: "お名前",
     namePlaceholder: "山田太郎",
     email: "メールアドレス",
@@ -80,15 +141,34 @@ const messages: Messages = {
     selectCheckInOutDate: "チェックイン・チェックアウト日を選択してください",
     checkInDate: "チェックイン日",
     checkOutDate: "チェックアウト日",
+    editBasicInfo: "基本情報を編集",
+    proceedToPassportImageUpload: "パスポート画像アップロードへ進む",
+    aboutPassport: "パスポート情報について",
+    aboutSecurity: "セキュリティについて",
+    lawInfoShort: "旅館業法により、宿泊者の身元確認・記録保持が義務付けられています。外国人宿泊者はパスポート詳細の複写・保管が必要です。",
+    lawInfo: [
+      "旅館業法により、宿泊事業者は宿泊者の身元確認および記録保持が法的に義務付けられています。外国人宿泊者の場合、パスポート詳細の複写と一定期間の保管が必要となります。",
+      "この情報は必要に応じて政府機関から要請される場合があるため、法令遵守のためファイルに保管させていただきます。ご理解とご協力をお願いいたします。"
+    ],
+    securityInfoShort: "個人情報はAWS KMSで保護、通信はSSL暗号化、国際基準に準拠しています。",
+    securityInfo: [
+      "お客様の個人情報はAWS KMS（暗号化サービス）により高度に保護されています。",
+      "通信は全てSSL暗号化により安全に送信されます。",
+      "データの保管・管理は国際的なセキュリティ基準に準拠しています。"
+    ]
   },
   en: {
     close: "Close",
+    back: "Back",
     edit: "Input / Edit",
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
+    basicInfoSaved: "Basic information saved. Please upload your passport image.",
+    CompleteRegistration: "Complete Registration",
     uploadSuccess: "Registration completed.",
     uploadError: "Registration failed. Please try again.",
     enterBasicInfo: "Please enter your basic information.",
     enterPassportImage: "Please upload your passport image.",
+    passportUploaded: "Upload completed",
     name: "Name",
     namePlaceholder: "John Doe",
     phoneValidation: "Please enter a valid phone number.",
@@ -116,6 +196,21 @@ const messages: Messages = {
     selectCheckInOutDate: "Please select your check-in and check-out dates.",
     checkInDate: "Check-in Date",
     checkOutDate: "Check-out Date",
+    editBasicInfo: "Edit Information",
+    proceedToPassportImageUpload: "Proceed to Passport Image Upload",
+    aboutPassport: "About Passport Information",
+    aboutSecurity: "About Security",
+    lawInfoShort: "According to the Hotel Business Law, accommodation providers are legally required to verify and record the identity of guests. For foreign guests, a copy of the passport details must be taken and stored for a certain period.",
+    lawInfo: [
+      "According to the Hotel Business Law, accommodation providers are legally required to verify and record the identity of guests. For foreign guests, a copy of the passport details must be taken and stored for a certain period.",
+      "This information may be requested by government agencies as needed, so we will keep it on file for legal compliance. We appreciate your understanding and cooperation."
+    ],
+    securityInfoShort: "Personal information is protected by AWS KMS, communication is SSL encrypted, and complies with international standards.",
+    securityInfo: [
+      "Your personal information is highly protected by AWS KMS (encryption service).",
+      "All communications are securely transmitted via SSL encryption.",
+      "Data storage and management comply with international security standards."
+    ]
   }
 };
 

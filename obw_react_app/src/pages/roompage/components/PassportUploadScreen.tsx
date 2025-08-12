@@ -1,5 +1,6 @@
 import { PassportUpload } from './PassportUpload'
 import type { PassportUploadScreenProps } from '../types'
+import { getMessage } from '../../../i18n/messages'
 
 export function PassportUploadScreen({
   roomId,
@@ -14,7 +15,7 @@ export function PassportUploadScreen({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">
-        パスポート写真をアップロード
+        {getMessage("enterPassportImage")}
       </h2>
       
       <div className="space-y-6">
@@ -32,7 +33,7 @@ export function PassportUploadScreen({
               alt="パスポート写真" 
               className="mx-auto max-w-xs rounded-lg shadow-sm"
             />
-            <p className="mt-2 text-sm text-gray-600">アップロード完了</p>
+            <p className="mt-2 text-sm text-gray-600">{getMessage("passportUploaded")}</p>
           </div>
         )}
         
@@ -42,22 +43,22 @@ export function PassportUploadScreen({
               onClick={onBack}
               className="flex-1 py-3 px-4 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors duration-200"
             >
-              基本情報を編集
+              {getMessage("editBasicInfo")}
             </button>
           ) : (
             <button
               onClick={onBack}
               className="flex-1 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors duration-200"
             >
-              戻る
+              {getMessage("back")}
             </button>
           )}
           <button
-            onClick={() => onRegister(roomId, name)}   // ここで値を渡す
+            onClick={() => onRegister(roomId, name)}
             disabled={!passportImageUrl}
             className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           >
-            登録完了
+            {getMessage("CompleteRegistration")}
           </button>
         </div>
       </div>
