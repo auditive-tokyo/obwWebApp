@@ -12,10 +12,10 @@ Amplify.configure(amplifyConfig)
 // セッション情報を表示
 fetchAuthSession()
   .then(session => {
-    console.debug("現在のセッション (main.tsx):", session)
+    console.debug("Current session (main.tsx):", session)
   })
   .catch(error => {
-    console.error("セッション取得エラー (main.tsx):", error)
+    console.error("Session fetch error (main.tsx):", error)
   })
 
 createRoot(document.getElementById('root')!).render(

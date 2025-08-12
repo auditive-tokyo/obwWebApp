@@ -25,8 +25,8 @@ export const handleNext = async (params: HandleNextParams) => {
     setCurrentStep
   } = params
 
-  setMessage("基本情報を登録中...")
-  
+  setMessage(getMessage("registeringBasicInfo") as string)
+
   const query = `
     mutation CreateGuest($input: CreateGuestInput!) {
       createGuest(input: $input) {
@@ -73,12 +73,12 @@ export const handleNext = async (params: HandleNextParams) => {
     })
     
     // setApprovalStatus('waitingForPassportImage')
-    console.debug("基本情報登録完了:", res)
+    console.debug("Basic info registration completed:", res)
     setMessage(getMessage("basicInfoSaved") as string)
     setCurrentStep('upload')
   } catch (e) {
-    console.error("基本情報登録エラー:", e)
-    setMessage("基本情報の登録に失敗しました")
+    console.error("Basic info registration error:", e)
+    setMessage(getMessage("basicInfoError") as string)
   }
 }
 
@@ -99,7 +99,7 @@ export const handleRegister = async (params: HandleRegisterParams) => {
     saveGuestSession
   } = params
 
-  setMessage("パスポート画像を更新中...")
+  setMessage(getMessage("uploadingPassportImage") as string)
 
   // 署名付きURLからS3パス部分だけ抽出
   let s3Url = passportImageUrl
@@ -138,7 +138,7 @@ export const handleRegister = async (params: HandleRegisterParams) => {
       authMode: 'iam'
     })
 
-    console.debug("パスポート画像更新完了:", res)
+    console.debug("Passport image update completed:", res)
 
     // ローカルストレージのセッション情報を更新
     const session = loadGuestSession(roomId, name)
@@ -148,9 +148,9 @@ export const handleRegister = async (params: HandleRegisterParams) => {
       saveGuestSession(session)
     }
 
-    setMessage("登録が完了しました！")
+    setMessage(getMessage("uploadSuccess") as string)
   } catch (e) {
-    console.error("パスポート画像更新エラー:", e)
-    setMessage("パスポート画像の更新に失敗しました")
+    console.error("Passport image update error:", e)
+    setMessage(getMessage("uploadError") as string)
   }
 }

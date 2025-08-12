@@ -6,11 +6,17 @@ export type SupportedLang =
   | "close"
   | "back"
   | "edit"
+  | "clear"
   | "welcome"
+  | "registeringBasicInfo"
+  | "basicInfoError"
   | "basicInfoSaved"
   | "CompleteRegistration"
+  | "uploadingPassportImage"
   | "uploadSuccess"
   | "uploadError"
+  | "registrationSuccess"
+  | "registrationError"
   | "enterBasicInfo"
   | "enterPassportImage"
   | "passportUploaded"
@@ -55,11 +61,17 @@ type Messages = {
     close: string;
     back: string;
     edit: string;
+    clear: string;
     welcome: string;
+    registeringBasicInfo: string;
+    basicInfoError: string;
     basicInfoSaved: string;
     CompleteRegistration: string;
+    uploadingPassportImage: string;
     uploadSuccess: string;
     uploadError: string;
+    registrationSuccess: string;
+    registrationError: string;
     enterBasicInfo: string;
     enterPassportImage: string;
     passportUploaded: string;
@@ -106,11 +118,17 @@ const messages: Messages = {
     close: "閉じる",
     back: "戻る",
     edit: "入力・編集",
+    clear: "選択をクリア",
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
+    registeringBasicInfo: "基本情報を登録中...",
+    basicInfoError: "基本情報の登録に失敗しました",
     basicInfoSaved: "基本情報を登録しました。パスポート写真をアップロードしてください。",
     CompleteRegistration: "登録完了",
-    uploadSuccess: "登録が完了しました。",
-    uploadError: "登録に失敗しました。もう一度お試しください。",
+    uploadingPassportImage: "パスポート画像を更新中...",
+    uploadSuccess: "パスポート画像のアップロードが完了しました！",
+    uploadError: "パスポート画像のアップロードに失敗しました。もう一度お試しください。",
+    registrationSuccess: "登録が完了しました！",
+    registrationError: "登録に失敗しました。もう一度お試しください。",
     enterBasicInfo: "基本情報を入力してください",
     enterPassportImage: "パスポート画像をアップロードしてください",
     passportUploaded: "アップロード完了",
@@ -161,11 +179,17 @@ const messages: Messages = {
     close: "Close",
     back: "Back",
     edit: "Input / Edit",
+    clear: "Clear Selection",
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
+    registeringBasicInfo: "Registering basic information...",
+    basicInfoError: "Failed to register basic information.",
     basicInfoSaved: "Basic information saved. Please upload your passport image.",
     CompleteRegistration: "Complete Registration",
-    uploadSuccess: "Registration completed.",
-    uploadError: "Registration failed. Please try again.",
+    uploadingPassportImage: "Updating passport image...",
+    uploadSuccess: "Passport image upload completed!",
+    uploadError: "Passport image upload failed. Please try again.",
+    registrationSuccess: "Registration completed!",
+    registrationError: "Registration failed. Please try again.",
     enterBasicInfo: "Please enter your basic information.",
     enterPassportImage: "Please upload your passport image.",
     passportUploaded: "Upload completed",

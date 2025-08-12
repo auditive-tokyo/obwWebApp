@@ -4,6 +4,7 @@ import { PassportUploadScreen } from './components/PassportUploadScreen'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
 import { useState } from 'react'
+import { getMessage } from '../../i18n/messages'
 
 export function RoomPageView(props: RoomPageViewProps) {
   const {
@@ -62,10 +63,10 @@ export function RoomPageView(props: RoomPageViewProps) {
   const handleRegisterWrapper = async (rid: string, gname: string) => {
     try {
       await handleRegister(rid, gname)
-      alert('登録が完了しました。')
+      alert(getMessage("registrationSuccess") as string)
       window.location.reload()
     } catch (e) {
-      alert('登録に失敗しました。もう一度お試しください。')
+      alert(getMessage("registrationError") as string)
     }
   }
 
@@ -132,7 +133,7 @@ export function RoomPageView(props: RoomPageViewProps) {
                   className="text-sm text-blue-600 hover:underline"
                   onClick={clearSelection}
                 >
-                  選択をクリア
+                  {getMessage("clear")}
                 </button>
               </div>
             )}
