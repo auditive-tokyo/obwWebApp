@@ -1,6 +1,7 @@
 import { useState } from "react"
 import DatePicker from "react-datepicker"
 import './BasicCheckInOutDate.css'
+import { getMessage } from '../../../i18n/messages'
 
 type Props = {
   checkInDate: Date | null
@@ -20,7 +21,7 @@ export function BasicCheckInOutDate({
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        チェックイン・チェックアウト日 <span className="text-red-500">*</span>
+        {getMessage("checkInOutDate")}<span className="text-red-500">*</span>
       </label>
       <button
         className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left"
@@ -28,7 +29,7 @@ export function BasicCheckInOutDate({
       >
         {checkInDate && checkOutDate
           ? `${checkInDate.toLocaleDateString()} 〜 ${checkOutDate.toLocaleDateString()}`
-          : "チェックイン・チェックアウト日を選択"}
+          : getMessage("selectCheckInOutDate")}
       </button>
 
       {calendarModalOpen && (
@@ -45,14 +46,13 @@ export function BasicCheckInOutDate({
               endDate={checkOutDate}
               selectsRange
               inline
-              placeholderText="チェックイン・チェックアウト日を選択"
             />
             <div className="flex space-x-4 mt-2 text-sm text-gray-700">
               <div>
-                チェックイン日: {checkInDate ? checkInDate.toLocaleDateString() : '未選択'}
+                {getMessage("checkInDate")}: {checkInDate ? checkInDate.toLocaleDateString() : '未選択'}
               </div>
               <div>
-                チェックアウト日: {checkOutDate ? checkOutDate.toLocaleDateString() : '未選択'}
+                {getMessage("checkOutDate")}: {checkOutDate ? checkOutDate.toLocaleDateString() : '未選択'}
               </div>
             </div>
             <div className="mt-6 text-right">

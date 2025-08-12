@@ -15,7 +15,7 @@ export const saveLang = (lang: string) => {
       document.cookie = `lang=${lang}; path=/; max-age=31536000`;
       saved = true;
     } catch (err) {
-      alert("言語設定の保存に失敗しました。");
+      alert("Failed to save language preference. LocalStorage or Cookies may be disabled.");
     }
   }
   console.debug("Lang saved:", lang, "Status:", saved ? "Success" : "Failed");
@@ -23,13 +23,13 @@ export const saveLang = (lang: string) => {
 
 // 言語を読み込む
 // localStorageから取得できない場合はCookieから取得
-export const loadLang = (): string | null => {
+export const loadLang = (): "ja" | "en" => {
   try {
     const lang = localStorage.getItem("lang");
-    if (lang) return lang;
+    if (lang === "ja" || lang === "en") return lang;
   } catch (e) {
-    const match = document.cookie.match(/(?:^|; )lang=([^;]*)/);
-    if (match) return match[1];
+    const match = document.cookie.match(/(?:^|; )lang=(ja|en)/);
+    if (match) return match[1] as "ja" | "en";
   }
-  return null;
+  return "en"; // ← デフォルトを英語に
 };

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import CountrySelect from './CountrySelect'
+import { getMessage } from '../../../i18n/messages'
 
 export interface StructuredAddressInputProps {
   value: string
@@ -104,7 +105,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
     <div className="space-y-3">
       <div className="space-y-1">
         <label htmlFor="address-line1" className="text-sm text-gray-700">
-          住所1 <span className="text-red-500">*</span>
+          {getMessage("addressLine1")}<span className="text-red-500">*</span>
         </label>
         <input
           id="address-line1"
@@ -117,11 +118,13 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
             buildAndSetAddress({ addressLine1: v })
           }}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          placeholder="住所1（番地・丁目・号など）"
+          placeholder={getMessage("addressLine1Placeholder")}
         />
       </div>
       <div className="space-y-1">
-        <label htmlFor="address-line2" className="text-sm text-gray-700">住所2</label>
+        <label htmlFor="address-line2" className="text-sm text-gray-700">
+          {getMessage("addressLine2")}
+        </label>
         <input
           id="address-line2"
           type="text"
@@ -132,13 +135,13 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
             buildAndSetAddress({ addressLine2: v })
           }}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          placeholder="住所2（建物名・部屋番号など）"
+          placeholder={getMessage("addressLine2Placeholder")}
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label htmlFor="address-city" className="text-sm text-gray-700">
-            市区町村 <span className="text-red-500">*</span>
+            {getMessage("city")}<span className="text-red-500">*</span>
           </label>
           <input
             id="address-city"
@@ -151,12 +154,12 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
               buildAndSetAddress({ city: v })
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="市区町村"
+            placeholder={getMessage("city")}
           />
         </div>
         <div className="space-y-1">
           <label htmlFor="address-state" className="text-sm text-gray-700">
-            都道府県 <span className="text-red-500">*</span>
+            {getMessage("state")}<span className="text-red-500">*</span>
           </label>
           <input
             id="address-state"
@@ -169,24 +172,24 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
               buildAndSetAddress({ stateProv: v })
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="都道府県"
+            placeholder={getMessage("state")}
           />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-sm text-gray-700">
-            国 <span className="text-red-500">*</span>
+            {getMessage("country")}<span className="text-red-500">*</span>
           </label>
           <CountrySelect
             value={country}
             onChange={(label) => { setCountry(label); buildAndSetAddress({ country: label }) }}
-            placeholder="国を選択してください"
+            placeholder={getMessage("countryPlaceholder")}
           />
         </div>
         <div className="space-y-1">
           <label htmlFor="address-zipcode" className="text-sm text-gray-700">
-            郵便番号 <span className="text-red-500">*</span>
+            {getMessage("zipcode")}<span className="text-red-500">*</span>
           </label>
           <input
             id="address-zipcode"
@@ -199,7 +202,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
               buildAndSetAddress({ zipcode: v })
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="郵便番号"
+            placeholder={getMessage("zipcode")}
           />
         </div>
       </div>

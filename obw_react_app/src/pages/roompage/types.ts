@@ -25,7 +25,6 @@ export type SaveGuestSessionFn = (data: GuestSession) => void
  */
 export interface RoomPageViewProps {
   roomId: string // 部屋番号
-  approvalStatus: ApprovalStatus // 承認ステータス
   currentStep: 'info' | 'upload' // 現在の画面ステップ
 
   // 基本情報入力欄

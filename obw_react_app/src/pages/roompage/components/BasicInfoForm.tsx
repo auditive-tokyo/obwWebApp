@@ -4,6 +4,7 @@ import StructuredAddressInput from './StructuredAddressInput'
 import { BasicCheckInOutDate } from './BasicCheckInOutDate'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
+import { getMessage } from '../../../i18n/messages'
 
 type BasicInfoFormProps = {
   name: string
@@ -68,35 +69,37 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
 
   const phoneError =
     phone && !isValidPhoneNumber(phone)
-      ? "正しい電話番号を入力してください"
+      ? getMessage("phoneValidation")
       : ""
   const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ? "正しいメールアドレスを入力してください"
+    ? getMessage("emailValidation")
     : ""
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">基本情報を入力してください</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-6">
+        {getMessage("enterBasicInfo")}
+      </h2>
 
       <div className="space-y-4">
         {/* 名前 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            お名前 <span className="text-red-500">*</span>
+            {getMessage("name")}<span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="山田太郎"
+            placeholder={getMessage("namePlaceholder")}
           />
         </div>
 
         {/* Email */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email <span className="text-red-500">*</span>
+            {getMessage("email")}<span className="text-red-500">*</span>
           </label>
           <input
             type="email"
@@ -129,11 +132,15 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             <div className="text-xs text-gray-700">
               <div className="font-medium flex items-center gap-1">
                 <span role="img" aria-label="mail">📩</span>
-                最新情報をメールで受け取る
+                {getMessage("emailConsent")}
               </div>
               <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
-                プロモーションや特別割引、近隣イベント情報などをお送りします。<br />
-                受取りをご希望されない場合はチェックは外したままにして下さい。
+                {getMessage("promoConsent").split('\n').map((line, i) => (
+                  <span key={i}>
+                    {line}
+                    <br />
+                  </span>
+                ))}
               </p>
             </div>
           </label>
@@ -142,16 +149,16 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         {/* 住所 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            住所 <span className="text-red-500">*</span>
+            {getMessage("address")}<span className="text-red-500">*</span>
           </label>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-gray-600 truncate">{addrSummary || '未入力'}</div>
+            <div className="text-sm text-gray-600 truncate">{addrSummary || getMessage("addressNotSet")}</div>
             <button
               type="button"
               className="text-sm text-blue-600"
               onClick={() => setAddrOpen(v => !v)}
             >
-              {addrOpen ? '閉じる' : '入力・編集'}
+              {addrOpen ? getMessage("close") : getMessage("edit")}
             </button>
           </div>
           {addrOpen && (
@@ -166,7 +173,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         {/* 電話番号 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            電話番号 <span className="text-red-500">*</span>
+            {getMessage("phone")}<span className="text-red-500">*</span>
           </label>
           <PhoneInput
             international
@@ -175,7 +182,6 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             onChange={value => setPhone(value || "")}
             className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             inputComponent={CustomPhoneInput}
-            placeholder="電話番号を入力"
             style={{
               '--PhoneInputCountryFlag-height': '1.2em',
               '--PhoneInput-color--focus': '#3B82F6'
@@ -189,26 +195,26 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         {/* 職業 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            職業 <span className="text-red-500">*</span>
+            {getMessage("occupation")}<span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={occupation}
             onChange={e => setOccupation(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="会社員"
+            placeholder={getMessage("occupationPlaceholder")}
           />
         </div>
 
         {/* 国籍 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            国籍 <span className="text-red-500">*</span>
+            {getMessage("nationality")}<span className="text-red-500">*</span>
           </label>
           <CountrySelect
             value={nationality}
             onChange={setNationality}
-            placeholder="国籍を選択してください"
+            placeholder={getMessage("nationalityPlaceholder")}
           />
         </div>
 

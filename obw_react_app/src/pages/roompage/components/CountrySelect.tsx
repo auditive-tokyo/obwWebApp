@@ -11,7 +11,7 @@ export interface CountrySelectProps {
 
 const options = countryList().getData()
 
-export function CountrySelect({ value, onChange, placeholder = '国を選択してください', isClearable = true, className }: CountrySelectProps) {
+export function CountrySelect({ value, onChange, placeholder, isClearable = true, className }: CountrySelectProps) {
   const selected = options.find(opt => opt.label === value) || null
   return (
     <Select

@@ -110,7 +110,6 @@ function RoomPage() {
     <>
       <RoomPageView 
         roomId={roomId || ""}
-        approvalStatus={approvalStatus}
         currentStep={currentStep}
         name={name}
         setName={setName}

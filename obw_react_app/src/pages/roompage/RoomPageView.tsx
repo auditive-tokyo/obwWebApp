@@ -8,7 +8,6 @@ import { useState } from 'react'
 export function RoomPageView(props: RoomPageViewProps) {
   const {
     roomId,
-    approvalStatus,
     currentStep,
     name,
     setName,
@@ -143,11 +142,8 @@ export function RoomPageView(props: RoomPageViewProps) {
         {/* ヘッダーカード */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            {roomId}号室
+            ROOM {roomId}
           </h1>
-          <p className="text-gray-600">
-            現在のステータス: <span className="font-medium text-blue-600">{approvalStatus}</span>
-          </p>
         </div>
 
         {/* セキュリティ・法的情報カード */}
