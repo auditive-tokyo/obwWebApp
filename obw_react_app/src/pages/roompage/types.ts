@@ -1,6 +1,6 @@
 // import { loadGuestSession, saveGuestSession } from './sessionUtils'
 
-export type ApprovalStatus =
+type ApprovalStatus =
   | 'waitingForPassportImage'
   | 'pending'
   | 'approved'
@@ -82,7 +82,6 @@ export interface HandleNextParams {
   promoConsent: boolean
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  setApprovalStatus: (status: ApprovalStatus) => void // ステータス更新用
   setCurrentStep: (step: 'info' | 'upload') => void // 画面ステップ更新用
 }
 
@@ -97,7 +96,6 @@ export interface HandleRegisterParams {
   passportImageUrl: string | null
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  setApprovalStatus: (status: ApprovalStatus) => void // ステータス更新用
   loadGuestSession: LoadGuestSessionFn // セッション読込関数
   saveGuestSession: SaveGuestSessionFn // セッション保存関数
 }

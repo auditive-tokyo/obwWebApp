@@ -21,7 +21,6 @@ export const handleNext = async (params: HandleNextParams) => {
     promoConsent,
     client,
     setMessage,
-    setApprovalStatus,
     setCurrentStep
   } = params
 
@@ -72,7 +71,7 @@ export const handleNext = async (params: HandleNextParams) => {
       lastUpdated: new Date().toISOString()
     })
     
-    setApprovalStatus('waitingForPassportImage')
+    // setApprovalStatus('waitingForPassportImage')
     console.debug("基本情報登録完了:", res)
     setMessage("基本情報を登録しました。パスポート写真をアップロードしてください。")
     setCurrentStep('upload')
@@ -95,7 +94,6 @@ export const handleRegister = async (params: HandleRegisterParams) => {
     passportImageUrl,
     client,
     setMessage,
-    setApprovalStatus,
     loadGuestSession,
     saveGuestSession
   } = params
@@ -148,8 +146,7 @@ export const handleRegister = async (params: HandleRegisterParams) => {
       session.lastUpdated = new Date().toISOString()
       saveGuestSession(session)
     }
-    
-    setApprovalStatus('pending')
+
     setMessage("登録が完了しました！")
   } catch (e) {
     console.error("パスポート画像更新エラー:", e)

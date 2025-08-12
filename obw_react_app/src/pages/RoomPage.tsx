@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import { saveGuestSession, loadGuestSession, listGuestSessionsByRoom } from './roompage/sessionUtils'
-import type { GuestSession, ApprovalStatus } from './roompage/types'
+import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
 import { handleNext as handleNextAction, handleRegister as handleRegisterAction } from './roompage/roomPageHandlers'
 
@@ -20,7 +20,6 @@ function RoomPage() {
   const [passportImageUrl, setPassportImageUrl] = useState<string | null>(null)
   const [message, setMessage] = useState("")
   const [currentStep, setCurrentStep] = useState<'info' | 'upload'>('info')
-  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('waitingForPassportImage')
   const [guestSessions, setGuestSessions] = useState<GuestSession[]>([])  // ← 追加
 
   // 一覧を読み込むヘルパー
@@ -48,7 +47,6 @@ function RoomPage() {
         promoConsent,
         client,
         setMessage,
-        setApprovalStatus,
         setCurrentStep
       })
       // 保存後に一覧を再取得
@@ -64,7 +62,6 @@ function RoomPage() {
       passportImageUrl,
       client,
       setMessage,
-      setApprovalStatus,
       loadGuestSession,
       saveGuestSession
     })
@@ -76,7 +73,6 @@ function RoomPage() {
     if (roomId && name) {
       const session = loadGuestSession(roomId, name)
       if (session) {
-        setApprovalStatus(session.approvalStatus)
         // ← 他のstateも復元
         setPhone(session.phone)
         
