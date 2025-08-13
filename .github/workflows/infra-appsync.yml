@@ -9,10 +9,6 @@ on:
     paths:
       - 'obw_react_app/infrastructure/cloudformation.yaml'
       - '.github/workflows/infra-appsync.yml'
-      - 'lambda_functions/**'
-      - 'layers/**'
-      - '.github/workflows/lambda-deploy.yml'
-      - 'template.yaml'
   workflow_dispatch:
 
 jobs:

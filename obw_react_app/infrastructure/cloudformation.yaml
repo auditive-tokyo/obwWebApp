@@ -281,7 +281,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: getGuest
-      DataSourceName: !Ref GuestTableDataSource
+      DataSourceName: !GetAtt GuestTableDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
