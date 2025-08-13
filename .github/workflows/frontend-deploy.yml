@@ -1,12 +1,16 @@
 name: Deploy React Application
 
 on:
-  workflow_run: # AppSyncのデプロイが完了したら実行
+  workflow_run: # 本番ではコメントアウト外して、AppSyncのデプロイが完了したら実行
     workflows: [Deploy Infrastructure]
     types:
       - completed
   # push:
   #   branches: [main, feature/chat-frontend] # 本番では workflow_run を使うからpush:はコメントアウト
+  #   paths:
+  #     - 'obw_react_app/**'
+  #     - '.github/workflows/frontend-deploy.yml'
+  #     - '!obw_react_app/infrastructure/cloudformation.yaml'
   workflow_dispatch:
 
 jobs:
@@ -39,18 +43,27 @@ jobs:
       - name: Get CloudFormation Outputs
         id: cfn-outputs
         run: |
+          # AppSyncスタックからのVITE変数取得
           aws cloudformation describe-stacks \
             --stack-name obw-appsync-stack \
             --query "Stacks[0].Outputs" \
-            --output json > outputs.json
-          echo "VITE_APPSYNC_ENDPOINT=$(jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue' outputs.json)" >> $GITHUB_ENV
-          echo "VITE_COGNITO_IDENTITY_POOL_ID=$(jq -r '.[] | select(.OutputKey=="CognitoIdentityPoolId") | .OutputValue' outputs.json)" >> $GITHUB_ENV
+            --output json > appsync_outputs.json
+          echo "VITE_APPSYNC_ENDPOINT=$(jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue' appsync_outputs.json)" >> $GITHUB_ENV
+          echo "VITE_COGNITO_IDENTITY_POOL_ID=$(jq -r '.[] | select(.OutputKey=="CognitoIdentityPoolId") | .OutputValue' appsync_outputs.json)" >> $GITHUB_ENV
+          # LambdaスタックからもVITE変数取得
+          aws cloudformation describe-stacks \
+            --stack-name obw-lambda-functions \
+            --query "Stacks[0].Outputs" \
+            --output json > lambda_outputs.json
+          echo "VITE_UPLOAD_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="GetPresignedUrlFunctionUrl") | .OutputValue' lambda_outputs.json)" >> $GITHUB_ENV
+          echo "VITE_CHAT_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="ChatFunctionUrl") | .OutputValue' lambda_outputs.json)" >> $GITHUB_ENV
 
       - name: Create .env file
         run: |
           echo "VITE_APPSYNC_ENDPOINT=${{ env.VITE_APPSYNC_ENDPOINT }}" > .env
           echo "VITE_COGNITO_IDENTITY_POOL_ID=${{ env.VITE_COGNITO_IDENTITY_POOL_ID }}" >> .env
-          echo "VITE_LAMBDA_URL=${{ secrets.VITE_LAMBDA_URL }}" >> .env
+          echo "VITE_CHAT_LAMBDA_URL=${{ env.VITE_CHAT_LAMBDA_URL }}" >> .env
+          echo "VITE_UPLOAD_LAMBDA_URL=${{ env.VITE_UPLOAD_LAMBDA_URL }}" >> .env
 
       - name: Build
         run: npm run build

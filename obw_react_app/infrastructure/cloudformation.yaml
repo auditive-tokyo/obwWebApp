@@ -11,11 +11,15 @@ Resources:
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: id
+        - AttributeName: roomNumber
+          AttributeType: S
+        - AttributeName: guestName
           AttributeType: S
       KeySchema:
-        - AttributeName: id
+        - AttributeName: roomNumber
           KeyType: HASH
+        - AttributeName: guestName
+          KeyType: RANGE
       TableName: guest-checkin-table
 
   AppSyncSchema:
@@ -24,9 +28,9 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
         type Guest {
-          id: ID!
           roomNumber: String! 
-          name: String!
+          guestName: String!
+          email: String!
           address: String!
           phone: String!
           occupation: String
@@ -42,7 +46,8 @@ Resources:
 
         input CreateGuestInput {
           roomNumber: String!
-          name: String!
+          guestName: String!
+          email: String!
           address: String!
           phone: String!
           occupation: String
@@ -54,7 +59,13 @@ Resources:
         }
 
         input UpdateGuestInput {
-          id: ID!
+          roomNumber: String!
+          guestName: String!
+          email: String
+          address: String
+          phone: String
+          occupation: String
+          nationality: String
           approvalStatus: String
           passportImageUrl: String
           checkInDate: AWSDate
@@ -68,7 +79,8 @@ Resources:
         }
 
         type Query {
-          getGuest(id: ID!): Guest
+          getGuest(roomNumber: String!, guestName: String!): Guest
+          listGuestsByRoom(roomNumber: String!): [Guest]
           listGuests: [Guest]
         }
 
@@ -109,19 +121,20 @@ Resources:
           "version": "2017-02-28",
           "operation": "PutItem",
           "key": {
-            "id": $util.dynamodb.toDynamoDBJson($util.autoId())
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
           },
           "attributeValues": {
-            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
-            "name": $util.dynamodb.toDynamoDBJson($ctx.args.input.name),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName),
+            "email": $util.dynamodb.toDynamoDBJson($ctx.args.input.email),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
             "phone": $util.dynamodb.toDynamoDBJson($ctx.args.input.phone),
-            "occupation": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.occupation, "")),
+            "occupation": $util.dynamodb.toDynamoDBJson($ctx.args.input.occupation),
             "nationality": $util.dynamodb.toDynamoDBJson($ctx.args.input.nationality),
-            "passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
+            "passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl),
             "checkInDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate),
             "checkOutDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate),
-            "approvalStatus": $util.dynamodb.toDynamoDBJson("pending"),
+            "approvalStatus": $util.dynamodb.toDynamoDBJson("waitingForPassportImage"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
@@ -143,25 +156,20 @@ Resources:
           "version": "2017-02-28",
           "operation": "UpdateItem",
           "key": {
-            "id": $util.dynamodb.toDynamoDBJson($ctx.args.input.id)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
           },
           "update": {
-            "expression": "SET #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl, #checkInDate = :checkInDate, #checkOutDate = :checkOutDate, #promoConsent = :promoConsent, #updatedAt = :updatedAt",
+            "expression": "SET #updatedAt = :updatedAt, #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl",
             "expressionNames": {
+              "#updatedAt": "updatedAt",
               "#approvalStatus": "approvalStatus",
-              "#passportImageUrl": "passportImageUrl",
-              "#checkInDate": "checkInDate",
-              "#checkOutDate": "checkOutDate",
-              "#promoConsent": "promoConsent",
-              "#updatedAt": "updatedAt"
+              "#passportImageUrl": "passportImageUrl"
             },
             "expressionValues": {
-              ":approvalStatus": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.approvalStatus, "pending")),
-              ":passportImageUrl": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.passportImageUrl, "")),
-              ":checkInDate": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.checkInDate, "")),
-              ":checkOutDate": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.checkOutDate, "")),
-              ":promoConsent": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.promoConsent, false)),
-              ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+              ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
+              ":approvalStatus": $util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus),
+              ":passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl)
             }
           }
         }
@@ -181,7 +189,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "GetItem",
           "key": {
-            "id": $util.dynamodb.toDynamoDBJson($ctx.args.id)
+            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber),
+            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.guestName)
           }
         }
       ResponseMappingTemplate: |
@@ -203,13 +212,27 @@ Resources:
       ResponseMappingTemplate: |
         $util.toJson($ctx.result.items)
 
-  PassportImageBucket:
-    Type: AWS::S3::Bucket
+  ListGuestsByRoomResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: AppSyncSchema
     Properties:
-      BucketName: obw-guest-passport-images
-      AccessControl: Private
-      VersioningConfiguration:
-        Status: Enabled
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: listGuestsByRoom
+      DataSourceName: !GetAtt GuestTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "roomNumber = :roomNumber",
+            "expressionValues": {
+              ":roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber)
+            }
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
 
   IdentityPool:
     Type: AWS::Cognito::IdentityPool

@@ -1,8 +1,13 @@
-name: Deploy SAM Application for Twilio
+name: Deploy Lambda Functions
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/chat-frontend] # 本番では main ブランチを使用
+    paths:
+      - 'lambda_functions/**'
+      - 'layers/**'
+      - '.github/workflows/lambda-deploy.yml'
+      - 'template.yaml'
   workflow_dispatch:
 
 jobs:
@@ -13,8 +18,15 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
+      - name: Checkout main repository
         uses: actions/checkout@v4
+
+      - name: Checkout ServerlessResponseAPI repository
+        uses: actions/checkout@v4
+        with:
+          repository: auditive-tokyo/ServerlessResponseAPI
+          ref: main
+          path: external/ServerlessResponseAPI
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -27,11 +39,19 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Build ServerlessResponseAPI Lambda (TypeScript)
+        run: |
+          cd external/ServerlessResponseAPI
+          npm install
+          npm run build
+
+      - name: Build ServerlessResponseAPI Layer (Node.js)
+        run: |
+          cd external/ServerlessResponseAPI/layer
+          npm install
+
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
-
-      # - name: Clean previous SAM build
-      #   run: rm -rf .aws-sam/build
 
       - name: SAM Build
         run: sam build --use-container
@@ -44,7 +64,7 @@ jobs:
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
         run: |
           sam deploy \
-            --stack-name obw-ai-lambda \
+            --stack-name obw-lambda-functions \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
@@ -74,7 +94,7 @@ jobs:
 
           # sam deploy を再度実行して、Function URL をパラメータとして渡す
           sam deploy \
-            --stack-name obw-ai-lambda \
+            --stack-name obw-lambda-functions \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
@@ -86,7 +106,7 @@ jobs:
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
 
-          aws cloudformation wait stack-update-complete --stack-name obw-ai-lambda
+          aws cloudformation wait stack-update-complete --stack-name obw-lambda-functions
 
       - name: Clean up old Lambda versions
         run: |
@@ -113,7 +133,7 @@ jobs:
           # Lambda レイヤーの古いバージョンをクリーンアップ
           # CloudFormationスタックからレイヤー情報を取得
           echo "Getting Lambda Layer information from CloudFormation stack"
-          LAYER_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name obw-ai-lambda --query "StackResources[?ResourceType=='AWS::Lambda::LayerVersion'].PhysicalResourceId" --output text)
+          LAYER_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name obw-lambda-functions --query "StackResources[?ResourceType=='AWS::Lambda::LayerVersion'].PhysicalResourceId" --output text)
 
           for LAYER_ARN in $LAYER_RESOURCES; do
             # ARNからレイヤー名を抽出

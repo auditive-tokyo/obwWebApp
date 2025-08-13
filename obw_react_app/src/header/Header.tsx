@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { setLanguage, saveLang, loadLang } from "../i18n/languageUtils";
+import { SupportedLang } from "../i18n/messages";
 
 function Header() {
-  const [lang, setLang] = useState<'ja' | 'en'>('ja');
+  const [lang, setLang] = useState<SupportedLang>('en');
   const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const savedLang = loadLang();
-    if (savedLang === 'ja' || savedLang === 'en') {
-      setLang(savedLang);
-      setLanguage(savedLang);
-    }
+    setLang(savedLang);
+    setLanguage(savedLang);
   }, []);
 
   useEffect(() => {
@@ -20,7 +19,7 @@ function Header() {
   }, []);
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLang = e.target.value as 'ja' | 'en';
+    const newLang = e.target.value as SupportedLang;
     setLang(newLang);
     setLanguage(newLang);
     saveLang(newLang);
@@ -34,10 +33,10 @@ function Header() {
         <select
           value={lang}
           onChange={handleLangChange}
-          className="px-3 py-2 rounded bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
+          className="px-3 py-2 rounded bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
         >
-          <option value="ja">🇯🇵 日本語</option>
-          <option value="en">🇺🇸 English</option>
+          <option value="en">🇺🇸 EN</option>
+          <option value="ja">🇯🇵 JA</option>
         </select>
       </div>
     </header>

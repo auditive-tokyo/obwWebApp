@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { Amplify } from 'aws-amplify'
-import { amplifyConfig } from './amplify-config'
+import { amplifyConfig } from './amplify-config.ts'
 import { fetchAuthSession } from 'aws-amplify/auth'
 
 Amplify.configure(amplifyConfig)
@@ -12,10 +12,10 @@ Amplify.configure(amplifyConfig)
 // セッション情報を表示
 fetchAuthSession()
   .then(session => {
-    console.debug("現在のセッション (main.tsx):", session)
+    console.debug("Current session (main.tsx):", session)
   })
   .catch(error => {
-    console.error("セッション取得エラー (main.tsx):", error)
+    console.error("Session fetch error (main.tsx):", error)
   })
 
 createRoot(document.getElementById('root')!).render(
