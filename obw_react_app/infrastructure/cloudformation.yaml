@@ -1,4 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  EnableLambdaIntegration:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+Conditions:
+  DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
+
 Resources:
   AppSyncApi:
     Type: AWS::AppSync::GraphQLApi
@@ -13,14 +22,26 @@ Resources:
       AttributeDefinitions:
         - AttributeName: roomNumber
           AttributeType: S
-        - AttributeName: guestName
+        - AttributeName: guestId
+          AttributeType: S
+        - AttributeName: sessionTokenHash
           AttributeType: S
       KeySchema:
         - AttributeName: roomNumber
           KeyType: HASH
-        - AttributeName: guestName
+        - AttributeName: guestId
           KeyType: RANGE
-      TableName: guest-checkin-table
+      GlobalSecondaryIndexes:
+        - IndexName: SessionTokenHashIndex
+          KeySchema:
+            - AttributeName: sessionTokenHash
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: pendingVerificationTtl
+        Enabled: true
+      TableName: guest
 
   AppSyncSchema:
     Type: AWS::AppSync::GraphQLSchema
@@ -28,7 +49,8 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
         type Guest {
-          roomNumber: String! 
+          roomNumber: String!
+          guestId: String!
           guestName: String!
           email: String!
           address: String!
@@ -38,14 +60,19 @@ Resources:
           passportImageUrl: String
           checkInDate: AWSDate!
           checkOutDate: AWSDate!
-          approvalStatus: String! # pending, approved, rejected
-          promoConsent: Boolean! # Consent for promotional communications
+          approvalStatus: String!
+          promoConsent: Boolean!
+          sessionTokenExpiresAt: AWSDateTime
+          sessionTokenHash: String
+          pendingVerificationTtl: AWSTimestamp
+          contactChannel: String
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
         }
 
         input CreateGuestInput {
           roomNumber: String!
+          guestId: String!
           guestName: String!
           email: String!
           address: String!
@@ -60,26 +87,50 @@ Resources:
 
         input UpdateGuestInput {
           roomNumber: String!
-          guestName: String!
+          guestId: String!
+          guestName: String
           email: String
           address: String
           phone: String
           occupation: String
           nationality: String
-          approvalStatus: String
           passportImageUrl: String
           checkInDate: AWSDate
           checkOutDate: AWSDate
+          approvalStatus: String
           promoConsent: Boolean
+          sessionTokenExpiresAt: AWSDateTime
+          sessionTokenHash: String
+          pendingVerificationTtl: AWSTimestamp
+          contactChannel: String
+        }
+
+        input RequestAccessInput {
+          roomNumber: String!
+          guestName: String!
+          email: String
+          phone: String
+        }
+
+        type RequestAccessResult {
+          success: Boolean!
+          guestId: String!
+        }
+
+        type VerifyTokenResult {
+          success: Boolean!
+          guest: Guest
         }
 
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
           updateGuest(input: UpdateGuestInput!): Guest
+          requestAccess(input: RequestAccessInput!): RequestAccessResult
+          verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
         }
 
         type Query {
-          getGuest(roomNumber: String!, guestName: String!): Guest
+          getGuest(roomNumber: String!, guestId: String!): Guest
           listGuestsByRoom(roomNumber: String!): [Guest]
           listGuests: [Guest]
         }
@@ -94,6 +145,52 @@ Resources:
       DynamoDBConfig:
         TableName: !Ref GuestTable
         AwsRegion: !Ref AWS::Region
+
+  # AppSync が Lambda を呼び出すためのロール（Lambda Invoke許可）
+  AppSyncLambdaRole:
+    Condition: DoLambdaIntegration
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdaForAppSync
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !ImportValue Obw-RequestAccessFunctionArn
+                  - !ImportValue Obw-VerifyAccessTokenFunctionArn
+
+  RequestAccessLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: requestAccessLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-RequestAccessFunctionArn
+
+  VerifyAccessTokenLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: verifyAccessTokenLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-VerifyAccessTokenFunctionArn
 
   AppSyncDynamoDBRole:
     Type: AWS::IAM::Role
@@ -122,9 +219,10 @@ Resources:
           "operation": "PutItem",
           "key": {
             "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
-            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId)
           },
           "attributeValues": {
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId),
             "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName),
             "email": $util.dynamodb.toDynamoDBJson($ctx.args.input.email),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
@@ -157,7 +255,7 @@ Resources:
           "operation": "UpdateItem",
           "key": {
             "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
-            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId)
           },
           "update": {
             "expression": "SET #updatedAt = :updatedAt, #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl",
@@ -183,14 +281,14 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: getGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: !Ref GuestTableDataSource
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
           "operation": "GetItem",
           "key": {
             "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber),
-            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.guestName)
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.guestId)
           }
         }
       ResponseMappingTemplate: |
@@ -271,6 +369,40 @@ Resources:
       Roles:
         unauthenticated: !GetAtt UnauthRole.Arn
 
+  RequestAccessResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: requestAccess
+      DataSourceName: !Ref RequestAccessLambdaDataSource
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "operation": "Invoke",
+          "payload": $util.toJson($ctx.args)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+
+  VerifyAccessTokenResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: verifyAccessToken
+      DataSourceName: !Ref VerifyAccessTokenLambdaDataSource
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "operation": "Invoke",
+          "payload": $util.toJson($ctx.args)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+
 Outputs:
   ApiEndpoint:
     Description: "AppSync API Endpoint"
@@ -278,3 +410,8 @@ Outputs:
   CognitoIdentityPoolId:
     Description: "Cognito Identity Pool ID"
     Value: !Ref IdentityPool
+  GuestTableName:
+    Description: "DynamoDB guest table name"
+    Value: !Ref GuestTable
+    Export:
+      Name: Obw-GuestTableName

@@ -1,11 +1,18 @@
 name: Deploy Infrastructure
 
 on:
+  # workflow_run: # 本番ではコメントアウト外して、Lambdaのデプロイが完了したら実行
+  #   workflows: ["Deploy Lambda Functions"]
+  #   types: [completed]
   push:
-    branches: [main, feature/chat-frontend] # 本番では main ブランチを使用
+    branches: [main, feature/magic-link-access] # 本番では main ブランチを使用
     paths:
       - 'obw_react_app/infrastructure/cloudformation.yaml'
       - '.github/workflows/infra-appsync.yml'
+      - 'lambda_functions/**'
+      - 'layers/**'
+      - '.github/workflows/lambda-deploy.yml'
+      - 'template.yaml'
   workflow_dispatch:
 
 jobs:
@@ -24,10 +31,11 @@ jobs:
           role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
           aws-region: ap-northeast-1
 
-      - name: Deploy CloudFormation stack
+      - name: Deploy CloudFormation stack (AppSync base)
         run: |
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \
             --stack-name obw-appsync-stack \
             --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides EnableLambdaIntegration=false \
             --no-fail-on-empty-changeset

@@ -53,6 +53,20 @@ jobs:
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
+      - name: Get GuestTableName from CloudFormation Outputs
+        id: get_guest_table_name
+        run: |
+          GUEST_TABLE_NAME=$(aws cloudformation describe-stacks \
+            --stack-name obw-appsync-stack \
+            --query "Stacks[0].Outputs[?OutputKey=='GuestTableName'].OutputValue" \
+            --output text)
+          if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
+            echo "GuestTableName not found. Did you deploy AppSync base stack (EnableLambdaIntegration=false)?" >&2
+            exit 1
+          fi
+          echo "GuestTableName is $GUEST_TABLE_NAME"
+          echo "guest_table_name=$GUEST_TABLE_NAME" >> $GITHUB_OUTPUT
+
       - name: SAM Build
         run: sam build --use-container
 
@@ -69,10 +83,20 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
+              GuestTableName="${{ steps.get_guest_table_name.outputs.guest_table_name }}" \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
+            --no-fail-on-empty-changeset
+
+      - name: Enable Lambda integration in AppSync
+        run: |
+          aws cloudformation deploy \
+            --template-file obw_react_app/infrastructure/cloudformation.yaml \
+            --stack-name obw-appsync-stack \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides EnableLambdaIntegration=true \
             --no-fail-on-empty-changeset
 
       - name: Get Immediate Response Function URL from Alias
