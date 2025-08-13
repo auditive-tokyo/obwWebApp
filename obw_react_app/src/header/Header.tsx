@@ -33,7 +33,7 @@ function Header() {
         <select
           value={lang}
           onChange={handleLangChange}
-          className="px-3 py-2 rounded bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
+          className="px-3 py-2 rounded bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
         >
           <option value="en">🇺🇸 EN</option>
           <option value="ja">🇯🇵 JA</option>

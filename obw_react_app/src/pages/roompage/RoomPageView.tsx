@@ -89,7 +89,7 @@ export function RoomPageView(props: RoomPageViewProps) {
         {/* この部屋の申請状況 */}
         {guestSessions && guestSessions.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">この部屋の申請状況</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">{getMessage("roomStatus")}</h3>
             <ul className="divide-y divide-gray-200">
               {guestSessions.map(g => {
                 const isSelected = selectedSession &&

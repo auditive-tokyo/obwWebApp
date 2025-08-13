@@ -7,6 +7,7 @@ export type SupportedLang =
   | "back"
   | "edit"
   | "clear"
+  | "roomStatus"
   | "welcome"
   | "registeringBasicInfo"
   | "basicInfoError"
@@ -62,6 +63,7 @@ type Messages = {
     back: string;
     edit: string;
     clear: string;
+    roomStatus: string;
     welcome: string;
     registeringBasicInfo: string;
     basicInfoError: string;
@@ -119,6 +121,7 @@ const messages: Messages = {
     back: "戻る",
     edit: "入力・編集",
     clear: "選択をクリア",
+    roomStatus: "この部屋の申請状況",
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
@@ -180,6 +183,7 @@ const messages: Messages = {
     back: "Back",
     edit: "Input / Edit",
     clear: "Clear Selection",
+    roomStatus: "Room Status",
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
     registeringBasicInfo: "Registering basic information...",
     basicInfoError: "Failed to register basic information.",
