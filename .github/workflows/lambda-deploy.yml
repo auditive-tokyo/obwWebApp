@@ -53,17 +53,42 @@ jobs:
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
-      - name: Get GuestTableName from CloudFormation Outputs
+      - name: Ensure AppSync base stack exists (EnableLambdaIntegration=false)
+        run: |
+          set -e
+          if ! aws cloudformation describe-stacks --stack-name obw-appsync-stack >/dev/null 2>&1; then
+            echo "obw-appsync-stack not found. Deploying base stack..."
+            aws cloudformation deploy \
+              --template-file obw_react_app/infrastructure/cloudformation.yaml \
+              --stack-name obw-appsync-stack \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --parameter-overrides EnableLambdaIntegration=false \
+              --no-fail-on-empty-changeset
+          else
+            echo "obw-appsync-stack exists. Skipping base deploy."
+          fi
+
+      - name: Get GuestTableName from CloudFormation (Outputs or Exports)
         id: get_guest_table_name
         run: |
+          set -e
           GUEST_TABLE_NAME=$(aws cloudformation describe-stacks \
             --stack-name obw-appsync-stack \
             --query "Stacks[0].Outputs[?OutputKey=='GuestTableName'].OutputValue" \
-            --output text)
+            --output text || true)
+
           if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
-            echo "GuestTableName not found. Did you deploy AppSync base stack (EnableLambdaIntegration=false)?" >&2
+            echo "Outputs not found. Trying Exports (Obw-GuestTableName)..."
+            GUEST_TABLE_NAME=$(aws cloudformation list-exports \
+              --query "Exports[?Name=='Obw-GuestTableName'].Value" \
+              --output text || true)
+          fi
+
+          if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
+            echo "GuestTableName not found. Ensure cloudformation.yaml has Outputs.GuestTableName and stack deployed." >&2
             exit 1
           fi
+
           echo "GuestTableName is $GUEST_TABLE_NAME"
           echo "guest_table_name=$GUEST_TABLE_NAME" >> $GITHUB_OUTPUT
 
