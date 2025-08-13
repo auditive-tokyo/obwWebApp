@@ -27,11 +27,25 @@ jobs:
           role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
           aws-region: ap-northeast-1
 
+      - name: Validate CloudFormation template
+        run: aws cloudformation validate-template --template-body file://obw_react_app/infrastructure/cloudformation.yaml
+
       - name: Deploy CloudFormation stack (AppSync base)
         run: |
+          set -e
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \
             --stack-name obw-appsync-stack \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides EnableLambdaIntegration=false \
             --no-fail-on-empty-changeset
+
+      - name: Show stack events on failure
+        if: failure()
+        run: aws cloudformation describe-stack-events --stack-name obw-appsync-stack --max-items 50
+
+      - name: List AppSync data sources (debug)
+        run: |
+          API_ID=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack \
+            --query "Stacks[0].Outputs[?OutputKey=='AppSyncApiId'].OutputValue" --output text)
+          aws appsync list-data-sources --api-id "$API_ID"

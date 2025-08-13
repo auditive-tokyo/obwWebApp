@@ -207,12 +207,14 @@ Resources:
 
   CreateGuestResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: createGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -243,12 +245,14 @@ Resources:
 
   UpdateGuestResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: updateGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -276,12 +280,14 @@ Resources:
 
   GetGuestResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: getGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -296,12 +302,14 @@ Resources:
 
   ListGuestsResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuests
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -312,12 +320,14 @@ Resources:
 
   ListGuestsByRoomResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByRoom
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -377,14 +387,6 @@ Resources:
       TypeName: Mutation
       FieldName: requestAccess
       DataSourceName: !GetAtt RequestAccessLambdaDataSource.Name
-      RequestMappingTemplate: |
-        {
-          "version": "2018-05-29",
-          "operation": "Invoke",
-          "payload": $util.toJson($ctx.args)
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result)
 
   VerifyAccessTokenResolver:
     Condition: DoLambdaIntegration
@@ -394,19 +396,14 @@ Resources:
       TypeName: Mutation
       FieldName: verifyAccessToken
       DataSourceName: !GetAtt VerifyAccessTokenLambdaDataSource.Name
-      RequestMappingTemplate: |
-        {
-          "version": "2018-05-29",
-          "operation": "Invoke",
-          "payload": $util.toJson($ctx.args)
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result)
 
 Outputs:
   ApiEndpoint:
     Description: "AppSync API Endpoint"
     Value: !GetAtt AppSyncApi.GraphQLUrl
+  AppSyncApiId:
+    Description: "AppSync API ID"
+    Value: !GetAtt AppSyncApi.ApiId
   CognitoIdentityPoolId:
     Description: "Cognito Identity Pool ID"
     Value: !Ref IdentityPool
