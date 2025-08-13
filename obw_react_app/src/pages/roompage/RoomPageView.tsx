@@ -86,65 +86,64 @@ export function RoomPageView(props: RoomPageViewProps) {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
-        {/* この部屋の申請状況 */}
-        {guestSessions && guestSessions.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">{getMessage("roomStatus")}</h3>
-            <ul className="divide-y divide-gray-200">
-              {guestSessions.map(g => {
-                const isSelected = selectedSession &&
-                  selectedSession.roomNumber === g.roomNumber &&
-                  selectedSession.guestName === g.guestName
-                return (
-                  <li
-                    key={`${g.roomNumber}_${g.guestName}`}
-                    className={
-                      "py-2 px-2 flex items-center justify-between cursor-pointer select-none " +
-                      (isSelected ? "bg-blue-50 ring-1 ring-blue-300 rounded-md" : "hover:bg-gray-50")
-                    }
-                    onClick={() => setSelectedSession(g)}
-                    aria-selected={isSelected}
-                    title={new Date(g.lastUpdated).toLocaleString()}
-                  >
-                    <span className="text-sm text-gray-800 truncate">{g.guestName}</span>
-                    <span
-                      className={
-                        'text-xs px-2 py-0.5 rounded-full ' +
-                        (g.approvalStatus === 'approved'
-                          ? 'bg-green-100 text-green-700'
-                          : g.approvalStatus === 'rejected'
-                          ? 'bg-red-100 text-red-700'
-                          : g.approvalStatus === 'pending'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-blue-100 text-blue-700')
-                      }
-                    >
-                      {g.approvalStatus}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-
-            {selectedSession && (
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="button"
-                  className="text-sm text-blue-600 hover:underline"
-                  onClick={clearSelection}
-                >
-                  {getMessage("clear")}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ヘッダーカード */}
+        {/* ヘッダーカード（ROOM + Room Status + 申請状況リスト） */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">
             ROOM {roomId}
           </h1>
+          {guestSessions && guestSessions.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                {getMessage("roomStatus")}
+              </h3>
+              <ul className="divide-y divide-gray-200 border border-gray-100 rounded-md">
+                {guestSessions.map(g => {
+                  const isSelected = selectedSession &&
+                    selectedSession.roomNumber === g.roomNumber &&
+                    selectedSession.guestName === g.guestName
+                  return (
+                    <li
+                      key={`${g.roomNumber}_${g.guestName}`}
+                      className={
+                        "py-2 px-3 flex items-center justify-between cursor-pointer select-none " +
+                        (isSelected ? "bg-blue-50 ring-1 ring-blue-300 rounded-md" : "hover:bg-gray-50")
+                      }
+                      onClick={() => setSelectedSession(g)}
+                      aria-selected={isSelected}
+                      title={new Date(g.lastUpdated).toLocaleString()}
+                    >
+                      <span className="text-sm text-gray-800 truncate">{g.guestName}</span>
+                      <span
+                        className={
+                          'text-xs px-2 py-0.5 rounded-full ' +
+                          (g.approvalStatus === 'approved'
+                            ? 'bg-green-100 text-green-700'
+                            : g.approvalStatus === 'rejected'
+                            ? 'bg-red-100 text-red-700'
+                            : g.approvalStatus === 'pending'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-blue-100 text-blue-700')
+                        }
+                      >
+                        {g.approvalStatus}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+              {selectedSession && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    className="text-sm text-blue-600 hover:underline"
+                    onClick={clearSelection}
+                  >
+                    {getMessage("clear")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* セキュリティ・法的情報カード */}
