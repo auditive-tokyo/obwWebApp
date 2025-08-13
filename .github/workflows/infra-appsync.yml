@@ -67,3 +67,7 @@ jobs:
           else
             echo "Lambda exports not found. Skipping enable step."
           fi
+
+      - name: Show AppSync stack events on failure (post-enable)
+        if: failure()
+        run: aws cloudformation describe-stack-events --stack-name obw-appsync-stack --max-items 50
