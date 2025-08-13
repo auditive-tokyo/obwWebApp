@@ -376,7 +376,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: requestAccess
-      DataSourceName: !Ref RequestAccessLambdaDataSource
+      DataSourceName: !GetAtt RequestAccessLambdaDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2018-05-29",
@@ -393,7 +393,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: verifyAccessToken
-      DataSourceName: !Ref VerifyAccessTokenLambdaDataSource
+      DataSourceName: !GetAtt VerifyAccessTokenLambdaDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2018-05-29",
