@@ -38,6 +38,9 @@ Parameters:
     Type: String
     Description: "Function URL for Immediate Response, provided from Outputs"
     Default: ""
+  GuestTableName:
+    Type: String
+    Description: "DynamoDB guest table name (from AppSync stack)"
 
 Resources:
   # TwilioのLambda用レイヤー
@@ -196,6 +199,52 @@ Resources:
           - POST
         AllowCredentials: false
 
+  RequestAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: request-access-function
+      Handler: lambda_handler_request_access.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      CodeUri: lambda_functions/request_access/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref GuestTableName
+          MAIL_FROM: "your-verified-ses@email.com"
+          MAX_TOKEN_LIFETIME_HOURS: "1"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GuestTableName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: "*"
+
+  VerifyAccessTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: verify-access-token-function
+      Handler: lambda_handler_verify_access.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      CodeUri: lambda_functions/verify_access/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref GuestTableName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GuestTableName
+        - DynamoDBWritePolicy:
+            TableName: !Ref GuestTableName
+
 Outputs:
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
@@ -212,3 +261,14 @@ Outputs:
   PassportUploadBucketName:
     Description: "S3 bucket for passport uploads"
     Value: !Ref PassportUploadBucket
+  RequestAccessFunctionArn:
+    Description: "ARN for request-access Lambda"
+    Value: !GetAtt RequestAccessFunction.Arn
+    Export:
+      Name: Obw-RequestAccessFunctionArn
+
+  VerifyAccessTokenFunctionArn:
+    Description: "ARN for verify-access-token Lambda"
+    Value: !GetAtt VerifyAccessTokenFunction.Arn
+    Export:
+      Name: Obw-VerifyAccessTokenFunctionArn

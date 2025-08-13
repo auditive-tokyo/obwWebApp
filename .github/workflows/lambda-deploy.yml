@@ -2,7 +2,7 @@ name: Deploy Lambda Functions
 
 on:
   push:
-    branches: [main, feature/chat-frontend] # 本番では main ブランチを使用
+    branches: [main, feature/magic-link-access] # 本番では main ブランチを使用
     paths:
       - 'lambda_functions/**'
       - 'layers/**'
