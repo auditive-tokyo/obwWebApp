@@ -115,6 +115,21 @@ jobs:
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
+      - name: Wait for Lambda exports (Function ARNs)
+        run: |
+          set -e
+          for i in {1..10}; do
+            COUNT=$(aws cloudformation list-exports \
+              --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn'])" \
+              --output text || echo 0)
+            if [ "$COUNT" -ge 2 ]; then
+              echo "Lambda exports found."
+              break
+            fi
+            echo "Waiting for Lambda exports... ($i/10)"
+            sleep 6
+          done
+
       - name: Enable Lambda integration in AppSync
         run: |
           aws cloudformation deploy \
