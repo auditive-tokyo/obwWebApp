@@ -1,15 +1,19 @@
-import os
-import boto3
-import hashlib
-import time
-from datetime import datetime
+import os, boto3, hashlib, time
+from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.client('dynamodb')
-
 TABLE_NAME = os.environ.get("TABLE_NAME")
+PROVISIONAL_SESSION_HOURS = 24  # 仮セッション時間
+PROPERTY_TZ_OFFSET_HOURS = 9  # JST=+9
 
 def hash_token(token):
     return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+def checkout_noon_epoch(date_str: str, tz_offset_hours: int = 9, noon_hour: int = 12) -> int:
+    y, m, d = map(int, date_str.split('-'))
+    tz = timezone(timedelta(hours=tz_offset_hours))
+    dt = datetime(y, m, d, noon_hour, 0, 0, tzinfo=tz)
+    return int(dt.timestamp())
 
 def lambda_handler(event, context):
     args = event.get('arguments', {})
@@ -22,46 +26,54 @@ def lambda_handler(event, context):
 
     token_hash = hash_token(token)
 
-    # Get item by PK/SK
+    # 取得
     resp = dynamodb.get_item(
         TableName=TABLE_NAME,
-        Key={
-            "roomNumber": {"S": room_number},
-            "guestId": {"S": guest_id}
-        }
+        Key={"roomNumber": {"S": room_number}, "guestId": {"S": guest_id}}
     )
     item = resp.get('Item')
     if not item:
         return {"success": False, "guest": None}
 
-    # Check token hash and expiry
-    if item.get("sessionTokenHash", {}).get("S") != token_hash:
-        return {"success": False, "guest": None}
-    expires = int(item.get("sessionTokenExpiresAt", {}).get("N", "0"))
-    now = int(time.time())
-    if now > expires:
+    expected = item.get("sessionTokenHash", {}).get("S")
+    if not expected or expected != token_hash:
         return {"success": False, "guest": None}
 
-    # 状態遷移: pendingVerification → waitingForPassportImage
-    if item.get("approvalStatus", {}).get("S") == "pendingVerification":
+    status = item.get("approvalStatus", {}).get("S", "")
+    now = int(time.time())
+
+    # 新しい有効期限を決定
+    check_out = item.get("checkOutDate", {}).get("S")  # 例: "YYYY-MM-DD"
+    if check_out:
+        new_expires = checkout_noon_epoch(check_out, PROPERTY_TZ_OFFSET_HOURS)
+    else:
+        new_expires = now + PROVISIONAL_SESSION_HOURS * 3600  # 仮セッション
+
+    # 状態更新
+    if status == "pendingVerification":
+        # 初回認証: TTL 削除 + ステータス遷移 + 期限セット
         dynamodb.update_item(
             TableName=TABLE_NAME,
-            Key={
-                "roomNumber": {"S": room_number},
-                "guestId": {"S": guest_id}
-            },
-            UpdateExpression="SET approvalStatus = :status, updatedAt = :now REMOVE pendingVerificationTtl",
+            Key={"roomNumber": {"S": room_number}, "guestId": {"S": guest_id}},
+            UpdateExpression="""
+              SET approvalStatus = :status,
+                  sessionTokenExpiresAt = :exp,
+                  updatedAt = :u
+              REMOVE pendingVerificationTtl
+            """,
             ExpressionAttributeValues={
                 ":status": {"S": "waitingForPassportImage"},
-                ":now": {"S": datetime.utcnow().isoformat()}
+                ":exp": {"N": str(new_expires)},
+                ":u": {"S": datetime.utcnow().isoformat()}
             }
         )
-        item["approvalStatus"] = {"S": "waitingForPassportImage"}
+        return {"success": True, "guest": None}
 
-    # 返却項目を限定（機微情報は返さない。tokenは返さない）
-    def unwrap(attr):
-        if not isinstance(attr, dict): return None
-        return attr.get("S") or attr.get("N") or attr.get("BOOL")
-    allowed = ("roomNumber","guestId","guestName","approvalStatus","createdAt","updatedAt","contactChannel")
-    guest = {k: unwrap(item[k]) for k in allowed if k in item}
-    return {"success": True, "guest": guest}
+    # 既に認証済み（waitingForPassportImage等）の再アクセス:
+    # 期限があるならチェック（安全のため）
+    expires_val = int(item.get("sessionTokenExpiresAt", {}).get("N", "0"))
+    if expires_val and now > expires_val:
+        return {"success": False, "guest": None}
+
+    # 必要に応じてスライディング延長したい場合はここで延長しても良い
+    return {"success": True, "guest": None}

@@ -12,8 +12,7 @@ sns = boto3.client('sns')
 
 TABLE_NAME = os.environ.get("TABLE_NAME")
 APP_BASE_URL = "https://app.osakabaywheel.com"
-MAIL_FROM = os.environ.get("MAIL_FROM")
-MAX_TOKEN_LIFETIME_HOURS = 1
+MAIL_FROM = "keigochezstudio@gmail.com"
 
 def generate_token():
     return base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
@@ -36,7 +35,6 @@ def lambda_handler(event, context):
     token_hash = hash_token(token)
 
     now = int(time.time())
-    expires = now + MAX_TOKEN_LIFETIME_HOURS * 3600
     pending_verification_ttl = now + 86400  # 24h
 
     # DynamoDB put item
@@ -47,7 +45,6 @@ def lambda_handler(event, context):
             "guestId": {"S": guest_id},
             "guestName": {"S": guest_name},
             "sessionTokenHash": {"S": token_hash},
-            "sessionTokenExpiresAt": {"N": str(expires)},
             "approvalStatus": {"S": "pendingVerification"},
             "pendingVerificationTtl": {"N": str(pending_verification_ttl)},
             "createdAt": {"S": datetime.utcnow().isoformat()},
