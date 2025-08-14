@@ -20,7 +20,8 @@ export function listGuestSessionsByRoom(roomNumber: string): GuestSession[] {
     }
   }
   return list.sort(
-    (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+    (a, b) =>
+      new Date(b.lastUpdated || '').getTime() - new Date(a.lastUpdated || '').getTime()
   )
 }
 
@@ -89,6 +90,7 @@ export const recoverGuestSession = async (
     if (matchedGuest) {
       return {
         roomNumber,
+        guestId: matchedGuest.id,
         guestName: matchedGuest.guestName,
         phone,
         registrationDate: date,

@@ -21,8 +21,7 @@ export const handleNext = async (params: HandleNextParams) => {
     checkOutDate,
     promoConsent,
     client,
-    setMessage,
-    setCurrentStep
+    setMessage
   } = params
 
   setMessage(getMessage("registeringBasicInfo") as string)
@@ -65,6 +64,7 @@ export const handleNext = async (params: HandleNextParams) => {
     // ローカルストレージにゲストセッションを保存
     saveGuestSession({
       roomNumber: roomId,
+      guestId: res.data.createGuest.guestName, // 仮のIDとしてゲスト名を使用
       guestName: name,
       phone,
       registrationDate: new Date().toISOString().split('T')[0],
@@ -75,7 +75,7 @@ export const handleNext = async (params: HandleNextParams) => {
     // setApprovalStatus('waitingForPassportImage')
     console.debug("Basic info registration completed:", res)
     setMessage(getMessage("basicInfoSaved") as string)
-    setCurrentStep('upload')
+    // setCurrentStep('upload')
   } catch (e) {
     console.error("Basic info registration error:", e)
     setMessage(getMessage("basicInfoError") as string)

@@ -1,6 +1,7 @@
 // import { loadGuestSession, saveGuestSession } from './sessionUtils'
 
 type ApprovalStatus =
+  | 'waitingForBasicInfo'
   | 'waitingForPassportImage'
   | 'pending'
   | 'approved'
@@ -8,11 +9,23 @@ type ApprovalStatus =
 
 export interface GuestSession {
   roomNumber: string
+  guestId: string
   guestName: string
   phone: string
-  registrationDate: string    // YYYY-MM-DD
+  // 以降は任意項目（getGuestで返る可能性のある項目）
+  email?: string
+  address?: string
+  occupation?: string
+  nationality?: string
+  checkInDate?: string | Date | null
+  checkOutDate?: string | Date | null
+  promoConsent?: boolean
+  passportImageUrl?: string | null
+  registrationDate?: string    // YYYY-MM-DD
   approvalStatus: ApprovalStatus
-  lastUpdated: string
+  lastUpdated?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 // 実装に依存しない関数型を宣言
@@ -25,7 +38,6 @@ export type SaveGuestSessionFn = (data: GuestSession) => void
  */
 export interface RoomPageViewProps {
   roomId: string // 部屋番号
-  currentStep: 'info' | 'upload' // 現在の画面ステップ
 
   // 基本情報入力欄
   name: string
@@ -63,6 +75,9 @@ export interface RoomPageViewProps {
 
   // この部屋の申請状況一覧（任意）
   guestSessions?: GuestSession[]
+  selectedGuest: GuestSession | null
+  onSelectGuest: (guestId: string | null) => void
+  onAddGuest: () => void
 }
 
 /**
@@ -82,7 +97,7 @@ export interface HandleNextParams {
   promoConsent: boolean
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  setCurrentStep: (step: 'info' | 'upload') => void // 画面ステップ更新用
+  // setCurrentStep: (step: 'info' | 'upload') => void // 画面ステップ更新用
 }
 
 /**

@@ -5,6 +5,7 @@ import CheckinPage from './pages/CheckinPage'
 import ErrorPage from './pages/ErrorPage'
 import Header from './header/Header'
 import ChatWidget from './components/ChatWidget'
+import AuthPage from './pages/AuthPage'
 
 const allowedRooms = ['201', '304']
 
@@ -20,6 +21,9 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<MainPage />} />
+          <Route path="/auth/:roomId" element={<AuthPage />} />
+          {/* 既存のメール内リンク /room/:roomId?guestId=...&token=... に対応 */}
+          <Route path="/room/:roomId" element={<AuthPage />} />
           <Route
             path=":roomId"
             element={isValidRoom ? <RoomPage /> : <ErrorPage />}
