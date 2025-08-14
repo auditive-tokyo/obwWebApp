@@ -4,7 +4,7 @@ import uuid
 import base64
 import hashlib
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 dynamodb = boto3.client('dynamodb')
 ses = boto3.client('ses')
@@ -19,6 +19,10 @@ def generate_token():
 
 def hash_token(token):
     return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+def now_iso_ms_z() -> str:
+    # 例: 2025-08-14T11:40:29.504Z
+    return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
 def lambda_handler(event, context):
     args = event.get('arguments', {}).get('input', {})
@@ -47,8 +51,8 @@ def lambda_handler(event, context):
             "sessionTokenHash": {"S": token_hash},
             "approvalStatus": {"S": "pendingVerification"},
             "pendingVerificationTtl": {"N": str(pending_verification_ttl)},
-            "createdAt": {"S": datetime.utcnow().isoformat()},
-            "updatedAt": {"S": datetime.utcnow().isoformat()},
+            "createdAt": {"S": now_iso_ms_z()},
+            "updatedAt": {"S": now_iso_ms_z()},
             "contactChannel": {"S": "email" if email else "sms"}
         }
     )

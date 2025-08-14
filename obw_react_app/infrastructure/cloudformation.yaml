@@ -52,16 +52,16 @@ Resources:
           roomNumber: String!
           guestId: String!
           guestName: String!
-          email: String!
-          address: String!
-          phone: String!
+          email: String
+          address: String
+          phone: String
           occupation: String
-          nationality: String!
+          nationality: String
           passportImageUrl: String
-          checkInDate: AWSDate!
-          checkOutDate: AWSDate!
+          checkInDate: AWSDate
+          checkOutDate: AWSDate
           approvalStatus: String!
-          promoConsent: Boolean!
+          promoConsent: Boolean
           sessionTokenExpiresAt: AWSTimestamp
           sessionTokenHash: String
           pendingVerificationTtl: AWSTimestamp

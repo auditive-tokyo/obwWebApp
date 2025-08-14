@@ -15,6 +15,9 @@ def checkout_noon_epoch(date_str: str, tz_offset_hours: int = 9, noon_hour: int 
     dt = datetime(y, m, d, noon_hour, 0, 0, tzinfo=tz)
     return int(dt.timestamp())
 
+def now_iso_ms_z() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
 def lambda_handler(event, context):
     args = event.get('arguments', {})
     room_number = args.get('roomNumber')
@@ -54,17 +57,17 @@ def lambda_handler(event, context):
         # 初回認証: TTL 削除 + ステータス遷移 + 期限セット
         dynamodb.update_item(
             TableName=TABLE_NAME,
-            Key={"roomNumber": {"S": room_number}, "guestId": {"S": guest_id}},
+            Key={'roomNumber': {'S': room_number}, 'guestId': {'S': guest_id}},
             UpdateExpression="""
-              SET approvalStatus = :status,
+              SET approvalStatus = :w,
                   sessionTokenExpiresAt = :exp,
                   updatedAt = :u
               REMOVE pendingVerificationTtl
             """,
             ExpressionAttributeValues={
-                ":status": {"S": "waitingForPassportImage"},
-                ":exp": {"N": str(new_expires)},
-                ":u": {"S": datetime.utcnow().isoformat()}
+              ':w': {'S': 'waitingForPassportImage'},
+              ':exp': {'N': str(new_expires)},
+              ':u': {'S': now_iso_ms_z()},
             }
         )
         return {"success": True, "guest": None}
