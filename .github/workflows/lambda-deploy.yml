@@ -16,6 +16,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    concurrency:
+      group: obw-appsync-stack
+      cancel-in-progress: false
 
     steps:
       - name: Checkout main repository
@@ -128,6 +131,15 @@ jobs:
             fi
             echo "Waiting for Lambda exports... ($i/10)"
             sleep 6
+          done
+
+      - name: Wait until AppSync stack is idle
+        run: |
+          for i in {1..20}; do
+            STATUS=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack --query "Stacks[0].StackStatus" --output text || echo "")
+            echo "AppSync stack status: $STATUS"
+            if [[ "$STATUS" != *"_IN_PROGRESS" ]]; then break; fi
+            sleep 9
           done
 
       - name: Enable Lambda integration in AppSync

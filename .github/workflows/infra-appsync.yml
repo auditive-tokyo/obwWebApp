@@ -17,6 +17,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    concurrency:
+      group: obw-appsync-stack
+      cancel-in-progress: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,14 +33,19 @@ jobs:
       - name: Validate CloudFormation template
         run: aws cloudformation validate-template --template-body file://obw_react_app/infrastructure/cloudformation.yaml
 
-      - name: Deploy CloudFormation stack (AppSync base)
+      - name: Deploy CloudFormation stack (AppSync dynamic)
         run: |
           set -e
+          COUNT=$(aws cloudformation list-exports \
+            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn'])" \
+            --output text || echo 0)
+          if [ "$COUNT" -ge 2 ]; then FLAG=true; else FLAG=false; fi
+          echo "EnableLambdaIntegration=${FLAG}"
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \
             --stack-name obw-appsync-stack \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides EnableLambdaIntegration=false \
+            --parameter-overrides EnableLambdaIntegration=${FLAG} \
             --no-fail-on-empty-changeset
 
       - name: Show stack events on failure
@@ -49,25 +57,3 @@ jobs:
           API_ID=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack \
             --query "Stacks[0].Outputs[?OutputKey=='AppSyncApiId'].OutputValue" --output text)
           aws appsync list-data-sources --api-id "$API_ID"
-
-      - name: Enable Lambda integration (only if Lambda exports exist)
-        run: |
-          set -e
-          COUNT=$(aws cloudformation list-exports \
-            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn'])" \
-            --output text || echo 0)
-          if [ "$COUNT" -ge 2 ]; then
-            echo "Lambda exports found. Enabling integration..."
-            aws cloudformation deploy \
-              --template-file obw_react_app/infrastructure/cloudformation.yaml \
-              --stack-name obw-appsync-stack \
-              --capabilities CAPABILITY_NAMED_IAM \
-              --parameter-overrides EnableLambdaIntegration=true \
-              --no-fail-on-empty-changeset
-          else
-            echo "Lambda exports not found. Skipping enable step."
-          fi
-
-      - name: Show AppSync stack events on failure (post-enable)
-        if: failure()
-        run: aws cloudformation describe-stack-events --stack-name obw-appsync-stack --max-items 50
