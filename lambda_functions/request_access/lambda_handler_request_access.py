@@ -48,11 +48,12 @@ def lambda_handler(event, context):
             "roomNumber": {"S": room_number},
             "guestId": {"S": guest_id},
             "guestName": {"S": guest_name},
+            "email": {"S": email},
+            "phone": {"S": phone},
             "sessionTokenHash": {"S": token_hash},
             "approvalStatus": {"S": "pendingVerification"},
             "pendingVerificationTtl": {"N": str(pending_verification_ttl)},
             "createdAt": {"S": now_iso_ms_z()},
-            "updatedAt": {"S": now_iso_ms_z()},
             "contactChannel": {"S": "email" if email else "sms"}
         }
     )
