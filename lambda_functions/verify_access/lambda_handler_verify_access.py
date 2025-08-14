@@ -65,14 +65,14 @@ def lambda_handler(event, context):
               REMOVE pendingVerificationTtl
             """,
             ExpressionAttributeValues={
-              ':w': {'S': 'waitingForPassportImage'},
+              ':w': {'S': 'waitingForBasicInfo'},
               ':exp': {'N': str(new_expires)},
               ':u': {'S': now_iso_ms_z()},
             }
         )
         return {"success": True, "guest": None}
 
-    # 既に認証済み（waitingForPassportImage等）の再アクセス:
+    # 既に認証済み（waitingForBasicInfo等）の再アクセス:
     # 期限があるならチェック（安全のため）
     expires_val = int(item.get("sessionTokenExpiresAt", {}).get("N", "0"))
     if expires_val and now > expires_val:
