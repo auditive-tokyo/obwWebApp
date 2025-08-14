@@ -62,7 +62,7 @@ Resources:
           checkOutDate: AWSDate!
           approvalStatus: String!
           promoConsent: Boolean!
-          sessionTokenExpiresAt: AWSDateTime
+          sessionTokenExpiresAt: AWSTimestamp
           sessionTokenHash: String
           pendingVerificationTtl: AWSTimestamp
           contactChannel: String
@@ -99,9 +99,6 @@ Resources:
           checkOutDate: AWSDate
           approvalStatus: String
           promoConsent: Boolean
-          sessionTokenExpiresAt: AWSDateTime
-          sessionTokenHash: String
-          pendingVerificationTtl: AWSTimestamp
           contactChannel: String
         }
 
@@ -234,7 +231,7 @@ Resources:
             "passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl),
             "checkInDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate),
             "checkOutDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate),
-            "approvalStatus": $util.dynamodb.toDynamoDBJson("waitingForPassportImage"),
+            "approvalStatus": $util.dynamodb.toDynamoDBJson("pendingVerification"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
@@ -254,6 +251,43 @@ Resources:
       FieldName: updateGuest
       DataSourceName: guestcheckintable
       RequestMappingTemplate: |
+        #set($exp = "SET #updatedAt = :updatedAt")
+        #set($names = {
+          "#updatedAt": "updatedAt"
+        })
+        #set($values = {
+          ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+        })
+
+        #macro(addString name field)
+          #if(!$util.isNullOrEmpty($ctx.args.input.$field))
+            #set($exp = $exp + ", #$field = :$field")
+            $util.qr($names.put("#$field","$field"))
+            $util.qr($values.put(":$field",$util.dynamodb.toDynamoDBJson($ctx.args.input.$field)))
+          #end
+        #end
+
+        #macro(addBool name field)
+          #if(!$util.isNull($ctx.args.input.$field))
+            #set($exp = $exp + ", #$field = :$field")
+            $util.qr($names.put("#$field","$field"))
+            $util.qr($values.put(":$field",$util.dynamodb.toDynamoDBJson($ctx.args.input.$field)))
+          #end
+        #end
+
+        #addString($names "guestName")
+        #addString($names "email")
+        #addString($names "address")
+        #addString($names "phone")
+        #addString($names "occupation")
+        #addString($names "nationality")
+        #addString($names "passportImageUrl")
+        #addString($names "checkInDate")
+        #addString($names "checkOutDate")
+        #addString($names "approvalStatus")
+        #addString($names "contactChannel")
+        #addBool($names "promoConsent")
+
         {
           "version": "2017-02-28",
           "operation": "UpdateItem",
@@ -262,17 +296,9 @@ Resources:
             "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId)
           },
           "update": {
-            "expression": "SET #updatedAt = :updatedAt, #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl",
-            "expressionNames": {
-              "#updatedAt": "updatedAt",
-              "#approvalStatus": "approvalStatus",
-              "#passportImageUrl": "passportImageUrl"
-            },
-            "expressionValues": {
-              ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
-              ":approvalStatus": $util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus),
-              ":passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl)
-            }
+            "expression": "$exp",
+            "expressionNames": $util.toJson($names),
+            "expressionValues": $util.toJson($values)
           }
         }
       ResponseMappingTemplate: |
@@ -382,6 +408,9 @@ Resources:
   RequestAccessResolver:
     Condition: DoLambdaIntegration
     Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - RequestAccessLambdaDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
@@ -391,6 +420,9 @@ Resources:
   VerifyAccessTokenResolver:
     Condition: DoLambdaIntegration
     Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - VerifyAccessTokenLambdaDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation

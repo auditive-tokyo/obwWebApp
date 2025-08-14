@@ -58,6 +58,10 @@ def lambda_handler(event, context):
         )
         item["approvalStatus"] = {"S": "waitingForPassportImage"}
 
-    # 整形して返却
-    guest = {k: v.get(list(v.keys())[0]) for k, v in item.items()}
+    # 返却項目を限定（機微情報は返さない。tokenは返さない）
+    def unwrap(attr):
+        if not isinstance(attr, dict): return None
+        return attr.get("S") or attr.get("N") or attr.get("BOOL")
+    allowed = ("roomNumber","guestId","guestName","approvalStatus","createdAt","updatedAt","contactChannel")
+    guest = {k: unwrap(item[k]) for k in allowed if k in item}
     return {"success": True, "guest": guest}
