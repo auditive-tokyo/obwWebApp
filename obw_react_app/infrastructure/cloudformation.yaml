@@ -258,33 +258,64 @@ Resources:
           ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
         })
 
-        #macro(addString name field)
-          #if(!$util.isNullOrEmpty($ctx.args.input.$field))
-            #set($exp = $exp + ", #$field = :$field")
-            $util.qr($name.put("#$field","$field"))
-            $util.qr($values.put(":$field",$util.dynamodb.toDynamoDBJson($ctx.args.input.$field)))
-          #end
+        ## Strings
+        #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
+          #set($exp = $exp + ", #guestName = :guestName")
+          $util.qr($names.put("#guestName","guestName"))
+          $util.qr($values.put(":guestName",$util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.email))
+          #set($exp = $exp + ", #email = :email")
+          $util.qr($names.put("#email","email"))
+          $util.qr($values.put(":email",$util.dynamodb.toDynamoDBJson($ctx.args.input.email)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.address))
+          #set($exp = $exp + ", #address = :address")
+          $util.qr($names.put("#address","address"))
+          $util.qr($values.put(":address",$util.dynamodb.toDynamoDBJson($ctx.args.input.address)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.phone))
+          #set($exp = $exp + ", #phone = :phone")
+          $util.qr($names.put("#phone","phone"))
+          $util.qr($values.put(":phone",$util.dynamodb.toDynamoDBJson($ctx.args.input.phone)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.occupation))
+          #set($exp = $exp + ", #occupation = :occupation")
+          $util.qr($names.put("#occupation","occupation"))
+          $util.qr($values.put(":occupation",$util.dynamodb.toDynamoDBJson($ctx.args.input.occupation)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.nationality))
+          #set($exp = $exp + ", #nationality = :nationality")
+          $util.qr($names.put("#nationality","nationality"))
+          $util.qr($values.put(":nationality",$util.dynamodb.toDynamoDBJson($ctx.args.input.nationality)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.passportImageUrl))
+          #set($exp = $exp + ", #passportImageUrl = :passportImageUrl")
+          $util.qr($names.put("#passportImageUrl","passportImageUrl"))
+          $util.qr($values.put(":passportImageUrl",$util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.checkInDate))
+          #set($exp = $exp + ", #checkInDate = :checkInDate")
+          $util.qr($names.put("#checkInDate","checkInDate"))
+          $util.qr($values.put(":checkInDate",$util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.checkOutDate))
+          #set($exp = $exp + ", #checkOutDate = :checkOutDate")
+          $util.qr($names.put("#checkOutDate","checkOutDate"))
+          $util.qr($values.put(":checkOutDate",$util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate)))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.approvalStatus))
+          #set($exp = $exp + ", #approvalStatus = :approvalStatus")
+          $util.qr($names.put("#approvalStatus","approvalStatus"))
+          $util.qr($values.put(":approvalStatus",$util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus)))
         #end
 
-        #macro(addBool name field)
-          #if(!$util.isNull($ctx.args.input.$field))
-            #set($exp = $exp + ", #$field = :$field")
-            $util.qr($name.put("#$field","$field"))
-            $util.qr($values.put(":$field",$util.dynamodb.toDynamoDBJson($ctx.args.input.$field)))
-          #end
+        ## Booleans
+        #if(!$util.isNull($ctx.args.input.promoConsent))
+          #set($exp = $exp + ", #promoConsent = :promoConsent")
+          $util.qr($names.put("#promoConsent","promoConsent"))
+          $util.qr($values.put(":promoConsent",$util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)))
         #end
-
-        #addString($names "guestName")
-        #addString($names "email")
-        #addString($names "address")
-        #addString($names "phone")
-        #addString($names "occupation")
-        #addString($names "nationality")
-        #addString($names "passportImageUrl")
-        #addString($names "checkInDate")
-        #addString($names "checkOutDate")
-        #addString($names "approvalStatus")
-        #addBool($names "promoConsent")
 
         {
           "version": "2017-02-28",
