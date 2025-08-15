@@ -163,6 +163,33 @@ export default function RoomPage() {
     verifyOnLoad()
   }, [roomId, client])
 
+  useEffect(() => {
+    if (selectedGuest) {
+      setName(selectedGuest.guestName || '')
+      setEmail(selectedGuest.email || '')
+      setAddress(selectedGuest.address || '')
+      setPhone(selectedGuest.phone || '')
+      setOccupation(selectedGuest.occupation || '')
+      setNationality(selectedGuest.nationality || '')
+      setCheckInDate(selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null)
+      setCheckOutDate(selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null)
+      setPassportImageUrl(selectedGuest.passportImageUrl || '')
+      setPromoConsent(!!selectedGuest.promoConsent)
+    } else {
+      setName('')
+      setEmail('')
+      setAddress('')
+      setPhone('')
+      setOccupation('')
+      setNationality('')
+      setCheckInDate(null)
+      setCheckOutDate(null)
+      setPassportImageUrl('')
+      setPromoConsent(false)
+    }
+    // selectedGuestの切替時のみ同期され、入力中に上書きされない
+  }, [selectedGuest?.guestId])
+
   const refreshGuestSessions = useCallback(async () => {
     if (!roomId) { dbg('refreshGuestSessions: no roomId'); return }
     let ids = getGuestIds()
@@ -226,7 +253,7 @@ export default function RoomPage() {
   const handleAddGuest = useCallback(() => {
     const newId =
       (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
-      Math.random().toString(36).slice(2) + Date.now().toString(36)
+      Math.random().toString(36).slice(0) + Date.now().toString(36)
     addGuestId(newId)
     setSelectedGuestId(newId)
     // 未保存の新規ゲストを一時的にリストへ反映（表示上のプレースホルダー）
@@ -243,9 +270,7 @@ export default function RoomPage() {
       }
       return [placeholder, ...prev]
     })
-    // 入力フォームに遷移するためステップをinfoに
-    // setCurrentStep('info')
-    // 入力欄をクリア（必要に応じて）
+    // 入力欄をクリア
     setName('')
     setEmail('')
     setAddress('')
@@ -356,7 +381,8 @@ export default function RoomPage() {
         client={client}
         guestSessions={guestSessions}
         selectedGuest={selectedGuest}
-        onSelectGuest={setSelectedGuestId}
+        // 文字列(gid)でも、オブジェクト(GuestSession)でも受けられるようにする
+        onSelectGuest={(g) => setSelectedGuestId(typeof g === 'string' ? g : g?.guestId ?? null)}
         onAddGuest={handleAddGuest}
       />
     </>

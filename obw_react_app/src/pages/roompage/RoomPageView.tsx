@@ -40,17 +40,6 @@ export function RoomPageView({
 }: RoomPageViewProps) {
   const selectedSession = selectedGuest
 
-  // Date 変換ヘルパー（string|Date|null を Date|null に）
-  const toDate = (v: unknown): Date | null => {
-    if (!v) return null
-    if (v instanceof Date) return v
-    if (typeof v === 'string') {
-      const d = new Date(v)
-      return isNaN(d.getTime()) ? null : d
-    }
-    return null
-  }
-
   // クリック選択時の表示判定
   const shouldShowBasicInfoForSession = (g: any) =>
     g?.approvalStatus === 'waitingForBasicInfo'
@@ -194,23 +183,24 @@ export function RoomPageView({
         {/* 基本情報入力フォーム（新規 or waitingForBasicInfo の人を選択時） */}
         {showForm && (
           <BasicInfoForm
-            name={selectedSession?.guestName ?? name}
+            // 常にローカルstateをフォームに渡す（selectedSessionの値は使わない）
+            name={name}
             setName={setName}
-            phone={selectedSession?.phone ?? phone}
+            phone={phone}
             setPhone={setPhone}
-            email={selectedSession?.email ?? email}
+            email={email}
             setEmail={setEmail}
-            address={selectedSession?.address ?? address}
+            address={address}
             setAddress={setAddress}
-            occupation={selectedSession?.occupation ?? occupation}
+            occupation={occupation}
             setOccupation={setOccupation}
-            nationality={selectedSession?.nationality ?? nationality}
+            nationality={nationality}
             setNationality={setNationality}
-            checkInDate={toDate(selectedSession?.checkInDate) ?? checkInDate}
+            checkInDate={checkInDate}
             setCheckInDate={setCheckInDate}
-            checkOutDate={toDate(selectedSession?.checkOutDate) ?? checkOutDate}
+            checkOutDate={checkOutDate}
             setCheckOutDate={setCheckOutDate}
-            promoConsent={selectedSession?.promoConsent ?? promoConsent}
+            promoConsent={promoConsent}
             setPromoConsent={setPromoConsent}
             isInfoComplete={isInfoComplete}
             onNext={handleNext}

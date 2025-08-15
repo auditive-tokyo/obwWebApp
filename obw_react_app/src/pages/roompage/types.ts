@@ -76,7 +76,7 @@ export interface RoomPageViewProps {
   // この部屋の申請状況一覧（任意）
   guestSessions?: GuestSession[]
   selectedGuest: GuestSession | null
-  onSelectGuest: (guestId: string | null) => void
+  onSelectGuest: (g: string | GuestSession | null) => void
   onAddGuest: () => void
 }
 
