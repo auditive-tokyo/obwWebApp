@@ -65,7 +65,6 @@ Resources:
           sessionTokenExpiresAt: AWSTimestamp
           sessionTokenHash: String
           pendingVerificationTtl: AWSTimestamp
-          contactChannel: String
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
         }
@@ -99,14 +98,14 @@ Resources:
           checkOutDate: AWSDate
           approvalStatus: String
           promoConsent: Boolean
-          contactChannel: String
         }
 
         input RequestAccessInput {
           roomNumber: String!
           guestName: String!
-          email: String
-          phone: String
+          email: String!
+          phone: String!
+          contactChannel: String!
         }
 
         type RequestAccessResult {
@@ -285,7 +284,6 @@ Resources:
         #addString($names "checkInDate")
         #addString($names "checkOutDate")
         #addString($names "approvalStatus")
-        #addString($names "contactChannel")
         #addBool($names "promoConsent")
 
         {
