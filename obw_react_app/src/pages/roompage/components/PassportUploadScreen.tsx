@@ -5,6 +5,7 @@ import { getMessage } from '../../../i18n/messages'
 export function PassportUploadScreen({
   roomId,
   name,
+  guestId,
   client,
   passportImageUrl,
   setPassportImageUrl,
@@ -22,6 +23,7 @@ export function PassportUploadScreen({
         <PassportUpload 
           onUploaded={(url) => setPassportImageUrl(url)} // 型の明示ラップ（stringのみ渡す）
           roomId={roomId} 
+          guestId={guestId}
           guestName={name}
           client={client}
         />

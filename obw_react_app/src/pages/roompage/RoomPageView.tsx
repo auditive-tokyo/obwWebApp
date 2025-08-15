@@ -223,6 +223,7 @@ export function RoomPageView({
             <PassportUploadScreen
               roomId={(selectedSession?.roomNumber ?? roomId) || ""}
               name={selectedSession?.guestName ?? name}
+              guestId={selectedSession?.guestId ?? ""}
               client={client}
               passportImageUrl={passportImageUrl}
               setPassportImageUrl={setPassportImageUrl}

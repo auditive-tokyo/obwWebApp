@@ -5,11 +5,13 @@ export function PassportUpload({
   onUploaded, 
   roomId, 
   guestName, 
+  guestId, 
   client 
 }: { 
   onUploaded: (url: string) => void
   roomId: string
   guestName: string
+  guestId: string
   client: any
 }) {
   const [file, setFile] = useState<File | null>(null)
@@ -70,7 +72,7 @@ export function PassportUpload({
         variables: {
           input: {
             roomNumber: roomId,
-            guestName: guestName,
+            guestId: guestId,
             passportImageUrl: get_url,
             approvalStatus: 'pending'
           }

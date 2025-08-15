@@ -123,6 +123,7 @@ export interface HandleRegisterParams {
 export type PassportUploadScreenProps = {
   roomId: string
   name: string
+  guestId: string
   client: any
   passportImageUrl: string | null
   setPassportImageUrl: (url: string | null) => void
