@@ -97,7 +97,8 @@ export interface HandleNextParams {
   promoConsent: boolean
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  // setCurrentStep: (step: 'info' | 'upload') => void // 画面ステップ更新用
+  guestId?: string | null
+  selectedGuest?: GuestSession | null 
 }
 
 /**

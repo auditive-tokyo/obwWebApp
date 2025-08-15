@@ -67,10 +67,11 @@ export default function RoomPage() {
   const [promoConsent, setPromoConsent] = useState(false)
   const [passportImageUrl, setPassportImageUrl] = useState<string | null>(null)
   const [message, setMessage] = useState("")
-  const [guestSessions, setGuestSessions] = useState<GuestSession[]>([])  // ← 追加
+  const [guestSessions, setGuestSessions] = useState<GuestSession[]>([])
   const [sessionChecked, setSessionChecked] = useState(false)
   const [sessionValid, setSessionValid] = useState(false)
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null)
+  const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
 
   const client = useMemo(() => generateClient(), [])
 
@@ -91,7 +92,7 @@ export default function RoomPage() {
   const handleNext = async () => {
     if (!isInfoComplete) return
     await handleNextAction({
-      roomId: roomId || "",
+      roomId,
       name,
       email,
       address,
@@ -102,7 +103,9 @@ export default function RoomPage() {
       checkOutDate,
       promoConsent,
       client,
-      setMessage
+      setMessage,
+      guestId: selectedGuestId,
+      selectedGuest: selectedGuest,
     })
     await refreshGuestSessions()
   }
@@ -321,9 +324,6 @@ export default function RoomPage() {
   }
 
   // ここから先は認証済みUI（既存の登録/アップロード画面など）
-  // 選択されたゲストの詳細を取得
-  const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
-
   return (
     <>
       <RoomPageView

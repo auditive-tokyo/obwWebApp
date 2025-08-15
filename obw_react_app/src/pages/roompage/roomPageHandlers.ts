@@ -1,6 +1,18 @@
-import { saveGuestSession } from './sessionUtils'
 import type { HandleNextParams, HandleRegisterParams } from './types'
 import { getMessage } from '../../i18n/messages'
+
+const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updateBasicInfo' | 'uploadPassport'): string => {
+  switch (`${currentStatus}-${action}`) {
+    case 'waitingForBasicInfo-updateBasicInfo':
+      return 'waitingForPassportImage'
+    case 'waitingForPassportImage-uploadPassport':
+      return 'pending'
+    case 'undefined-updateBasicInfo': // 新規作成時
+      return 'waitingForPassportImage'
+    default:
+      return currentStatus || 'waitingForBasicInfo'
+  }
+}
 
 /**
  * 基本情報登録処理
@@ -21,26 +33,43 @@ export const handleNext = async (params: HandleNextParams) => {
     checkOutDate,
     promoConsent,
     client,
-    setMessage
+    setMessage,
+    guestId,
+    selectedGuest,
   } = params
 
   setMessage(getMessage("registeringBasicInfo") as string)
 
-  const query = `
-    mutation CreateGuest($input: CreateGuestInput!) {
-      createGuest(input: $input) {
-        roomNumber
-        guestName
-      }
-    }
-  `
-
   const formatDate = (date: Date | null) =>
-    date ? date.toISOString().slice(0, 10) : null;
+    date ? date.toISOString().slice(0, 10) : null
+
+  // guestIdがあればupdate、なければcreate
+  const isUpdate = !!guestId
+
+  const mutation = isUpdate
+    ? `
+      mutation UpdateGuest($input: UpdateGuestInput!) {
+        updateGuest(input: $input) {
+          roomNumber
+          guestId
+          guestName
+        }
+      }
+    `
+    : `
+      mutation CreateGuest($input: CreateGuestInput!) {
+        createGuest(input: $input) {
+          roomNumber
+          guestId
+          guestName
+        }
+      }
+    `
 
   const variables = {
     input: {
       roomNumber: roomId,
+      guestId: guestId, // update時のみ必要
       guestName: name,
       email,
       address,
@@ -50,32 +79,33 @@ export const handleNext = async (params: HandleNextParams) => {
       passportImageUrl: "",
       checkInDate: formatDate(checkInDate),
       checkOutDate: formatDate(checkOutDate),
-      promoConsent
+      promoConsent,
+      approvalStatus: getNextApprovalStatus(selectedGuest?.approvalStatus, 'updateBasicInfo'),
     }
   }
-  
+
+  console.log("mutation input:", variables.input)
+
   try {
     const res = await client.graphql({
-      query,
+      query: mutation,
       variables,
       authMode: 'iam'
     })
 
-    // ローカルストレージにゲストセッションを保存
-    saveGuestSession({
-      roomNumber: roomId,
-      guestId: res.data.createGuest.guestName, // 仮のIDとしてゲスト名を使用
-      guestName: name,
-      phone,
-      registrationDate: new Date().toISOString().split('T')[0],
-      approvalStatus: 'waitingForPassportImage',
-      lastUpdated: new Date().toISOString()
-    })
-    
-    // setApprovalStatus('waitingForPassportImage')
-    console.debug("Basic info registration completed:", res)
+    // ローカルストレージにはguestIdsのみ追加
+    const newGuestId = guestId || res.data.createGuest.guestId
+    const guestIdsRaw = localStorage.getItem('guestIds')
+    let guestIds: string[] = []
+    try {
+      guestIds = guestIdsRaw ? JSON.parse(guestIdsRaw) : []
+    } catch {}
+    if (!guestIds.includes(newGuestId)) {
+      guestIds.push(newGuestId)
+      localStorage.setItem('guestIds', JSON.stringify(guestIds))
+    }
+
     setMessage(getMessage("basicInfoSaved") as string)
-    // setCurrentStep('upload')
   } catch (e) {
     console.error("Basic info registration error:", e)
     setMessage(getMessage("basicInfoError") as string)
