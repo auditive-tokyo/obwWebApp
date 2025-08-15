@@ -261,7 +261,7 @@ Resources:
         #macro(addString name field)
           #if(!$util.isNullOrEmpty($ctx.args.input.$field))
             #set($exp = $exp + ", #$field = :$field")
-            $util.qr($names.put("#$field","$field"))
+            $util.qr($name.put("#$field","$field"))
             $util.qr($values.put(":$field",$util.dynamodb.toDynamoDBJson($ctx.args.input.$field)))
           #end
         #end
@@ -269,7 +269,7 @@ Resources:
         #macro(addBool name field)
           #if(!$util.isNull($ctx.args.input.$field))
             #set($exp = $exp + ", #$field = :$field")
-            $util.qr($names.put("#$field","$field"))
+            $util.qr($name.put("#$field","$field"))
             $util.qr($values.put(":$field",$util.dynamodb.toDynamoDBJson($ctx.args.input.$field)))
           #end
         #end
