@@ -251,12 +251,10 @@ Resources:
       DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         #set($exp = "SET #updatedAt = :updatedAt")
-        #set($names = {
-          "#updatedAt": "updatedAt"
-        })
-        #set($values = {
-          ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
-        })
+        #set($names = {})
+        #set($values = {})
+        $util.qr($names.put("#updatedAt", "updatedAt"))
+        $util.qr($values.put(":updatedAt", $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())))
 
         ## Strings
         #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
