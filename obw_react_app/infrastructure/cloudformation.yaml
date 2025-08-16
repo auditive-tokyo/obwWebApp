@@ -108,6 +108,12 @@ Resources:
           contactChannel: String!
         }
 
+        input GetPresignedUrlInput {
+          filename: String!
+          roomId: String!
+          timestamp: String!
+        }
+
         type RequestAccessResult {
           success: Boolean!
           guestId: String!
@@ -118,11 +124,18 @@ Resources:
           guest: Guest
         }
 
+        type PresignedUrlResult {
+          putUrl: String!
+          getUrl: String!
+          baseUrl: String!  # 恒久的URL
+        }
+
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
           updateGuest(input: UpdateGuestInput!): Guest
           requestAccess(input: RequestAccessInput!): RequestAccessResult
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
+          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult  # ← 追加
         }
 
         type Query {
@@ -165,6 +178,7 @@ Resources:
                 Resource:
                   - !ImportValue Obw-RequestAccessFunctionArn
                   - !ImportValue Obw-VerifyAccessTokenFunctionArn
+                  - !ImportValue Obw-GetPresignedUrlFunctionArn
 
   RequestAccessLambdaDataSource:
     Condition: DoLambdaIntegration
@@ -485,6 +499,37 @@ Resources:
       TypeName: Mutation
       FieldName: verifyAccessToken
       DataSourceName: !GetAtt VerifyAccessTokenLambdaDataSource.Name
+
+  GetPresignedUrlLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: getPresignedUrlLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-GetPresignedUrlFunctionArn
+
+  GetPresignedUrlResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - GetPresignedUrlLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: getPresignedUrl
+      DataSourceName: getPresignedUrlLambda
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
 
 Outputs:
   ApiEndpoint:

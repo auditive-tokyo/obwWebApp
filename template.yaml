@@ -137,17 +137,6 @@ Resources:
       Environment:
         Variables:
           UPLOAD_BUCKET: !Ref PassportUploadBucket
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - http://localhost:5173 # テスト終わったら削除
-            - https://app.osakabaywheel.com
-          AllowHeaders:
-            - content-type
-          AllowMethods:
-            - POST
-          AllowCredentials: false
       Policies:
         - S3WritePolicy:
             BucketName: !Ref PassportUploadBucket
@@ -252,9 +241,6 @@ Outputs:
   AiProcessingFunctionArn:
     Description: "ARN for AI Processing function"
     Value: !GetAtt AiProcessingFunction.Arn
-  GetPresignedUrlFunctionUrl:
-    Description: "Function URL for GetPresignedUrl Lambda"
-    Value: !GetAtt GetPresignedUrlFunctionUrl.FunctionUrl
   ChatFunctionUrl:
     Description: "Function URL for ResponseApiFunction"
     Value: !GetAtt ChatFunctionUrl.FunctionUrl
@@ -266,9 +252,13 @@ Outputs:
     Value: !GetAtt RequestAccessFunction.Arn
     Export:
       Name: Obw-RequestAccessFunctionArn
-
   VerifyAccessTokenFunctionArn:
     Description: "ARN for verify-access-token Lambda"
     Value: !GetAtt VerifyAccessTokenFunction.Arn
     Export:
       Name: Obw-VerifyAccessTokenFunctionArn
+  GetPresignedUrlFunctionArn:
+    Description: "ARN for GetPresignedUrl Lambda"
+    Value: !GetAtt GetPresignedUrlFunction.Arn
+    Export:
+      Name: Obw-GetPresignedUrlFunctionArn

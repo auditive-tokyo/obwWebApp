@@ -3,30 +3,22 @@ import boto3
 import os
 
 def lambda_handler(event, context):
-    # POST bodyからファイル名を取得
-    body = json.loads(event.get('body', '{}'))
-    filename = body.get('filename')
-    room_id = body.get('roomId', 'unknown')
-    timestamp = body.get('timestamp', '')
+    input_data = event.get('arguments', {}).get('input', {})
+    filename = input_data.get('filename')
+    room_id = input_data.get('roomId', 'unknown')
+    timestamp = input_data.get('timestamp', '')
     
     if not filename:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "filename is required"})
-        }
+        raise Exception("filename is required")
 
     bucket = os.environ.get("UPLOAD_BUCKET")
     if not bucket:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "UPLOAD_BUCKET env missing"})
-        }
+        raise Exception("UPLOAD_BUCKET env missing")
 
     s3 = boto3.client('s3')
-    # パスを構築
     s3_key = f"{room_id}/{timestamp}/{filename}"
     
-    # presigned URLを生成（有効期限: 10分）
+    # presigned URLを生成
     put_url = s3.generate_presigned_url(
         ClientMethod='put_object',
         Params={
@@ -34,7 +26,7 @@ def lambda_handler(event, context):
             'Key': s3_key,
             'ContentType': 'image/webp'
         },
-        ExpiresIn=600,
+        ExpiresIn=3600,
         HttpMethod='PUT'
     )
     get_url = s3.generate_presigned_url(
@@ -43,11 +35,15 @@ def lambda_handler(event, context):
             'Bucket': bucket,
             'Key': s3_key
         },
-        ExpiresIn=600,
+        ExpiresIn=3600,
         HttpMethod='GET'
     )
-
+    
+    # 恒久的なS3 URL（署名なし）
+    base_url = f"https://{bucket}.s3.amazonaws.com/{s3_key}"
+    
     return {
-        "statusCode": 200,
-        "body": json.dumps({"put_url": put_url, "get_url": get_url})
+        "putUrl": put_url,
+        "getUrl": get_url,
+        "baseUrl": base_url
     }

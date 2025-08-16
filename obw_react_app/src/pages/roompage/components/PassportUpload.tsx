@@ -36,20 +36,34 @@ export function PassportUpload({
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-      // 3. presigned URL取得
-      const res = await fetch(import.meta.env.VITE_UPLOAD_LAMBDA_URL, {
-        method: 'POST',
-        body: JSON.stringify({ 
-          filename: webpFileName,
-          roomId,
-          timestamp
-        }),
-        headers: { 'Content-Type': 'application/json' }
+      // AppSync経由でpresigned URL取得
+      const presignedQuery = `
+        mutation GetPresignedUrl($input: GetPresignedUrlInput!) {
+          getPresignedUrl(input: $input) {
+            putUrl
+            getUrl
+            baseUrl
+          }
+        }
+      `
+      
+      const presignedResult = await client.graphql({
+        query: presignedQuery,
+        variables: {
+          input: {
+            filename: webpFileName,
+            roomId: roomId,
+            timestamp: timestamp
+          }
+        },
+        authMode: 'iam'
       })
-      const { put_url, get_url } = await res.json()
 
-      // 4. webp画像をアップロード
-      await fetch(put_url, {
+      // 3. presigned URL取得      
+      const { putUrl, getUrl, baseUrl } = presignedResult.data.getPresignedUrl
+
+      // webp画像をアップロード
+      await fetch(putUrl, {
         method: 'PUT',
         body: webpBlob,
         headers: { 'Content-Type': 'image/webp' }
@@ -73,7 +87,7 @@ export function PassportUpload({
           input: {
             roomNumber: roomId,
             guestId: guestId,
-            passportImageUrl: get_url,
+            passportImageUrl: baseUrl,
             approvalStatus: 'pending'
           }
         },
@@ -81,7 +95,7 @@ export function PassportUpload({
       })
 
       // 6. 親コンポーネントに通知
-      onUploaded(get_url)
+      onUploaded(getUrl)
     } catch (e) {
       console.error('Upload error:', e)
       setError("Failed to upload passport image.")

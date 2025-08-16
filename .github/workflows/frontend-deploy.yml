@@ -55,7 +55,6 @@ jobs:
             --stack-name obw-lambda-functions \
             --query "Stacks[0].Outputs" \
             --output json > lambda_outputs.json
-          echo "VITE_UPLOAD_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="GetPresignedUrlFunctionUrl") | .OutputValue' lambda_outputs.json)" >> $GITHUB_ENV
           echo "VITE_CHAT_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="ChatFunctionUrl") | .OutputValue' lambda_outputs.json)" >> $GITHUB_ENV
 
       - name: Create .env file
@@ -63,7 +62,6 @@ jobs:
           echo "VITE_APPSYNC_ENDPOINT=${{ env.VITE_APPSYNC_ENDPOINT }}" > .env
           echo "VITE_COGNITO_IDENTITY_POOL_ID=${{ env.VITE_COGNITO_IDENTITY_POOL_ID }}" >> .env
           echo "VITE_CHAT_LAMBDA_URL=${{ env.VITE_CHAT_LAMBDA_URL }}" >> .env
-          echo "VITE_UPLOAD_LAMBDA_URL=${{ env.VITE_UPLOAD_LAMBDA_URL }}" >> .env
 
       - name: Build
         run: npm run build
