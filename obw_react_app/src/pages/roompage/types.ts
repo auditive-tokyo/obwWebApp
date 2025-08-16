@@ -108,6 +108,7 @@ export interface HandleNextParams {
 export interface HandleRegisterParams {
   roomId: string
   name: string
+  guestId: string
   email: string
   passportImageUrl: string | null
   client: any // GraphQLクライアント等

@@ -1,29 +1,42 @@
 import { useState } from 'react'
 import { convertToWebp } from '../utils'
+import { getMessage } from '../../../i18n/messages'
 
 export function PassportUpload({ 
-  onUploaded, 
+  onCompleted,  // ← 名前変更（完了通知）
   roomId, 
   guestName, 
   guestId, 
   client 
 }: { 
-  onUploaded: (url: string) => void
+  onCompleted: () => void  // ← 完了時の処理
   roomId: string
   guestName: string
   guestId: string
   client: any
 }) {
   const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] || null)
+    const selectedFile = e.target.files?.[0] || null
+    setFile(selectedFile)
+    
+    if (selectedFile) {
+      const url = URL.createObjectURL(selectedFile)
+      setPreviewUrl(url)
+    } else {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+      setPreviewUrl(null)
+    }
   }
 
-  const handleUpload = async () => {
-    if (!file) return
+  const handleUploadAndRegister = async () => {
+    if (!file || !previewUrl) return
     setUploading(true)
     setError("")
     try {
@@ -32,16 +45,15 @@ export function PassportUpload({
       
       // 2. ファイル名をguestNameベースに変更
       const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
-      const webpFileName = `${sanitizedGuestName}_passport.webp`  // ← 元のファイル名ではなくguestName使用
+      const webpFileName = `${sanitizedGuestName}_passport.webp`
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-      // AppSync経由でpresigned URL取得
+      // 3. AppSync経由でpresigned URL取得
       const presignedQuery = `
         mutation GetPresignedUrl($input: GetPresignedUrlInput!) {
           getPresignedUrl(input: $input) {
             putUrl
-            getUrl
             baseUrl
           }
         }
@@ -59,21 +71,21 @@ export function PassportUpload({
         authMode: 'iam'
       })
 
-      // 3. presigned URL取得      
-      const { putUrl, getUrl, baseUrl } = presignedResult.data.getPresignedUrl
+      const { putUrl, baseUrl } = presignedResult.data.getPresignedUrl
 
-      // webp画像をアップロード
+      // 4. webp画像をS3にアップロード
       await fetch(putUrl, {
         method: 'PUT',
         body: webpBlob,
         headers: { 'Content-Type': 'image/webp' }
       })
 
-      // 5. DynamoDBを更新
+      // 5. DynamoDBにpassportImageUrlを登録
       const updateQuery = `
         mutation UpdateGuest($input: UpdateGuestInput!) {
           updateGuest(input: $input) {
             roomNumber
+            guestId
             guestName
             passportImageUrl
             approvalStatus
@@ -94,22 +106,45 @@ export function PassportUpload({
         authMode: 'iam'
       })
 
-      // 6. 親コンポーネントに通知
-      onUploaded(getUrl)
+      // 6. 完了通知
+      onCompleted()
     } catch (e) {
-      console.error('Upload error:', e)
-      setError("Failed to upload passport image.")
+      console.error('Upload and register error:', e)
+      setError("アップロード・登録に失敗しました。")
     }
     setUploading(false)
   }
 
   return (
-    <div>
-      <input type="file" accept="image/*" onChange={handleFileChange} />
-      <button onClick={handleUpload} disabled={!file || uploading}>
-        {uploading ? "Uploading..." : "Upload"}
+    <div className="space-y-4">
+      <input 
+        type="file" 
+        accept="image/*" 
+        onChange={handleFileChange}
+        className="w-full"
+      />
+      
+      {/* プレビュー表示 */}
+      {previewUrl && (
+        <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
+          <img 
+            src={previewUrl} 
+            alt="パスポート写真プレビュー" 
+            className="mx-auto max-w-xs rounded-lg shadow-sm"
+          />
+          <p className="mt-2 text-sm text-gray-600">{getMessage("preview")}</p>
+        </div>
+      )}
+      
+      <button 
+        onClick={handleUploadAndRegister} 
+        disabled={!file || uploading}
+        className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+      >
+        {uploading ? getMessage("uploading") : getMessage("upload")}
       </button>
-      {error && <div className="text-red-500">{error}</div>}
+      
+      {error && <div className="text-red-500 text-sm">{error}</div>}
     </div>
   )
 }

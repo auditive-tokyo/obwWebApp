@@ -4,9 +4,10 @@ export type SupportedLang =
 
   type MessageKeys =
   | "close"
-  | "back"
+  | "preview"
   | "edit"
-  | "clear"
+  | "uploading"
+  | "upload"
   | "roomStatus"
   | "welcome"
   | "registeringBasicInfo"
@@ -60,9 +61,10 @@ export type SupportedLang =
 type Messages = {
   [lang in SupportedLang]: {
     close: string;
-    back: string;
+    preview: string;
     edit: string;
-    clear: string;
+    uploading: string;
+    upload: string;
     roomStatus: string;
     welcome: string;
     registeringBasicInfo: string;
@@ -118,9 +120,10 @@ type Messages = {
 const messages: Messages = {
   ja: {
     close: "閉じる",
-    back: "戻る",
+    preview: "この写真をアップロードしようとしています",
     edit: "入力・編集",
-    clear: "選択をクリア",
+    uploading: "アップロード中...",
+    upload: "アップロード",
     roomStatus: "この部屋の申請状況",
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
     registeringBasicInfo: "基本情報を登録中...",
@@ -180,9 +183,10 @@ const messages: Messages = {
   },
   en: {
     close: "Close",
-    back: "Back",
+    preview: "This photo is about to be uploaded",
     edit: "Input / Edit",
-    clear: "Clear Selection",
+    uploading: "Uploading...",
+    upload: "Upload",
     roomStatus: "Room Status",
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
     registeringBasicInfo: "Registering basic information...",

@@ -122,6 +122,7 @@ export const handleRegister = async (params: HandleRegisterParams) => {
   const {
     roomId,
     name,
+    guestId,  // ← 追加
     passportImageUrl,
     client,
     setMessage,
@@ -130,22 +131,12 @@ export const handleRegister = async (params: HandleRegisterParams) => {
   } = params
 
   setMessage(getMessage("uploadingPassportImage") as string)
-
-  // 署名付きURLからS3パス部分だけ抽出
-  let s3Url = passportImageUrl
-  if (passportImageUrl) {
-    try {
-      const url = new URL(passportImageUrl)
-      s3Url = `${url.origin}${url.pathname}`
-    } catch (e) {
-      console.error("Invalid URL format:", passportImageUrl, e)
-    }
-  }
   
   const query = `
     mutation UpdateGuest($input: UpdateGuestInput!) {
       updateGuest(input: $input) {
         roomNumber
+        guestId
         guestName
         passportImageUrl
         approvalStatus
@@ -155,9 +146,9 @@ export const handleRegister = async (params: HandleRegisterParams) => {
   const variables = {
     input: {
       roomNumber: roomId,
-      guestName: name,
-      passportImageUrl: s3Url,
-      approvalStatus: 'pending'
+      guestId: guestId,  // ← guestNameではなくguestIdを使用
+      passportImageUrl: passportImageUrl,  // ← 既にbaseUrlなのでそのまま使用
+      approvalStatus: getNextApprovalStatus('waitingForPassportImage', 'uploadPassport')
     }
   }
   
