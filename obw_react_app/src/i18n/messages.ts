@@ -8,6 +8,9 @@ export type SupportedLang =
   | "edit"
   | "uploading"
   | "upload"
+  | "unfilled"
+  | "unselect"
+  | "addNewPerson"
   | "roomStatus"
   | "welcome"
   | "registeringBasicInfo"
@@ -65,6 +68,9 @@ type Messages = {
     edit: string;
     uploading: string;
     upload: string;
+    unfilled: string;
+    unselect: string;
+    addNewPerson: string;
     roomStatus: string;
     welcome: string;
     registeringBasicInfo: string;
@@ -124,6 +130,9 @@ const messages: Messages = {
     edit: "入力・編集",
     uploading: "アップロード中...",
     upload: "アップロード",
+    unfilled: "(未入力)",
+    unselect: "選択を解除する",
+    addNewPerson: "+ ゲストを追加する",
     roomStatus: "この部屋の申請状況",
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
     registeringBasicInfo: "基本情報を登録中...",
@@ -187,6 +196,9 @@ const messages: Messages = {
     edit: "Input / Edit",
     uploading: "Uploading...",
     upload: "Upload",
+    unfilled: "(Unfilled)",
+    unselect: "Unselect",
+    addNewPerson: "+ Add Guest",
     roomStatus: "Room Status",
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
     registeringBasicInfo: "Registering basic information...",

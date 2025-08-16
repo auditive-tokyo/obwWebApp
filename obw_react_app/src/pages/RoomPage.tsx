@@ -377,8 +377,6 @@ export default function RoomPage() {
         setCheckOutDate={setCheckOutDate}
         promoConsent={promoConsent}
         setPromoConsent={setPromoConsent}
-        passportImageUrl={passportImageUrl}
-        setPassportImageUrl={setPassportImageUrl}
         handleNext={handleNext}
         handleBack={handleBack}
         handleRegister={handleRegister}

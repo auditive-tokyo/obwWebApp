@@ -1,6 +1,6 @@
 import ChatWidget from '../../components/ChatWidget'
 import type { RoomPageViewProps } from './types'
-import { PassportUploadScreen } from './components/PassportUploadScreen'
+import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
 import { getMessage } from '../../i18n/messages'
@@ -25,11 +25,8 @@ export function RoomPageView({
   setCheckOutDate,
   promoConsent,
   setPromoConsent,
-  passportImageUrl,
-  setPassportImageUrl,
   handleNext,
   handleBack,
-  handleRegister,
   isInfoComplete,
   message,
   client,
@@ -55,16 +52,7 @@ export function RoomPageView({
     return null
   }
 
-  const handleRegisterWrapper = async (rid: string, gname: string) => {
-    try {
-      await handleRegister(rid, gname)
-      alert(getMessage("registrationSuccess") as string)
-      window.location.reload()
-    } catch (e) {
-      alert(getMessage("registrationError") as string)
-    }
-  }
-
+  
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
     !!selectedSession && shouldShowBasicInfoForSession(selectedSession)
@@ -90,6 +78,8 @@ export function RoomPageView({
             ROOM {roomId}
           </h1>
 
+          {/* 新規追加は roomStatus と同じ行に表示する（下のセクションで） */}
+          
           {guestSessions && guestSessions.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -99,9 +89,9 @@ export function RoomPageView({
                 <button
                   type="button"
                   onClick={onAddGuest}
-                  className="text-sm px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  className="text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 hover:from-blue-400 hover:to-blue-500 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200"
                 >
-                  ＋ 新規追加
+                  {getMessage("addNewPerson")}
                 </button>
               </div>
 
@@ -120,7 +110,7 @@ export function RoomPageView({
                       aria-selected={isSelected}
                       title={g.lastUpdated ? new Date(g.lastUpdated).toLocaleString() : ''}
                     >
-                      <span className="text-sm text-gray-800 truncate">{g.guestName || '(未入力)'}</span>
+                      <span className="text-sm text-gray-800 truncate">{g.guestName || getMessage("unfilled")}</span>
                       <span
                         className={
                           'text-xs px-2 py-0.5 rounded-full ' +
@@ -149,7 +139,7 @@ export function RoomPageView({
                     className="text-sm text-blue-600 hover:underline"
                     onClick={() => onSelectGuest(null)}
                   >
-                    クリア
+                    {getMessage("unselect")}
                   </button>
                 </div>
               )}
@@ -159,13 +149,6 @@ export function RoomPageView({
           {!guestSessions?.length && (
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">現在、この部屋の登録はありません。</div>
-              <button
-                type="button"
-                onClick={onAddGuest}
-                className="text-sm px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-              >
-                ＋ 新規追加
-              </button>
             </div>
           )}
         </div>
@@ -210,15 +193,12 @@ export function RoomPageView({
         {/* パスポートアップロード画面 */}
         {showUpload && (
           <div className="mt-4">
-            <PassportUploadScreen
+            <PassportUpload
               roomId={(selectedSession?.roomNumber ?? roomId) || ""}
-              name={selectedSession?.guestName ?? name}
+              guestName={selectedSession?.guestName ?? name}
               guestId={selectedSession?.guestId ?? ""}
               client={client}
-              passportImageUrl={passportImageUrl}
-              setPassportImageUrl={setPassportImageUrl}
               onBack={selectedSession ? () => onSelectGuest(null) : handleBack}
-              onRegister={handleRegisterWrapper}
               showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
             />
           </div>

@@ -59,9 +59,7 @@ export interface RoomPageViewProps {
   promoConsent: boolean
   setPromoConsent: (value: boolean) => void
 
-  // パスポート画像アップロード欄
-  passportImageUrl: string | null
-  setPassportImageUrl: (url: string | null) => void
+  // パスポート画像アップロード欄（統合後はビューでは未使用）
 
   // 画面遷移・登録ハンドラー
   handleNext: () => void
