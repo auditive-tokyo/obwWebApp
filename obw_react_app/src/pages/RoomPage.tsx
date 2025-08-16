@@ -107,6 +107,12 @@ export default function RoomPage() {
       guestId: selectedGuestId,
       selectedGuest: selectedGuest,
     })
+    
+    // DynamoDB登録成功後、localStorageに保存
+    if (selectedGuestId) {
+      addGuestId(selectedGuestId)
+    }
+    
     await refreshGuestSessions()
   }
 
@@ -249,12 +255,12 @@ export default function RoomPage() {
     }
   }, [client, roomId])
 
-  // 新規ゲスト追加（guestIdを生成 → localStorageに追加 → 選択 → フォームへ）
+  // 新規ゲスト追加（guestIdを生成 → 選択 → フォームへ）
   const handleAddGuest = useCallback(() => {
     const newId =
       (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
       Math.random().toString(36).slice(0) + Date.now().toString(36)
-    addGuestId(newId)
+    
     setSelectedGuestId(newId)
     // 未保存の新規ゲストを一時的にリストへ反映（表示上のプレースホルダー）
     setGuestSessions(prev => {
