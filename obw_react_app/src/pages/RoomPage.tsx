@@ -156,6 +156,7 @@ export default function RoomPage() {
         dbg('verifyOnLoad result ok =', ok)
         if (!ok) {
           localStorage.removeItem('guestId')
+          localStorage.removeItem('guestIds')
           localStorage.removeItem('token')
           setSessionValid(false)
         } else {
@@ -165,6 +166,7 @@ export default function RoomPage() {
         }
       } catch (e) {
         localStorage.removeItem('guestId')
+        localStorage.removeItem('guestIds')
         localStorage.removeItem('token')
         console.error('verify on load failed:', e)
         setSessionValid(false)
