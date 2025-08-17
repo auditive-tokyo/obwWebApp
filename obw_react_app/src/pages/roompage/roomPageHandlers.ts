@@ -20,7 +20,7 @@ const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updat
  * - ローカルセッションを保存
  * - ステータスや画面ステップを更新
  */
-export const handleNext = async (params: HandleNextParams) => {
+export const handleNextAction = async (params: HandleNextParams) => {
   const {
     roomId,
     name,
@@ -84,7 +84,7 @@ export const handleNext = async (params: HandleNextParams) => {
     }
   }
 
-  console.log("mutation input:", variables.input)
+  console.debug("mutation input:", variables.input)
 
   try {
     const res = await client.graphql({
@@ -118,16 +118,13 @@ export const handleNext = async (params: HandleNextParams) => {
  * - ローカルセッションのステータスを更新
  * - ステータスや画面メッセージを更新
  */
-export const handleRegister = async (params: HandleRegisterParams) => {
+export const handleRegisterAction = async (params: HandleRegisterParams) => {
   const {
     roomId,
-    name,
-    guestId,  // ← 追加
+    guestId,
     passportImageUrl,
     client,
     setMessage,
-    loadGuestSession,
-    saveGuestSession
   } = params
 
   setMessage(getMessage("uploadingPassportImage") as string)
@@ -160,14 +157,6 @@ export const handleRegister = async (params: HandleRegisterParams) => {
     })
 
     console.debug("Passport image update completed:", res)
-
-    // ローカルストレージのセッション情報を更新
-    const session = loadGuestSession(roomId, name)
-    if (session) {
-      session.approvalStatus = 'pending'
-      session.lastUpdated = new Date().toISOString()
-      saveGuestSession(session)
-    }
 
     setMessage(getMessage("uploadSuccess") as string)
   } catch (e) {

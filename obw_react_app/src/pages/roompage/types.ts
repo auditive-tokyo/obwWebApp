@@ -1,5 +1,3 @@
-// import { loadGuestSession, saveGuestSession } from './sessionUtils'
-
 type ApprovalStatus =
   | 'waitingForBasicInfo'
   | 'waitingForPassportImage'
@@ -27,10 +25,6 @@ export interface GuestSession {
   createdAt?: string
   updatedAt?: string
 }
-
-// 実装に依存しない関数型を宣言
-export type LoadGuestSessionFn = (roomNumber: string, guestName: string) => GuestSession | null
-export type SaveGuestSessionFn = (data: GuestSession) => void
 
 /**
  * RoomPageViewコンポーネント用のprops型
@@ -64,7 +58,7 @@ export interface RoomPageViewProps {
   // 画面遷移・登録ハンドラー
   handleNext: () => void
   handleBack: () => void
-  handleRegister: (roomId: string, guestName: string) => Promise<void>
+  handleRegister: (roomId: string, guestId: string) => Promise<void>
 
   // 画面状態
   isInfoComplete: boolean
@@ -105,14 +99,10 @@ export interface HandleNextParams {
  */
 export interface HandleRegisterParams {
   roomId: string
-  name: string
   guestId: string
-  email: string
   passportImageUrl: string | null
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  loadGuestSession: LoadGuestSessionFn // セッション読込関数
-  saveGuestSession: SaveGuestSessionFn // セッション保存関数
 }
 
 /**

@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
-import { handleNext as handleNextAction, handleRegister as handleRegisterAction } from './roompage/roomPageHandlers'
+import { handleNextAction, handleRegisterAction } from './roompage/roomPageHandlers'
 
 // ログ出力ヘルパー
 const dbg = (...args: any[]) => { if (import.meta.env.DEV) console.debug('[RoomPage]', ...args) }
@@ -117,15 +117,22 @@ export default function RoomPage() {
   }
 
   // 登録（パスポート画像など）
-  const handleRegister = async (rid: string, gname: string) => {
+  const handleRegister = async (rid: string, guestId: string) => {
+    if (!guestId) {
+      setMessage('ゲストが選択されていません')
+      return
+    }
+    if (!passportImageUrl) {
+      setMessage('パスポート画像が未選択です')
+      return
+    }
     await handleRegisterAction({
       roomId: rid,
-      name: gname,
-      email,
+      guestId: guestId,
       passportImageUrl,
       client,
       setMessage,
-    } as any) // 型が合わない場合はハンドラ側の引数を任意化するか、このcastを維持
+    })
     await refreshGuestSessions()
   }
 
@@ -179,7 +186,7 @@ export default function RoomPage() {
       setNationality(selectedGuest.nationality || '')
       setCheckInDate(selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null)
       setCheckOutDate(selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null)
-      setPassportImageUrl(selectedGuest.passportImageUrl || '')
+      setPassportImageUrl(selectedGuest.passportImageUrl ?? null)
       setPromoConsent(!!selectedGuest.promoConsent)
     } else {
       setName('')
@@ -190,7 +197,7 @@ export default function RoomPage() {
       setNationality('')
       setCheckInDate(null)
       setCheckOutDate(null)
-      setPassportImageUrl('')
+      setPassportImageUrl(null)
       setPromoConsent(false)
     }
     // selectedGuestの切替時のみ同期され、入力中に上書きされない
