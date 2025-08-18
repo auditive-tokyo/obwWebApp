@@ -37,9 +37,9 @@ jobs:
         run: |
           set -e
           COUNT=$(aws cloudformation list-exports \
-            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn'])" \
+            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn'])" \
             --output text || echo 0)
-          if [ "$COUNT" -ge 2 ]; then FLAG=true; else FLAG=false; fi
+          if [ "$COUNT" -ge 3 ]; then FLAG=true; else FLAG=false; fi
           echo "EnableLambdaIntegration=${FLAG}"
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \

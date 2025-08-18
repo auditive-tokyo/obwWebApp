@@ -42,6 +42,8 @@ Resources:
         AttributeName: pendingVerificationTtl
         Enabled: true
       TableName: guest
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
 
   AppSyncSchema:
     Type: AWS::AppSync::GraphQLSchema
@@ -546,3 +548,8 @@ Outputs:
     Value: !Ref GuestTable
     Export:
       Name: Obw-GuestTableName
+  GuestTableStreamArn:
+    Description: "DynamoDB Stream ARN for GuestTable"
+    Value: !GetAtt GuestTable.StreamArn
+    Export:
+      Name: Obw-GuestTableStreamArn

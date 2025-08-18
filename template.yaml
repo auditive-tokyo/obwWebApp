@@ -200,7 +200,6 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref GuestTableName
-          MAIL_FROM: "your-verified-ses@email.com"
           MAX_TOKEN_LIFETIME_HOURS: "1"
       Policies:
         - DynamoDBCrudPolicy:
@@ -233,6 +232,50 @@ Resources:
             TableName: !Ref GuestTableName
         - DynamoDBWritePolicy:
             TableName: !Ref GuestTableName
+
+  # 管理者への通知Lambda
+  NotifyAdminOnPendingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: obw-notify-admin-on-pending
+      CodeUri: lambda_functions/notify_admin/
+      Handler: lambda_handler_notify_admin.handler
+      MemorySize: 256
+      Environment:
+        Variables:
+          ADMIN_TOPIC_ARN: !Ref AdminNotificationsTopic          # 既存のSNSトピックを参照 or パラメータ化
+          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"  # 任意の管理画面URL
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaDynamoDBExecutionRole
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AdminNotificationsTopic.TopicName
+      Events:
+        FromGuestTableStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !ImportValue Obw-GuestTableStreamArn
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 0
+            StartingPosition: LATEST
+            FilterCriteria:
+              Filters:
+                - Pattern: |
+                    {
+                      "eventName": ["INSERT", "MODIFY"],
+                      "dynamodb": {
+                        "NewImage": {
+                          "approvalStatus": {
+                            "S": ["pending"]
+                          }
+                        }
+                      }
+                    }
+
+  AdminNotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: obw-admin-guest-approval
 
 Outputs:
   ImmediateResponseFunctionArn:
