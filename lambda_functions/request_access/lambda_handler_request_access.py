@@ -30,9 +30,15 @@ def lambda_handler(event, context):
     guest_name = args.get('guestName')
     email = args.get('email')
     phone = args.get('phone')
+    contact_channel = args.get('contactChannel')  # "email" or "sms"
 
-    if not room_number or not guest_name or not (email or phone):
+    if not room_number or not guest_name or not email or not phone:
         return {"success": False, "error": "Missing required fields"}
+
+    if contact_channel == "email" and not email:
+        return {"success": False, "error": "Email required for contactChannel=email"}
+    if contact_channel == "sms" and not phone:
+        return {"success": False, "error": "Phone required for contactChannel=sms"}
 
     guest_id = str(uuid.uuid4())
     token = generate_token()
@@ -54,14 +60,14 @@ def lambda_handler(event, context):
             "approvalStatus": {"S": "pendingVerification"},
             "pendingVerificationTtl": {"N": str(pending_verification_ttl)},
             "createdAt": {"S": now_iso_ms_z()},
-            "contactChannel": {"S": "email" if email else "sms"}
+            "contactChannel": {"S": contact_channel}
         }
     )
 
     link = f"{APP_BASE_URL}/room/{room_number}?guestId={guest_id}&token={token}"
 
     # Send Magic Link
-    if email:
+    if contact_channel == "email":
         ses.send_email(
             Source=MAIL_FROM,
             Destination={"ToAddresses": [email]},
@@ -70,7 +76,7 @@ def lambda_handler(event, context):
                 "Body": {"Text": {"Data": f"Access your guest page: {link}"}}
             }
         )
-    elif phone:
+    elif contact_channel == "sms":
         sns.publish(
             PhoneNumber=phone,
             Message=f"Access your guest page: {link}"
