@@ -4,55 +4,10 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
-import { handleNextAction, handleRegisterAction } from './roompage/roomPageHandlers'
-
-// ログ出力ヘルパー
-const dbg = (...args: any[]) => { if (import.meta.env.DEV) console.debug('[RoomPage]', ...args) }
-
-// localStorage guestIds ヘルパー（ログ付き）
-const getGuestIds = (): string[] => {
-  const raw = typeof window !== 'undefined' ? localStorage.getItem('guestIds') : null
-  dbg('getGuestIds raw =', raw)
-  if (!raw) return []
-  try {
-    const arr = JSON.parse(raw)
-    if (Array.isArray(arr)) return arr
-    dbg('guestIds value is not an array:', arr)
-    return []
-  } catch (e) {
-    dbg('guestIds JSON parse error:', e)
-    return []
-  }
-}
-const setGuestIds = (ids: string[]) => {
-  if (typeof window === 'undefined') return
-  dbg('setGuestIds ->', ids)
-  localStorage.setItem('guestIds', JSON.stringify(ids))
-}
-
-// 追加: guestIds に一件追加するヘルパー
-const addGuestId = (id: string) => {
-  const ids = getGuestIds()
-  if (ids.includes(id)) {
-    dbg('addGuestId: already included', id)
-    return
-  }
-  const next = [...ids, id]
-  dbg('addGuestId ->', next)
-  setGuestIds(next)
-}
-
-const ensureGuestIdsContains = (id: string | null) => {
-  if (!id) return
-  const ids = getGuestIds()
-  if (!ids.includes(id)) {
-    const next = [...ids, id]
-    dbg('ensureGuestIdsContains: add', id, '->', next)
-    setGuestIds(next)
-  } else {
-    dbg('ensureGuestIdsContains: already included', id)
-  }
-}
+import { handleNextAction, handleRegisterAction } from './roompage/handlers/roomPageHandlers'
+import { addGuestId, ensureGuestIdsContains } from './roompage/utils/guestIdsStorage'
+import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc } from './roompage/services/apiCalls'
+import { dbg } from '@/utils/debugLogger'
 
 export default function RoomPage() {
   const { roomId = '' } = useParams<{ roomId: string }>()
@@ -74,6 +29,11 @@ export default function RoomPage() {
   const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
 
   const client = useMemo(() => generateClient(), [])
+
+  // サービス関数のラッパー（引数を束ねる）
+  const refreshGuestSessions = useCallback(() => {
+    return refreshGuestSessionsSvc({ client, roomId, setGuestSessions })
+  }, [client, roomId, setGuestSessions])
 
   // 入力完了判定（必要なら条件を調整）
   const isInfoComplete = useMemo(() => {
@@ -205,65 +165,6 @@ export default function RoomPage() {
     // selectedGuestの切替時のみ同期され、入力中に上書きされない
   }, [selectedGuest?.guestId])
 
-  const refreshGuestSessions = useCallback(async () => {
-    if (!roomId) { dbg('refreshGuestSessions: no roomId'); return }
-    let ids = getGuestIds()
-    // 互換: guestIds が無ければ単体 guestId を取り込む
-    if ((!ids || !ids.length) && typeof window !== 'undefined') {
-      const single = localStorage.getItem('guestId')
-      if (single) {
-        dbg('migrating single guestId -> guestIds:', single)
-        ids = [single]
-        setGuestIds(ids)
-      }
-    }
-    dbg('refreshGuestSessions start: roomId=', roomId, 'guestIds=', ids)
-    if (!ids.length) {
-      dbg('no guestIds -> set empty list')
-      setGuestSessions([])
-      return
-    }
-    try {
-      const results = await Promise.all(
-        ids.map(async (gid: string) => {
-          const query = `
-            query GetGuest($roomNumber: String!, $guestId: String!) {
-              getGuest(roomNumber: $roomNumber, guestId: $guestId) {
-                guestId
-                guestName
-                approvalStatus
-                email
-                address
-                phone
-                occupation
-                nationality
-                checkInDate
-                checkOutDate
-                passportImageUrl
-              }
-            }
-          `
-          dbg('getGuest call ->', { roomNumber: roomId, guestId: gid })
-          try {
-            const res = await client.graphql({ query, variables: { roomNumber: roomId, guestId: gid }, authMode: 'iam' })
-            const g = 'data' in res ? res.data?.getGuest : null
-            dbg('getGuest result for', gid, '->', g ? { guestId: g.guestId, name: g.guestName, status: g.approvalStatus } : null)
-            return g
-          } catch (err) {
-            console.error('getGuest failed for', gid, err)
-            return null
-          }
-        })
-      )
-      const list = results.filter(Boolean) as GuestSession[]
-      dbg('setGuestSessions length =', list.length, 'items =', list.map(g => ({ id: g.guestId, name: g.guestName, status: g.approvalStatus })))
-      setGuestSessions(list)
-    } catch (e) {
-      console.error('load room sessions failed:', e)
-      setGuestSessions([])
-    }
-  }, [client, roomId])
-
   // 新規ゲスト追加（guestIdを生成 → 選択 → フォームへ）
   const handleAddGuest = useCallback(() => {
     const newId =
@@ -302,46 +203,21 @@ export default function RoomPage() {
     if (sessionValid) refreshGuestSessions()
   }, [sessionValid, refreshGuestSessions])
 
-  // 自分のゲスト情報をDynamoDBから読み込む（localStorageは使わない）
+  // 自分のゲスト情報をDynamoDBから読み込む（services 経由）
   const loadMyGuest = useCallback(async () => {
     if (!roomId) return
-    const gid = typeof window !== 'undefined' ? localStorage.getItem('guestId') : null
-    if (!gid) return
-    try {
-      const query = `
-        query GetGuest($roomNumber: String!, $guestId: String!) {
-          getGuest(roomNumber: $roomNumber, guestId: $guestId) {
-            guestName
-            email
-            address
-            phone
-            occupation
-            nationality
-            approvalStatus
-            checkInDate
-            checkOutDate
-            passportImageUrl
-          }
-        }
-      `
-      const res = await client.graphql({ query, variables: { roomNumber: roomId, guestId: gid }, authMode: 'iam' })
-      const g = 'data' in res ? (res as any).data?.getGuest : null
-      if (!g) return
-      setName(g.guestName || "")
-      setEmail(g.email || "")         // ← 追加
-      setAddress(g.address || "")     // ← 追加
-      setPhone(g.phone || "")
-      setOccupation(g.occupation || "") // ← 追加
-      setNationality(g.nationality || "") // ← 追加
-      setPassportImageUrl(g.passportImageUrl || null)
-      // setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
-      // setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
-      if (g.approvalStatus && g.approvalStatus !== 'waitingForPassportImage') {
-        // setCurrentStep('upload')
-      }
-    } catch (e) {
-      if (import.meta.env.DEV) console.error('loadMyGuest failed:', e)
-    }
+    const g = await loadMyGuestSvc({ client, roomId })
+    if (!g) return
+    setName(g.guestName || "")
+    setEmail(g.email || "")
+    setAddress(g.address || "")
+    setPhone(g.phone || "")
+    setOccupation(g.occupation || "")
+    setNationality(g.nationality || "")
+    setPassportImageUrl(g.passportImageUrl || null)
+    // 日付は必要に応じて
+    setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
+    setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
   }, [client, roomId])
   
   // 検証OKのときだけ自分の情報を取得

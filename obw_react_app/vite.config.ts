@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tsconfigPaths from 'vite-tsconfig-paths'
 import { copyFileSync, existsSync } from 'fs'
 
 export default defineConfig({
   plugins: [
     react(),
+    tsconfigPaths(),
     {
       name: 'copy-404',
       closeBundle() {

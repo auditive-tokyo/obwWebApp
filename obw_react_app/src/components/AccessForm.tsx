@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
-import { getMessage } from '../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 type Props = { roomNumber: string }
 

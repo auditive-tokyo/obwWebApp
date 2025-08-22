@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { convertToWebp } from '../utils'
+import { convertToWebp } from '../utils/convertToWebp'
 import { getMessage } from '../../../i18n/messages'
 
 export type PassportUploadProps = {

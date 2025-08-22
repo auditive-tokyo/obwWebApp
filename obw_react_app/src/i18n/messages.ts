@@ -16,7 +16,6 @@ export type SupportedLang =
   | "registeringBasicInfo"
   | "basicInfoError"
   | "basicInfoSaved"
-  | "CompleteRegistration"
   | "uploadingPassportImage"
   | "uploadSuccess"
   | "uploadError"
@@ -25,6 +24,9 @@ export type SupportedLang =
   | "enterBasicInfo"
   | "enterPassportImage"
   | "passportUploaded"
+  | "statusPending"
+  | "statusApproved"
+  | "statusRejected"
   | "name"
   | "namePlaceholder"
   | "email"
@@ -76,7 +78,6 @@ type Messages = {
     registeringBasicInfo: string;
     basicInfoError: string;
     basicInfoSaved: string;
-    CompleteRegistration: string;
     uploadingPassportImage: string;
     uploadSuccess: string;
     uploadError: string;
@@ -85,6 +86,9 @@ type Messages = {
     enterBasicInfo: string;
     enterPassportImage: string;
     passportUploaded: string;
+    statusPending: string;
+    statusApproved: string;
+    statusRejected: string;
     name: string;
     namePlaceholder: string;
     email: string;
@@ -138,7 +142,6 @@ const messages: Messages = {
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
     basicInfoSaved: "基本情報を登録しました。パスポート写真をアップロードしてください。",
-    CompleteRegistration: "登録完了",
     uploadingPassportImage: "パスポート画像を更新中...",
     uploadSuccess: "パスポート画像のアップロードが完了しました！",
     uploadError: "パスポート画像のアップロードに失敗しました。もう一度お試しください。",
@@ -147,6 +150,9 @@ const messages: Messages = {
     enterBasicInfo: "基本情報を入力してください",
     enterPassportImage: "パスポート画像をアップロードしてください",
     passportUploaded: "アップロード完了",
+    statusPending: "現在承認待ちです。",
+    statusApproved: "承認されました。",
+    statusRejected: "承認されませんでした。",
     name: "お名前",
     namePlaceholder: "山田太郎",
     email: "メールアドレス",
@@ -204,7 +210,6 @@ const messages: Messages = {
     registeringBasicInfo: "Registering basic information...",
     basicInfoError: "Failed to register basic information.",
     basicInfoSaved: "Basic information saved. Please upload your passport image.",
-    CompleteRegistration: "Complete Registration",
     uploadingPassportImage: "Updating passport image...",
     uploadSuccess: "Passport image upload completed!",
     uploadError: "Passport image upload failed. Please try again.",
@@ -213,6 +218,9 @@ const messages: Messages = {
     enterBasicInfo: "Please enter your basic information.",
     enterPassportImage: "Please upload your passport image.",
     passportUploaded: "Upload completed",
+    statusPending: "Currently pending approval.",
+    statusApproved: "Approved.",
+    statusRejected: "Rejected.",
     name: "Name",
     namePlaceholder: "John Doe",
     phoneValidation: "Please enter a valid phone number.",

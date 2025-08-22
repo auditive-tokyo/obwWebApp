@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import CountrySelect from './CountrySelect'
-import { getMessage } from '../../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 export interface StructuredAddressInputProps {
   value: string

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import DatePicker from "react-datepicker"
 import './BasicCheckInOutDate.css'
-import { getMessage } from '../../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 type Props = {
   checkInDate: Date | null

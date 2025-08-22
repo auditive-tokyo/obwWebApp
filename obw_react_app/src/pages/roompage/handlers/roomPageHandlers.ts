@@ -1,5 +1,5 @@
-import type { HandleNextParams, HandleRegisterParams } from './types'
-import { getMessage } from '../../i18n/messages'
+import type { HandleNextParams, HandleRegisterParams } from '../types'
+import { getMessage } from '@/i18n/messages'
 
 const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updateBasicInfo' | 'uploadPassport'): string => {
   switch (`${currentStatus}-${action}`) {

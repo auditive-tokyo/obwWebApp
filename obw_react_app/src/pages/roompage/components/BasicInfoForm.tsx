@@ -4,7 +4,7 @@ import StructuredAddressInput from './StructuredAddressInput'
 import { BasicCheckInOutDate } from './BasicCheckInOutDate'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
-import { getMessage } from '../../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 type BasicInfoFormProps = {
   name: string

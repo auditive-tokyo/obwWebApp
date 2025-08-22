@@ -3,7 +3,8 @@ import type { RoomPageViewProps } from './types'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
-import { getMessage } from '../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
+import { dbg } from '@/utils/debugLogger'
 
 export function RoomPageView({
   roomId,
@@ -46,13 +47,29 @@ export function RoomPageView({
 
   const getStatusMessage = (g: any): string | null => {
     const status = g?.approvalStatus
-    if (status === 'pending') return '現在承認待ちです。'
-    if (status === 'approved') return '承認されました。'
-    if (status === 'rejected') return '承認されませんでした。'
+    if (status === 'pending') return getMessage("statusPending") as string
+    if (status === 'approved') return getMessage("statusApproved") as string
+    if (status === 'rejected') return getMessage("statusRejected") as string
     return null
   }
 
-  
+  const getStatusLabel = (status?: string): string => {
+    switch (status) {
+      case 'waitingForBasicInfo':
+        return getMessage('enterBasicInfo') as string
+      case 'waitingForPassportImage':
+        return getMessage('enterPassportImage') as string
+      case 'pending':
+        return getMessage('statusPending') as string
+      case 'approved':
+        return getMessage('statusApproved') as string
+      case 'rejected':
+        return getMessage('statusRejected') as string
+      default:
+        return status ?? ''
+    }
+  }
+
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
     !!selectedSession && shouldShowBasicInfoForSession(selectedSession)
@@ -66,8 +83,8 @@ export function RoomPageView({
     !showUpload &&
     !!getStatusMessage(selectedSession)
 
-  console.debug('selectedSession:', selectedSession)
-  console.debug('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  dbg('selectedSession:', selectedSession)
+  dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -77,8 +94,6 @@ export function RoomPageView({
           <h1 className="text-2xl font-bold text-gray-800 mb-4">
             ROOM {roomId}
           </h1>
-
-          {/* 新規追加は roomStatus と同じ行に表示する（下のセクションで） */}
           
           {guestSessions && guestSessions.length > 0 && (
             <div>
@@ -125,7 +140,7 @@ export function RoomPageView({
                             : 'bg-blue-100 text-blue-700')
                         }
                       >
-                        {g.approvalStatus}
+                        {getStatusLabel(g.approvalStatus)}
                       </span>
                     </li>
                   )
@@ -208,7 +223,7 @@ export function RoomPageView({
         {showStatus && (
           <div className="bg-white rounded-lg shadow-md p-6 mt-4">
             <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              {selectedSession?.guestName} | Status
+              {selectedSession?.guestName}
             </h2>
             <p className="text-gray-700">{getStatusMessage(selectedSession)}</p>
           </div>
