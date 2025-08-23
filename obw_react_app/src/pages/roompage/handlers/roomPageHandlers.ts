@@ -1,5 +1,8 @@
 import type { HandleNextParams, HandleRegisterParams } from '../types'
 import { getMessage } from '@/i18n/messages'
+import { ensureGuestIdsContains } from '../utils/guestIdsStorage'
+import{ dbg } from '@/utils/debugLogger'
+import { Client } from '@aws-amplify/api'
 
 const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updateBasicInfo' | 'uploadPassport'): string => {
   switch (`${currentStatus}-${action}`) {
@@ -162,5 +165,78 @@ export const handleRegisterAction = async (params: HandleRegisterParams) => {
   } catch (e) {
     console.error("Passport image update error:", e)
     setMessage(getMessage("uploadError") as string)
+  }
+}
+
+/**
+ * ページロード時の認証チェック処理
+ * - localStorageからguestIdとtokenを取得
+ * - GraphQL経由で認証トークンを検証
+ * - 認証状態を更新し、無効な場合はlocalStorageをクリア
+ */
+export async function verifyOnLoad({
+  roomId,
+  client,
+  setSessionChecked,
+  setSessionValid
+}: {
+  roomId: string
+  client: Client
+  setSessionChecked: (checked: boolean) => void
+  setSessionValid: (valid: boolean) => void
+}) {
+  dbg('verifyOnLoad start: roomId=', roomId)
+  
+  if (!roomId) {
+    setSessionChecked(true)
+    setSessionValid(false)
+    dbg('no roomId')
+    return
+  }
+  
+  const gid = typeof window !== 'undefined' ? localStorage.getItem('guestId') : null
+  const tok = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  dbg('verifyOnLoad localStorage -> guestId=', gid, 'token exists =', !!tok)
+  
+  if (!gid || !tok) {
+    setSessionChecked(true)
+    setSessionValid(false)
+    dbg('missing gid or token')
+    return
+  }
+  
+  try {
+    const query = `
+      mutation VerifyAccessToken($roomNumber: String!, $guestId: String!, $token: String!) {
+        verifyAccessToken(roomNumber: $roomNumber, guestId: $guestId, token: $token) { success }
+      }
+    `
+    const res = await client.graphql({ 
+      query, 
+      variables: { roomNumber: roomId, guestId: gid, token: tok }, 
+      authMode: 'iam' 
+    })
+    const ok = 'data' in res && res.data?.verifyAccessToken?.success
+    dbg('verifyOnLoad result ok =', ok)
+    
+    if (!ok) {
+      localStorage.removeItem('guestId')
+      localStorage.removeItem('guestIds')
+      localStorage.removeItem('token')
+      setSessionValid(false)
+    } else {
+      // ここで単体 guestId を配列 guestIds に移行
+      ensureGuestIdsContains(gid)
+      setSessionValid(true)
+    }
+  } catch (e) {
+    localStorage.removeItem('guestId')
+    localStorage.removeItem('guestIds')
+    localStorage.removeItem('token')
+    console.error('verify on load failed:', e)
+    setSessionValid(false)
+  } finally {
+    setSessionChecked(true)
+    dbg('verifyOnLoad finished')
   }
 }

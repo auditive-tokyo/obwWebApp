@@ -4,10 +4,10 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
-import { handleNextAction, handleRegisterAction } from './roompage/handlers/roomPageHandlers'
-import { addGuestId, ensureGuestIdsContains } from './roompage/utils/guestIdsStorage'
+import { handleNextAction, handleRegisterAction, verifyOnLoad } from './roompage/handlers/roomPageHandlers'
+import { addGuestId } from './roompage/utils/guestIdsStorage'
 import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc } from './roompage/services/apiCalls'
-import { dbg } from '@/utils/debugLogger'
+import { checkFormCompletion } from './roompage/utils/formValidation'
 
 export default function RoomPage() {
   const { roomId = '' } = useParams<{ roomId: string }>()
@@ -35,15 +35,19 @@ export default function RoomPage() {
     return refreshGuestSessionsSvc({ client, roomId, setGuestSessions })
   }, [client, roomId, setGuestSessions])
 
-  // 入力完了判定（必要なら条件を調整）
-  const isInfoComplete = useMemo(() => {
-    return (
-      name.trim().length > 0 &&
-      (email.trim().length > 0 || phone.trim().length > 0) &&
-      Boolean(checkInDate) &&
-      Boolean(checkOutDate)
-    )
-  }, [name, email, phone, checkInDate, checkOutDate])
+  // 入力完了判定
+  const isInfoComplete = useMemo(() => 
+    checkFormCompletion({
+      name,
+      email,
+      address,
+      phone,
+      occupation,
+      nationality,
+      checkInDate,
+      checkOutDate,
+      guestCount: guestSessions.length
+    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length])
 
   // 戻る（TODO: 現状はダミー、将来のために残す）
   const handleBack = () => {}
@@ -90,44 +94,7 @@ export default function RoomPage() {
 
   // 認証チェック（ページロード/リロード時）
   useEffect(() => {
-    async function verifyOnLoad() {
-      dbg('verifyOnLoad start: roomId=', roomId)
-      if (!roomId) { setSessionChecked(true); setSessionValid(false); dbg('no roomId'); return }
-      const gid = typeof window !== 'undefined' ? localStorage.getItem('guestId') : null
-      const tok = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      dbg('verifyOnLoad localStorage -> guestId=', gid, 'token exists =', !!tok)
-      if (!gid || !tok) { setSessionChecked(true); setSessionValid(false); dbg('missing gid or token'); return }
-      try {
-        const query = `
-          mutation VerifyAccessToken($roomNumber: String!, $guestId: String!, $token: String!) {
-            verifyAccessToken(roomNumber: $roomNumber, guestId: $guestId, token: $token) { success }
-          }
-        `
-        const res = await client.graphql({ query, variables: { roomNumber: roomId, guestId: gid, token: tok }, authMode: 'iam' })
-        const ok = 'data' in res && res.data?.verifyAccessToken?.success
-        dbg('verifyOnLoad result ok =', ok)
-        if (!ok) {
-          localStorage.removeItem('guestId')
-          localStorage.removeItem('guestIds')
-          localStorage.removeItem('token')
-          setSessionValid(false)
-        } else {
-          // ここで単体 guestId を配列 guestIds に移行
-          ensureGuestIdsContains(gid)
-          setSessionValid(true)
-        }
-      } catch (e) {
-        localStorage.removeItem('guestId')
-        localStorage.removeItem('guestIds')
-        localStorage.removeItem('token')
-        console.error('verify on load failed:', e)
-        setSessionValid(false)
-      } finally {
-        setSessionChecked(true)
-        dbg('verifyOnLoad finished')
-      }
-    }
-    verifyOnLoad()
+    verifyOnLoad({ roomId, client, setSessionChecked, setSessionValid })
   }, [roomId, client])
 
   useEffect(() => {
