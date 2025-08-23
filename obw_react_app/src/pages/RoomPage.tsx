@@ -26,6 +26,8 @@ export default function RoomPage() {
   const [sessionChecked, setSessionChecked] = useState(false)
   const [sessionValid, setSessionValid] = useState(false)
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null)
+  const [isRepresentativeFamily, setIsRepresentativeFamily] = useState(false)
+  const [showFamilyQuestion, setShowFamilyQuestion] = useState(false)
   const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
 
   const client = useMemo(() => generateClient(), [])
@@ -46,8 +48,8 @@ export default function RoomPage() {
       nationality,
       checkInDate,
       checkOutDate,
-      guestCount: guestSessions.length
-    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length])
+      isRepresentativeFamily
+    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily])
 
   // 戻る（TODO: 現状はダミー、将来のために残す）
   const handleBack = () => {}
@@ -124,12 +126,35 @@ export default function RoomPage() {
     // selectedGuestの切替時のみ同期され、入力中に上書きされない
   }, [selectedGuest?.guestId])
 
-  // 新規ゲスト追加（guestIdを生成 → 選択 → フォームへ）
-  const handleAddGuest = useCallback(() => {
+  // 検証OKのときだけ一覧取得（このガードは残す）
+  useEffect(() => {
+    if (sessionValid) refreshGuestSessions()
+  }, [sessionValid, refreshGuestSessions])
+
+  // 自分のゲスト情報をDynamoDBから読み込む（services 経由）
+  const loadMyGuest = useCallback(async () => {
+    if (!roomId) return
+    const g = await loadMyGuestSvc({ client, roomId })
+    if (!g) return
+    setName(g.guestName || "")
+    setEmail(g.email || "")
+    setAddress(g.address || "")
+    setPhone(g.phone || "")
+    setOccupation(g.occupation || "")
+    setNationality(g.nationality || "")
+    setPassportImageUrl(g.passportImageUrl || null)
+    // 日付は必要に応じて
+    setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
+    setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
+  }, [client, roomId])
+
+  // 実際の新規ゲスト作成処理
+  const handleCreateNewGuest = useCallback((isFamily: boolean) => {
     const newId =
       (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
       Math.random().toString(36).slice(0) + Date.now().toString(36)
     
+    setIsRepresentativeFamily(isFamily)
     setSelectedGuestId(newId)
     // 未保存の新規ゲストを一時的にリストへ反映（表示上のプレースホルダー）
     setGuestSessions(prev => {
@@ -157,27 +182,23 @@ export default function RoomPage() {
     setPromoConsent(false)
   }, [roomId])
 
-  // 検証OKのときだけ一覧取得（このガードは残す）
-  useEffect(() => {
-    if (sessionValid) refreshGuestSessions()
-  }, [sessionValid, refreshGuestSessions])
+  // 新規ゲスト追加のクリック処理（家族質問を表示）
+  const handleAddGuestClick = useCallback(() => {
+    const hasExistingGuests = guestSessions.length > 0
+    if (hasExistingGuests) {
+      // 既存ゲストがいる場合は家族質問を表示
+      setShowFamilyQuestion(true)
+    } else {
+      // 初回ゲストの場合は直接フォームへ
+      handleCreateNewGuest(false)
+    }
+  }, [guestSessions.length, handleCreateNewGuest])
 
-  // 自分のゲスト情報をDynamoDBから読み込む（services 経由）
-  const loadMyGuest = useCallback(async () => {
-    if (!roomId) return
-    const g = await loadMyGuestSvc({ client, roomId })
-    if (!g) return
-    setName(g.guestName || "")
-    setEmail(g.email || "")
-    setAddress(g.address || "")
-    setPhone(g.phone || "")
-    setOccupation(g.occupation || "")
-    setNationality(g.nationality || "")
-    setPassportImageUrl(g.passportImageUrl || null)
-    // 日付は必要に応じて
-    setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
-    setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
-  }, [client, roomId])
+  // 家族質問への回答処理
+  const handleFamilyResponse = useCallback((isFamily: boolean) => {
+    setShowFamilyQuestion(false)
+    handleCreateNewGuest(isFamily)
+  }, [handleCreateNewGuest])
   
   // 検証OKのときだけ自分の情報を取得
   useEffect(() => {
@@ -221,6 +242,9 @@ export default function RoomPage() {
         setCheckOutDate={setCheckOutDate}
         promoConsent={promoConsent}
         setPromoConsent={setPromoConsent}
+        isRepresentativeFamily={isRepresentativeFamily}
+        showFamilyQuestion={showFamilyQuestion}
+        onFamilyResponse={handleFamilyResponse}
         handleNext={handleNext}
         handleBack={handleBack}
         handleRegister={handleRegister}
@@ -230,8 +254,12 @@ export default function RoomPage() {
         guestSessions={guestSessions}
         selectedGuest={selectedGuest}
         // 文字列(gid)でも、オブジェクト(GuestSession)でも受けられるようにする
-        onSelectGuest={(g) => setSelectedGuestId(typeof g === 'string' ? g : g?.guestId ?? null)}
-        onAddGuest={handleAddGuest}
+        onSelectGuest={(g) => {
+          const id = typeof g === 'string' ? g : g?.guestId ?? null
+          if (id) setIsRepresentativeFamily(false)
+          setSelectedGuestId(id)
+        }}
+        onAddGuest={handleAddGuestClick}
       />
     </>
   )

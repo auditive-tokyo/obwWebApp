@@ -27,6 +27,11 @@ type MessageKeys =
   | "noRegistrationYet"
   | "selectGuestOrAddNew"
   | "completeBasicInfoFirst"
+  | "familyRegistrationMessage"
+  | "familyQuestionTitle"
+  | "familyQuestionDescription"
+  | "no"
+  | "yes"
   | "accessRequest"
   | "nameRequired"
   | "linkDeliveryMethod"
@@ -100,6 +105,11 @@ type Messages = {
     noRegistrationYet: string;
     selectGuestOrAddNew: string;
     completeBasicInfoFirst: string;
+    familyRegistrationMessage: string;
+    familyQuestionTitle: string;
+    familyQuestionDescription: string;
+    no: string;
+    yes: string;
     accessRequest: string;
     nameRequired: string;
     linkDeliveryMethod: string;
@@ -175,6 +185,11 @@ const messages: Messages = {
     noRegistrationYet: "現在、この部屋の登録はありません。",
     selectGuestOrAddNew: "お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。",
     completeBasicInfoFirst: "新しいゲストを追加する前に基本情報の登録を完了してください。",
+    familyRegistrationMessage: "代表者のご家族として登録します。お名前のみ入力してパスポート写真アップロードへお進みください。",
+    familyQuestionTitle: "代表者のご家族ですか？",
+    familyQuestionDescription: "代表者のご家族の場合は、お名前のみの入力で登録できます。",
+    no: "いいえ",
+    yes: "はい",
     accessRequest: "アクセス申請",
     nameRequired: "お名前",
     linkDeliveryMethod: "リンクの受け取り方法",
@@ -254,6 +269,11 @@ const messages: Messages = {
     noRegistrationYet: "There are currently no registrations for this room.",
     selectGuestOrAddNew: "Please enter your information. Select a person from the list above or press 'Add Guest'.",
     completeBasicInfoFirst: "Please complete the basic information registration before adding a new guest.",
+    familyRegistrationMessage: "Registering as a family member of the representative. Please enter only your name and proceed to passport image upload.",
+    familyQuestionTitle: "Are you a family member of the representative?",
+    familyQuestionDescription: "Family members of the representative can register with only their name.",
+    no: "No",
+    yes: "Yes",
     accessRequest: "Access Request",
     nameRequired: "Name",
     linkDeliveryMethod: "Link Delivery Method",

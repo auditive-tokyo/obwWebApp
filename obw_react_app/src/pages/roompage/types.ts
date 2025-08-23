@@ -53,6 +53,11 @@ export interface RoomPageViewProps {
   promoConsent: boolean
   setPromoConsent: (value: boolean) => void
 
+  // 家族登録関連
+  isRepresentativeFamily: boolean
+  showFamilyQuestion: boolean
+  onFamilyResponse: (isFamily: boolean) => void
+
   // パスポート画像アップロード欄（統合後はビューでは未使用）
 
   // 画面遷移・登録ハンドラー

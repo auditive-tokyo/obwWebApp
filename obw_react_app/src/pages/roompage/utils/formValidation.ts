@@ -22,7 +22,7 @@ function validateAddressFields(addressJson: string): boolean {
 
 /**
  * ゲスト情報の入力完了判定
- * ゲスト数に応じて必須項目を変える
+ * 家族かどうか、ゲスト数に応じて必須項目を変える
  */
 export function checkFormCompletion({
   name,
@@ -33,7 +33,7 @@ export function checkFormCompletion({
   nationality,
   checkInDate,
   checkOutDate,
-  guestCount
+  isRepresentativeFamily
 }: {
   name: string
   email: string
@@ -43,24 +43,22 @@ export function checkFormCompletion({
   nationality: string
   checkInDate: Date | null
   checkOutDate: Date | null
-  guestCount: number
+  isRepresentativeFamily: boolean
 }): boolean {
-  const isFirstGuest = guestCount <= 1
-  
-  if (isFirstGuest) {
-    // 一人目：BasicInfoFormの必須項目全てをチェック
-    return (
-      name.trim().length > 0 &&
-      email.trim().length > 0 &&
-      validateAddressFields(address) &&
-      phone.trim().length > 0 &&
-      occupation.trim().length > 0 &&
-      nationality.trim().length > 0 &&
-      Boolean(checkInDate) &&
-      Boolean(checkOutDate)
-    )
-  } else {
-    // 二人目以降：名前のみ必須
+  if (isRepresentativeFamily) {
+    // 代表者の家族の場合：名前のみ必須
     return name.trim().length > 0
   }
+
+  // 家族以外は、ゲスト数に関係なく基本情報の全項目が必須
+  return (
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    validateAddressFields(address) &&
+    phone.trim().length > 0 &&
+    occupation.trim().length > 0 &&
+    nationality.trim().length > 0 &&
+    Boolean(checkInDate) &&
+    Boolean(checkOutDate)
+  )
 }
