@@ -26,6 +26,7 @@ type MessageKeys =
   | "statusRejected"
   | "noRegistrationYet"
   | "selectGuestOrAddNew"
+  | "completeBasicInfoFirst"
   | "accessRequest"
   | "nameRequired"
   | "linkDeliveryMethod"
@@ -98,6 +99,7 @@ type Messages = {
     statusRejected: string;
     noRegistrationYet: string;
     selectGuestOrAddNew: string;
+    completeBasicInfoFirst: string;
     accessRequest: string;
     nameRequired: string;
     linkDeliveryMethod: string;
@@ -172,6 +174,7 @@ const messages: Messages = {
     statusRejected: "承認されませんでした。",
     noRegistrationYet: "現在、この部屋の登録はありません。",
     selectGuestOrAddNew: "お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。",
+    completeBasicInfoFirst: "新しいゲストを追加する前に基本情報の登録を完了してください。",
     accessRequest: "アクセス申請",
     nameRequired: "お名前",
     linkDeliveryMethod: "リンクの受け取り方法",
@@ -250,6 +253,7 @@ const messages: Messages = {
     statusRejected: "Rejected.",
     noRegistrationYet: "There are currently no registrations for this room.",
     selectGuestOrAddNew: "Please enter your information. Select a person from the list above or press 'Add Guest'.",
+    completeBasicInfoFirst: "Please complete the basic information registration before adding a new guest.",
     accessRequest: "Access Request",
     nameRequired: "Name",
     linkDeliveryMethod: "Link Delivery Method",

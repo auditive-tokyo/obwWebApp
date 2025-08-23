@@ -70,6 +70,10 @@ export function RoomPageView({
     }
   }
 
+  // 「Add Guest」ボタンを無効化する条件:
+  // どれかのセッションが waitingForBasicInfo かつ guestId を持っている場合は無効化
+  const disableAddGuest = !!guestSessions?.some((g: any) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
+
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
     !!selectedSession && shouldShowBasicInfoForSession(selectedSession)
@@ -101,13 +105,25 @@ export function RoomPageView({
                 <h3 className="text-sm font-medium text-gray-700">
                   {getMessage("roomStatus")}
                 </h3>
-                <button
-                  type="button"
-                  onClick={onAddGuest}
-                  className="text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 hover:from-blue-400 hover:to-blue-500 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200"
-                >
-                  {getMessage("addNewPerson")}
-                </button>
+                <div className="relative inline-block group">
+                  <button
+                    type="button"
+                    onClick={onAddGuest}
+                    disabled={disableAddGuest}
+                    title={disableAddGuest ? getMessage("completeBasicInfoFirst") as string : undefined}
+                    className={
+                      "text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200 " +
+                      (disableAddGuest ? "opacity-50 cursor-not-allowed pointer-events-none" : "hover:from-blue-400 hover:to-blue-500")
+                    }
+                  >
+                    {getMessage("addNewPerson")}
+                  </button>
+                  {disableAddGuest && (
+                    <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-max max-w-xs rounded bg-gray-800 text-white text-xs px-2 py-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                     {getMessage("completeBasicInfoFirst")}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <ul className="divide-y divide-gray-200 border border-gray-100 rounded-md">

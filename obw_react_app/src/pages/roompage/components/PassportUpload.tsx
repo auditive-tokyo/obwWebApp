@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { convertToWebp } from '../utils/convertToWebp'
-import { getMessage } from '../../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 export type PassportUploadProps = {
   roomId: string
@@ -149,7 +149,7 @@ export function PassportUpload({
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
               <img 
                 src={previewUrl} 
-                alt="パスポート写真プレビュー" 
+                alt="Selected passport image preview" 
                 className="mx-auto max-w-xs rounded-lg shadow-sm"
               />
               <p className="mt-2 text-sm text-gray-600">{getMessage("preview")}</p>

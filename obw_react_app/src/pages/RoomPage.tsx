@@ -78,14 +78,6 @@ export default function RoomPage() {
 
   // 登録（パスポート画像など）
   const handleRegister = async (rid: string, guestId: string) => {
-    if (!guestId) {
-      setMessage('ゲストが選択されていません')
-      return
-    }
-    if (!passportImageUrl) {
-      setMessage('パスポート画像が未選択です')
-      return
-    }
     await handleRegisterAction({
       roomId: rid,
       guestId: guestId,
