@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { generateClient } from 'aws-amplify/api'
 
-export default function AuthPage() {
+export default function Auth() {
   const { roomId = '' } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const client = generateClient()

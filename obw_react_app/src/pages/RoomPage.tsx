@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import AccessForm from '../components/AccessForm'
+import AccessForm from '@/components/AccessForm'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import type { GuestSession } from './roompage/types'
