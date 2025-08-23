@@ -2,7 +2,7 @@ export type SupportedLang =
   | "ja"
   | "en";
 
-  type MessageKeys =
+type MessageKeys =
   | "close"
   | "preview"
   | "edit"
@@ -19,14 +19,24 @@ export type SupportedLang =
   | "uploadingPassportImage"
   | "uploadSuccess"
   | "uploadError"
-  | "registrationSuccess"
-  | "registrationError"
   | "enterBasicInfo"
   | "enterPassportImage"
-  | "passportUploaded"
   | "statusPending"
   | "statusApproved"
   | "statusRejected"
+  | "noRegistrationYet"
+  | "selectGuestOrAddNew"
+  | "accessRequest"
+  | "nameRequired"
+  | "linkDeliveryMethod"
+  | "receiveByEmail"
+  | "receiveBySMS"
+  | "submitting"
+  | "sendLink"
+  | "allFieldsRequired"
+  | "sendFailed"
+  | "emailLinkSent"
+  | "smsLinkSent"
   | "name"
   | "namePlaceholder"
   | "email"
@@ -81,14 +91,24 @@ type Messages = {
     uploadingPassportImage: string;
     uploadSuccess: string;
     uploadError: string;
-    registrationSuccess: string;
-    registrationError: string;
     enterBasicInfo: string;
     enterPassportImage: string;
-    passportUploaded: string;
     statusPending: string;
     statusApproved: string;
     statusRejected: string;
+    noRegistrationYet: string;
+    selectGuestOrAddNew: string;
+    accessRequest: string;
+    nameRequired: string;
+    linkDeliveryMethod: string;
+    receiveByEmail: string;
+    receiveBySMS: string;
+    submitting: string;
+    sendLink: string;
+    allFieldsRequired: string;
+    sendFailed: string;
+    emailLinkSent: string;
+    smsLinkSent: string;
     name: string;
     namePlaceholder: string;
     email: string;
@@ -145,14 +165,24 @@ const messages: Messages = {
     uploadingPassportImage: "パスポート画像を更新中...",
     uploadSuccess: "パスポート画像のアップロードが完了しました！",
     uploadError: "パスポート画像のアップロードに失敗しました。もう一度お試しください。",
-    registrationSuccess: "登録が完了しました！",
-    registrationError: "登録に失敗しました。もう一度お試しください。",
     enterBasicInfo: "基本情報を入力してください",
     enterPassportImage: "パスポート画像をアップロードしてください",
-    passportUploaded: "アップロード完了",
     statusPending: "現在承認待ちです。",
     statusApproved: "承認されました。",
     statusRejected: "承認されませんでした。",
+    noRegistrationYet: "現在、この部屋の登録はありません。",
+    selectGuestOrAddNew: "お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。",
+    accessRequest: "アクセス申請",
+    nameRequired: "お名前",
+    linkDeliveryMethod: "リンクの受け取り方法",
+    receiveByEmail: "メールで受け取る",
+    receiveBySMS: "SMSで受け取る",
+    submitting: "送信中…",
+    sendLink: "リンクを送信",
+    allFieldsRequired: "お名前・Email・電話番号はすべて必須です",
+    sendFailed: "送信に失敗しました",
+    emailLinkSent: "メールにアクセスリンクを送信しました。ご確認ください。",
+    smsLinkSent: "SMSにアクセスリンクを送信しました。ご確認ください。",
     name: "お名前",
     namePlaceholder: "山田太郎",
     email: "メールアドレス",
@@ -213,14 +243,24 @@ const messages: Messages = {
     uploadingPassportImage: "Updating passport image...",
     uploadSuccess: "Passport image upload completed!",
     uploadError: "Passport image upload failed. Please try again.",
-    registrationSuccess: "Registration completed!",
-    registrationError: "Registration failed. Please try again.",
     enterBasicInfo: "Please enter your basic information.",
     enterPassportImage: "Please upload your passport image.",
-    passportUploaded: "Upload completed",
     statusPending: "Currently pending approval.",
     statusApproved: "Approved.",
     statusRejected: "Rejected.",
+    noRegistrationYet: "There are currently no registrations for this room.",
+    selectGuestOrAddNew: "Please enter your information. Select a person from the list above or press 'Add Guest'.",
+    accessRequest: "Access Request",
+    nameRequired: "Name",
+    linkDeliveryMethod: "Link Delivery Method",
+    receiveByEmail: "Receive by Email",
+    receiveBySMS: "Receive by SMS",
+    submitting: "Submitting...",
+    sendLink: "Send Link",
+    allFieldsRequired: "Name, Email, and Phone number are all required",
+    sendFailed: "Failed to send",
+    emailLinkSent: "Access link sent to your email. Please check your inbox.",
+    smsLinkSent: "Access link sent to your SMS. Please check your messages.",
     name: "Name",
     namePlaceholder: "John Doe",
     phoneValidation: "Please enter a valid phone number.",

@@ -118,12 +118,12 @@ export function PassportUpload({
       if (onCompleted) {
         onCompleted()
       } else {
-        alert(getMessage("registrationSuccess") as string)
+        alert(getMessage("uploadSuccess") as string)
         window.location.reload()
       }
     } catch (e) {
       console.error('Upload and register error:', e)
-      setError("アップロード・登録に失敗しました。")
+      setError(getMessage("uploadError") as string)
     } finally {
       setUploading(false)
     }

@@ -163,7 +163,7 @@ export function RoomPageView({
 
           {!guestSessions?.length && (
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">現在、この部屋の登録はありません。</div>
+             <div className="text-sm text-gray-600">{getMessage("noRegistrationYet")}</div>
             </div>
           )}
         </div>
@@ -174,7 +174,7 @@ export function RoomPageView({
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
           <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
-            お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。
+           {getMessage("selectGuestOrAddNew")}
           </div>
         )}
 

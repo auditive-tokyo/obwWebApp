@@ -10,7 +10,7 @@ function CustomPhoneInput(props: any) {
   return (
     <input
       {...props}
-      className="w-full border-none focus:ring-0 focus:outline-none text-base leading-normal px-3 py-2"
+      className="w-full border-none focus:ring-0 focus:outline-none text-base leading-normal px-3 py-1 bg-transparent"
       style={{ fontSize: 'inherit', height: 'auto', lineHeight: '1.35' }}
     />
   )
@@ -39,7 +39,7 @@ export default function AccessForm({ roomNumber }: Props) {
     e.preventDefault()
     setError(null)
     if (!guestName || !email || !phone) {
-      setError('お名前・Email・電話番号はすべて必須です')
+      setError(getMessage("allFieldsRequired") as string)
       return
     }
     if (emailError) {
@@ -77,19 +77,19 @@ export default function AccessForm({ roomNumber }: Props) {
       if ('data' in res && res.data?.requestAccess?.success) {
         setMessage(
           delivery === 'email'
-            ? 'メールにアクセスリンクを送信しました。ご確認ください。'
-            : 'SMSにアクセスリンクを送信しました。ご確認ください。'
+            ? getMessage("emailLinkSent") as string
+            : getMessage("smsLinkSent") as string
         )
       } else {
         const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
-        setError(`送信に失敗しました${firstErr}`)
+        setError(`${getMessage("sendFailed")}${firstErr}`)
       }
     } catch (e: any) {
       const msg =
         Array.isArray(e?.errors) && e.errors[0]?.message
           ? e.errors[0].message
           : e?.message || JSON.stringify(e)
-      setError(`送信に失敗しました: ${msg}`)
+      setError(`${getMessage("sendFailed")}: ${msg}`)
     } finally {
       setLoading(false)
     }
@@ -98,26 +98,26 @@ export default function AccessForm({ roomNumber }: Props) {
   if (message) return <p className="text-green-700 text-center py-4">{message}</p>
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md mx-auto bg-white shadow rounded-lg p-6 space-y-5">
-      <h3 className="text-lg font-bold mb-4 text-center">アクセス申請</h3>
+    <form onSubmit={onSubmit} className="max-w-md mx-auto bg-white shadow-2xl hover:shadow-3xl transition-shadow duration-300 rounded-2xl p-8 space-y-6 border border-gray-100 backdrop-blur-sm">
+      <h3 className="text-lg font-bold mb-4 text-center">{getMessage("accessRequest")}</h3>
       <div>
-        <label className="block text-sm font-medium mb-1">お名前 <span className="text-red-500">*</span></label>
+        <label className="block text-sm font-medium mb-1">{getMessage("nameRequired")} <span className="text-red-500">*</span></label>
         <input
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
-          placeholder="山田 太郎"
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-400"
+          placeholder={getMessage("namePlaceholder") as string}
+          className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
           required
         />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
+        <label className="block text-sm font-medium mb-1">{getMessage("email")} <span className="text-red-500">*</span></label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-400"
+          className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
           required
         />
         {emailError && (
@@ -127,53 +127,55 @@ export default function AccessForm({ roomNumber }: Props) {
       {/* 電話番号 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          電話番号<span className="text-red-500">*</span>
+          {getMessage("phone")}<span className="text-red-500">*</span>
         </label>
-        <PhoneInput
-          international
-          defaultCountry="JP"
-          value={phone}
-          onChange={value => setPhone(value || "")}
-          className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          inputComponent={CustomPhoneInput}
-          style={{
-            '--PhoneInputCountryFlag-height': '1.2em',
-            '--PhoneInput-color--focus': '#3B82F6'
-          } as React.CSSProperties}
-        />
+        <div className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+          <PhoneInput
+            international
+            defaultCountry="JP"
+            value={phone}
+            onChange={value => setPhone(value || "")}
+            className="w-full px-4 py-2"
+            inputComponent={CustomPhoneInput}
+            style={{
+              '--PhoneInputCountryFlag-height': '1.2em',
+              '--PhoneInput-color--focus': '#3B82F6'
+            } as React.CSSProperties}
+          />
+        </div>
         {phoneError && (
           <p className="mt-2 text-sm text-red-600">{phoneError}</p>
         )}
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">リンクの受け取り方法</label>
-        <div className="flex gap-6 mt-1">
+        <label className="block text-sm font-medium mb-1">{getMessage("linkDeliveryMethod")}</label>
+        <div className="flex gap-6 mt-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
           <label className="inline-flex items-center">
             <input
               type="radio"
-              className="form-radio"
+              className="form-radio text-blue-600 focus:ring-blue-500"
               checked={delivery === 'email'}
               onChange={() => setDelivery('email')}
             />
-            <span className="ml-2">メールで受け取る</span>
+            <span className="ml-2">{getMessage("receiveByEmail")}</span>
           </label>
           <label className="inline-flex items-center">
             <input
               type="radio"
-              className="form-radio"
+              className="form-radio text-blue-600 focus:ring-blue-500"
               checked={delivery === 'sms'}
               onChange={() => setDelivery('sms')}
             />
-            <span className="ml-2">SMSで受け取る</span>
+            <span className="ml-2">{getMessage("receiveBySMS")}</span>
           </label>
         </div>
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+       className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:hover:transform-none disabled:hover:shadow-lg"
       >
-        {loading ? '送信中…' : 'リンクを送信'}
+        {loading ? getMessage("submitting") : getMessage("sendLink")}
       </button>
       {error && <p className="text-red-600 text-center">{error}</p>}
     </form>
