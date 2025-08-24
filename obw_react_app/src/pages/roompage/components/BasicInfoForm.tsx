@@ -28,6 +28,7 @@ type BasicInfoFormProps = {
   isInfoComplete: boolean
   onNext: () => void
   isRepresentativeFamily?: boolean
+  hasRoomCheckDates?: boolean
 }
 
 function CustomPhoneInput(props: any) {
@@ -53,6 +54,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
     promoConsent, setPromoConsent,
     isInfoComplete, onNext,
     isRepresentativeFamily = false,
+    hasRoomCheckDates = false,
   } = props
 
   const [addrOpen, setAddrOpen] = useState(false)
@@ -232,13 +234,15 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
               />
             </div>
 
-            {/* チェックイン・アウト日 */}
-            <BasicCheckInOutDate
-              checkInDate={checkInDate}
-              setCheckInDate={setCheckInDate}
-              checkOutDate={checkOutDate}
-              setCheckOutDate={setCheckOutDate}
-            />
+            {/* チェックイン・アウト日（非家族 かつ 部屋日付未設定のときのみ表示） */}
+            {!hasRoomCheckDates && (
+              <BasicCheckInOutDate
+                checkInDate={checkInDate}
+                setCheckInDate={setCheckInDate}
+                checkOutDate={checkOutDate}
+                setCheckOutDate={setCheckOutDate}
+              />
+            )}
           </>
         )}
 

@@ -33,7 +33,8 @@ export function checkFormCompletion({
   nationality,
   checkInDate,
   checkOutDate,
-  isRepresentativeFamily
+  isRepresentativeFamily,
+  hasRoomCheckDates
 }: {
   name: string
   email: string
@@ -43,14 +44,17 @@ export function checkFormCompletion({
   nationality: string
   checkInDate: Date | null
   checkOutDate: Date | null
+  guestCount: number
   isRepresentativeFamily: boolean
+  hasRoomCheckDates: boolean
 }): boolean {
   if (isRepresentativeFamily) {
     // 代表者の家族の場合：名前のみ必須
     return name.trim().length > 0
   }
 
-  // 家族以外は、ゲスト数に関係なく基本情報の全項目が必須
+  // 家族以外：部屋としてチェックイン/アウト日が既に設定済みなら、本人入力は不要
+  const needDates = !hasRoomCheckDates
   return (
     name.trim().length > 0 &&
     email.trim().length > 0 &&
@@ -58,7 +62,6 @@ export function checkFormCompletion({
     phone.trim().length > 0 &&
     occupation.trim().length > 0 &&
     nationality.trim().length > 0 &&
-    Boolean(checkInDate) &&
-    Boolean(checkOutDate)
+    (!needDates || (Boolean(checkInDate) && Boolean(checkOutDate)))
   )
 }

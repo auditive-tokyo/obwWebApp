@@ -6,39 +6,49 @@ import BasicInfoForm from './components/BasicInfoForm'
 import { getMessage } from '@/i18n/messages'
 import { dbg } from '@/utils/debugLogger'
 
-export function RoomPageView({
-  roomId,
-  name,
-  setName,
-  email,
-  setEmail,
-  address,
-  setAddress,
-  phone,
-  setPhone,
-  occupation,
-  setOccupation,
-  nationality,
-  setNationality,
-  checkInDate,
-  setCheckInDate,
-  checkOutDate,
-  setCheckOutDate,
-  promoConsent,
-  setPromoConsent,
-  isRepresentativeFamily,
-  showFamilyQuestion,
-  onFamilyResponse,
-  handleNext,
-  handleBack,
-  isInfoComplete,
-  message,
-  client,
-  guestSessions,
-  selectedGuest,
-  onSelectGuest,
-  onAddGuest,
-}: RoomPageViewProps) {
+export function RoomPageView(
+  props: RoomPageViewProps & {
+    hasRoomCheckDates?: boolean
+    roomCheckInDate?: Date | null
+    roomCheckOutDate?: Date | null
+  }
+) {
+  const {
+    roomId,
+    name,
+    setName,
+    email,
+    setEmail,
+    address,
+    setAddress,
+    phone,
+    setPhone,
+    occupation,
+    setOccupation,
+    nationality,
+    setNationality,
+    checkInDate,
+    setCheckInDate,
+    checkOutDate,
+    setCheckOutDate,
+    promoConsent,
+    setPromoConsent,
+    isRepresentativeFamily,
+    showFamilyQuestion,
+    onFamilyResponse,
+    handleNext,
+    handleBack,
+    isInfoComplete,
+    message,
+    client,
+    guestSessions,
+    selectedGuest,
+    onSelectGuest,
+    onAddGuest,
+    hasRoomCheckDates,
+    roomCheckInDate,
+    roomCheckOutDate,
+  } = props
   const selectedSession = selectedGuest
 
   // クリック選択時の表示判定
@@ -92,15 +102,21 @@ export function RoomPageView({
 
   dbg('selectedSession:', selectedSession)
   dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  const BasicInfoFormAny = BasicInfoForm as any
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* ヘッダーカード（ROOM + Room Status + 申請状況リスト） */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
             ROOM {roomId}
           </h1>
+          {hasRoomCheckDates && (
+            <div className="text-sm text-gray-600 mb-2">
+              チェックイン: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 チェックアウト: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+            </div>
+          )}
           
           {guestSessions && guestSessions.length > 0 && (
             <div>
@@ -229,7 +245,7 @@ export function RoomPageView({
 
         {/* 基本情報入力フォーム（新規 or waitingForBasicInfo の人を選択時） */}
         {showForm && (
-          <BasicInfoForm
+          <BasicInfoFormAny
             // 常にローカルstateをフォームに渡す（selectedSessionの値は使わない）
             name={name}
             setName={setName}
@@ -250,6 +266,7 @@ export function RoomPageView({
             promoConsent={promoConsent}
             setPromoConsent={setPromoConsent}
             isRepresentativeFamily={isRepresentativeFamily}
+            hasRoomCheckDates={hasRoomCheckDates}
             isInfoComplete={isInfoComplete}
             onNext={handleNext}
           />

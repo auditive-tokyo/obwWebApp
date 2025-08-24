@@ -32,6 +32,29 @@ export default function RoomPage() {
 
   const client = useMemo(() => generateClient(), [])
 
+  // 部屋レベルのチェックイン/アウト日を guestSessions から算出（先頭に見つかった値で可）
+  const parseToDate = (d: any): Date | null => {
+    if (!d) return null
+    if (d instanceof Date) return d
+    const dt = new Date(d)
+    return isNaN(dt.getTime()) ? null : dt
+  }
+
+  const roomCheckInDate = useMemo(() => {
+    const found = guestSessions.find(g => g.checkInDate)?.checkInDate ?? null
+    return parseToDate(found)
+  }, [guestSessions])
+
+  const roomCheckOutDate = useMemo(() => {
+    const found = guestSessions.find(g => g.checkOutDate)?.checkOutDate ?? null
+    return parseToDate(found)
+  }, [guestSessions])
+
+  const hasRoomCheckDates = useMemo(
+    () => !!(roomCheckInDate && roomCheckOutDate),
+    [roomCheckInDate, roomCheckOutDate]
+  )
+
   // サービス関数のラッパー（引数を束ねる）
   const refreshGuestSessions = useCallback(() => {
     return refreshGuestSessionsSvc({ client, roomId, setGuestSessions })
@@ -48,8 +71,10 @@ export default function RoomPage() {
       nationality,
       checkInDate,
       checkOutDate,
-      isRepresentativeFamily
-    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily])
+      guestCount: guestSessions.length,
+      isRepresentativeFamily,
+      hasRoomCheckDates
+    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily, hasRoomCheckDates])
 
   // 戻る（TODO: 現状はダミー、将来のために残す）
   const handleBack = () => {}
@@ -65,8 +90,8 @@ export default function RoomPage() {
       phone,
       occupation,
       nationality,
-      checkInDate,
-      checkOutDate,
+      checkInDate: hasRoomCheckDates ? roomCheckInDate : checkInDate,
+      checkOutDate: hasRoomCheckDates ? roomCheckOutDate : checkOutDate,
       promoConsent,
       client,
       setMessage,
@@ -242,6 +267,9 @@ export default function RoomPage() {
         setCheckOutDate={setCheckOutDate}
         promoConsent={promoConsent}
         setPromoConsent={setPromoConsent}
+        hasRoomCheckDates={hasRoomCheckDates}
+        roomCheckInDate={roomCheckInDate}
+        roomCheckOutDate={roomCheckOutDate}
         isRepresentativeFamily={isRepresentativeFamily}
         showFamilyQuestion={showFamilyQuestion}
         onFamilyResponse={handleFamilyResponse}
