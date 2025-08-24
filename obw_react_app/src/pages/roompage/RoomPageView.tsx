@@ -114,7 +114,7 @@ export function RoomPageView(
           </h1>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
-              チェックイン: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 チェックアウト: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+              {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
             </div>
           )}
           
