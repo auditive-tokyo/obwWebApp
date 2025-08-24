@@ -24,7 +24,13 @@ Resources:
           AttributeType: S
         - AttributeName: guestId
           AttributeType: S
-        - AttributeName: sessionTokenHash
+        - AttributeName: sessionTokenHash     # GSI用
+          AttributeType: S
+        - AttributeName: bookingId            # GSI用
+          AttributeType: S
+        - AttributeName: checkInDate          # GSI用
+          AttributeType: S
+        - AttributeName: checkOutDate         # GSI用
           AttributeType: S
       KeySchema:
         - AttributeName: roomNumber
@@ -32,10 +38,36 @@ Resources:
         - AttributeName: guestId
           KeyType: RANGE
       GlobalSecondaryIndexes:
+        # トークンでの検索・認証
         - IndexName: SessionTokenHashIndex
           KeySchema:
             - AttributeName: sessionTokenHash
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        # 予約単位で取得
+        - IndexName: BookingIndex
+          KeySchema:
+            - AttributeName: bookingId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        # 部屋×チェックイン日で並べる（特定日を含む検索は Filter で checkOutDate >= :day）
+        - IndexName: RoomCheckInIndex
+          KeySchema:
+            - AttributeName: roomNumber
+              KeyType: HASH
+            - AttributeName: checkInDate
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # チェックアウト日で並べるクエリ
+        - IndexName: RoomCheckOutIndex
+          KeySchema:
+            - AttributeName: roomNumber
+              KeyType: HASH
+            - AttributeName: checkOutDate
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       TimeToLiveSpecification:
@@ -53,6 +85,7 @@ Resources:
         type Guest {
           roomNumber: String!
           guestId: String!
+          bookingId: String
           guestName: String!
           email: String
           address: String
@@ -74,6 +107,7 @@ Resources:
         input CreateGuestInput {
           roomNumber: String!
           guestId: String!
+          bookingId: String
           guestName: String!
           email: String!
           address: String!
@@ -89,6 +123,7 @@ Resources:
         input UpdateGuestInput {
           roomNumber: String!
           guestId: String!
+          bookingId: String
           guestName: String
           email: String
           address: String
@@ -129,7 +164,7 @@ Resources:
         type PresignedUrlResult {
           putUrl: String!
           getUrl: String!
-          baseUrl: String!  # 恒久的URL
+          baseUrl: String!
         }
 
         type Mutation {
@@ -137,13 +172,14 @@ Resources:
           updateGuest(input: UpdateGuestInput!): Guest
           requestAccess(input: RequestAccessInput!): RequestAccessResult
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
-          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult  # ← 追加
+          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult
         }
 
         type Query {
           getGuest(roomNumber: String!, guestId: String!): Guest
           listGuestsByRoom(roomNumber: String!): [Guest]
           listGuests: [Guest]
+          listGuestsByBooking(bookingId: String!): [Guest]
         }
 
   GuestTableDataSource:
@@ -237,6 +273,7 @@ Resources:
           },
           "attributeValues": {
             "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId),
+            "bookingId": $util.dynamodb.toDynamoDBJson($ctx.args.input.bookingId),
             "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName),
             "email": $util.dynamodb.toDynamoDBJson($ctx.args.input.email),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
@@ -267,106 +304,79 @@ Resources:
       DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         #set($exp = "SET #updatedAt = :updatedAt")
-        #set($names = {
-          "#updatedAt": "updatedAt"
-        })
-        #set($values = {
-          ":updatedAt": {
-            "S": "$util.time.nowISO8601()"
-          }
-        })
+        #set($names = { "#updatedAt": "updatedAt" })
+        #set($values = { ":updatedAt": { "S": "$util.time.nowISO8601()" } })
 
         ## Strings
+        #if(!$util.isNullOrEmpty($ctx.args.input.bookingId))
+          #set($exp = $exp + ", #bookingId = :bookingId")
+          $util.qr($names.put("#bookingId","bookingId"))
+          $util.qr($values.put(":bookingId", { "S": "$ctx.args.input.bookingId" }))
+        #end
         #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
           #set($exp = $exp + ", #guestName = :guestName")
           $util.qr($names.put("#guestName","guestName"))
-          $util.qr($values.put(":guestName", {
-            "S": "$ctx.args.input.guestName"
-          }))
+          $util.qr($values.put(":guestName", { "S": "$ctx.args.input.guestName" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.email))
           #set($exp = $exp + ", #email = :email")
           $util.qr($names.put("#email","email"))
-          $util.qr($values.put(":email", {
-            "S": "$ctx.args.input.email"
-          }))
+          $util.qr($values.put(":email", { "S": "$ctx.args.input.email" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.address))
           #set($exp = $exp + ", #address = :address")
           $util.qr($names.put("#address","address"))
-          $util.qr($values.put(":address", {
-            "S": "$ctx.args.input.address"
-          }))
+          $util.qr($values.put(":address", { "S": "$ctx.args.input.address" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.phone))
           #set($exp = $exp + ", #phone = :phone")
           $util.qr($names.put("#phone","phone"))
-          $util.qr($values.put(":phone", {
-            "S": "$ctx.args.input.phone"
-          }))
+          $util.qr($values.put(":phone", { "S": "$ctx.args.input.phone" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.occupation))
           #set($exp = $exp + ", #occupation = :occupation")
           $util.qr($names.put("#occupation","occupation"))
-          $util.qr($values.put(":occupation", {
-            "S": "$ctx.args.input.occupation"
-          }))
+          $util.qr($values.put(":occupation", { "S": "$ctx.args.input.occupation" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.nationality))
           #set($exp = $exp + ", #nationality = :nationality")
           $util.qr($names.put("#nationality","nationality"))
-          $util.qr($values.put(":nationality", {
-            "S": "$ctx.args.input.nationality"
-          }))
+          $util.qr($values.put(":nationality", { "S": "$ctx.args.input.nationality" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.passportImageUrl))
           #set($exp = $exp + ", #passportImageUrl = :passportImageUrl")
           $util.qr($names.put("#passportImageUrl","passportImageUrl"))
-          $util.qr($values.put(":passportImageUrl", {
-            "S": "$ctx.args.input.passportImageUrl"
-          }))
+          $util.qr($values.put(":passportImageUrl", { "S": "$ctx.args.input.passportImageUrl" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.checkInDate))
           #set($exp = $exp + ", #checkInDate = :checkInDate")
           $util.qr($names.put("#checkInDate","checkInDate"))
-          $util.qr($values.put(":checkInDate", {
-            "S": "$ctx.args.input.checkInDate"
-          }))
+          $util.qr($values.put(":checkInDate", { "S": "$ctx.args.input.checkInDate" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.checkOutDate))
           #set($exp = $exp + ", #checkOutDate = :checkOutDate")
           $util.qr($names.put("#checkOutDate","checkOutDate"))
-          $util.qr($values.put(":checkOutDate", {
-            "S": "$ctx.args.input.checkOutDate"
-          }))
+          $util.qr($values.put(":checkOutDate", { "S": "$ctx.args.input.checkOutDate" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.approvalStatus))
           #set($exp = $exp + ", #approvalStatus = :approvalStatus")
           $util.qr($names.put("#approvalStatus","approvalStatus"))
-          $util.qr($values.put(":approvalStatus", {
-            "S": "$ctx.args.input.approvalStatus"
-          }))
+          $util.qr($values.put(":approvalStatus", { "S": "$ctx.args.input.approvalStatus" }))
         #end
 
         ## Booleans
         #if(!$util.isNull($ctx.args.input.promoConsent))
           #set($exp = $exp + ", #promoConsent = :promoConsent")
           $util.qr($names.put("#promoConsent","promoConsent"))
-          $util.qr($values.put(":promoConsent", {
-            "BOOL": $ctx.args.input.promoConsent
-          }))
+          $util.qr($values.put(":promoConsent", { "BOOL": $ctx.args.input.promoConsent }))
         #end
 
         {
           "version": "2017-02-28",
           "operation": "UpdateItem",
           "key": {
-            "roomNumber": {
-              "S": "$ctx.args.input.roomNumber"
-            },
-            "guestId": {
-              "S": "$ctx.args.input.guestId"
-            }
+            "roomNumber": { "S": "$ctx.args.input.roomNumber" },
+            "guestId": { "S": "$ctx.args.input.guestId" }
           },
           "update": {
             "expression": "$exp",
@@ -435,6 +445,31 @@ Resources:
             "expression": "roomNumber = :roomNumber",
             "expressionValues": {
               ":roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber)
+            }
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
+
+  ListGuestsByBookingResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: listGuestsByBooking
+      DataSourceName: guestcheckintable
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "BookingIndex",
+          "query": {
+            "expression": "bookingId = :b",
+            "expressionValues": {
+              ":b": $util.dynamodb.toDynamoDBJson($ctx.args.bookingId)
             }
           }
         }

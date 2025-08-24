@@ -4,6 +4,7 @@ import uuid
 import base64
 import hashlib
 import time
+import secrets
 from datetime import datetime, timezone
 
 dynamodb = boto3.client('dynamodb')
@@ -23,6 +24,10 @@ def hash_token(token):
 def now_iso_ms_z() -> str:
     # 例: 2025-08-14T11:40:29.504Z
     return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
+def generate_booking_id(length=11) -> str:
+    alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def lambda_handler(event, context):
     args = event.get('arguments', {}).get('input', {})
@@ -46,6 +51,7 @@ def lambda_handler(event, context):
 
     now = int(time.time())
     pending_verification_ttl = now + 86400  # 24h
+    booking_id = generate_booking_id()
 
     # DynamoDB put item
     dynamodb.put_item(
@@ -60,7 +66,8 @@ def lambda_handler(event, context):
             "approvalStatus": {"S": "pendingVerification"},
             "pendingVerificationTtl": {"N": str(pending_verification_ttl)},
             "createdAt": {"S": now_iso_ms_z()},
-            "contactChannel": {"S": contact_channel}
+            "contactChannel": {"S": contact_channel},
+            "bookingId": {"S": booking_id}
         }
     )
 
