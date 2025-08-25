@@ -2,7 +2,6 @@ import type { HandleNextParams, HandleRegisterParams } from '../types'
 import { getMessage } from '@/i18n/messages'
 import { ensureGuestIdsContains } from '../utils/guestIdsStorage'
 import{ dbg } from '@/utils/debugLogger'
-import { Client } from '@aws-amplify/api'
 
 const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updateBasicInfo' | 'uploadPassport'): string => {
   switch (`${currentStatus}-${action}`) {
@@ -46,6 +45,14 @@ export const handleNextAction = async (params: HandleNextParams) => {
   const formatDate = (date: Date | null) =>
     date ? date.toISOString().slice(0, 10) : null
 
+  // bookingId はバックエンド(verify)発行のみを使用。フロントでは生成しない。
+  const bookingId =
+    (typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null) || undefined
+  if (!bookingId) {
+    // 必須にしたい場合はここでエラー扱いにして return してください。
+    dbg('handleNextAction: bookingId not found in localStorage. Proceeding without it.')
+  }
+
   // guestIdがあればupdate、なければcreate
   const isUpdate = !!guestId
 
@@ -56,6 +63,7 @@ export const handleNextAction = async (params: HandleNextParams) => {
           roomNumber
           guestId
           guestName
+          bookingId
         }
       }
     `
@@ -65,29 +73,35 @@ export const handleNextAction = async (params: HandleNextParams) => {
           roomNumber
           guestId
           guestName
+          bookingId
         }
       }
     `
 
-  const variables = {
-    input: {
-      roomNumber: roomId,
-      guestId: guestId, // update時のみ必要
-      guestName: name,
-      email,
-      address,
-      phone,
-      occupation,
-      nationality,
-      passportImageUrl: "",
-      checkInDate: formatDate(checkInDate),
-      checkOutDate: formatDate(checkOutDate),
-      promoConsent,
-      approvalStatus: getNextApprovalStatus(selectedGuest?.approvalStatus, 'updateBasicInfo'),
-    }
+  // 共通入力
+  const baseInput: any = {
+    roomNumber: roomId,
+    guestName: name,
+    email,
+    address,
+    phone,
+    occupation,
+    nationality,
+    passportImageUrl: "",
+    checkInDate: formatDate(checkInDate),
+    checkOutDate: formatDate(checkOutDate),
+    promoConsent,
+    approvalStatus: getNextApprovalStatus(selectedGuest?.approvalStatus, 'updateBasicInfo'),
+  }
+  if (bookingId) {
+    baseInput.bookingId = bookingId // verify で得たもののみ付与
   }
 
-  console.debug("mutation input:", variables.input)
+  // update のときだけ guestId を含める
+  const input = isUpdate ? { ...baseInput, guestId } : { ...baseInput }
+  const variables = { input }
+
+  dbg("mutation input:", variables.input)
 
   try {
     const res = await client.graphql({
@@ -97,7 +111,11 @@ export const handleNextAction = async (params: HandleNextParams) => {
     })
 
     // ローカルストレージにはguestIdsのみ追加
-    const newGuestId = guestId || res.data.createGuest.guestId
+    const newGuestId =
+      guestId ||
+      res?.data?.createGuest?.guestId ||
+      res?.data?.updateGuest?.guestId
+
     const guestIdsRaw = localStorage.getItem('guestIds')
     let guestIds: string[] = []
     try {
@@ -174,16 +192,11 @@ export const handleRegisterAction = async (params: HandleRegisterParams) => {
  * - GraphQL経由で認証トークンを検証
  * - 認証状態を更新し、無効な場合はlocalStorageをクリア
  */
-export async function verifyOnLoad({
-  roomId,
-  client,
-  setSessionChecked,
-  setSessionValid
-}: {
+export async function verifyOnLoad({ roomId, client, setSessionChecked, setSessionValid }: {
   roomId: string
-  client: Client
-  setSessionChecked: (checked: boolean) => void
-  setSessionValid: (valid: boolean) => void
+  client: any
+  setSessionChecked: (b: boolean) => void
+  setSessionValid: (b: boolean) => void
 }) {
   dbg('verifyOnLoad start: roomId=', roomId)
   
@@ -208,13 +221,16 @@ export async function verifyOnLoad({
   try {
     const query = `
       mutation VerifyAccessToken($roomNumber: String!, $guestId: String!, $token: String!) {
-        verifyAccessToken(roomNumber: $roomNumber, guestId: $guestId, token: $token) { success }
+        verifyAccessToken(roomNumber: $roomNumber, guestId: $guestId, token: $token) {
+          success
+          guest { bookingId }
+        }
       }
     `
-    const res = await client.graphql({ 
-      query, 
-      variables: { roomNumber: roomId, guestId: gid, token: tok }, 
-      authMode: 'iam' 
+    const res = await client.graphql({
+      query,
+      variables: { roomNumber: roomId, guestId: gid, token: tok },
+      authMode: 'iam'
     })
     const ok = 'data' in res && res.data?.verifyAccessToken?.success
     dbg('verifyOnLoad result ok =', ok)
@@ -225,7 +241,10 @@ export async function verifyOnLoad({
       localStorage.removeItem('token')
       setSessionValid(false)
     } else {
-      // ここで単体 guestId を配列 guestIds に移行
+     const bookingId = res.data?.verifyAccessToken?.guest?.bookingId
+     if (bookingId) {
+       localStorage.setItem('bookingId', bookingId)
+     }
       ensureGuestIdsContains(gid)
       setSessionValid(true)
     }
