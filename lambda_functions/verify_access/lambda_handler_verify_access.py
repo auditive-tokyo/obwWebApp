@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.client('dynamodb')
 TABLE_NAME = os.environ.get("TABLE_NAME")
-PROVISIONAL_SESSION_HOURS = 24  # 仮セッション時間
+PROVISIONAL_SESSION_HOURS = 48  # 仮セッション時間
 PROPERTY_TZ_OFFSET_HOURS = 9  # JST=+9
 
 def hash_token(token):
@@ -38,6 +38,9 @@ def lambda_handler(event, context):
     if not item:
         return {"success": False, "guest": None}
 
+    # DBから bookingId を取得
+    booking_id = item.get("bookingId", {}).get("S") if item.get("bookingId") else None
+
     expected = item.get("sessionTokenHash", {}).get("S")
     if not expected or expected != token_hash:
         return {"success": False, "guest": None}
@@ -70,7 +73,7 @@ def lambda_handler(event, context):
               ':u': {'S': now_iso_ms_z()},
             }
         )
-        return {"success": True, "guest": None}
+        return {"success": True, "guest": {"guestId": guest_id, "bookingId": booking_id}}
 
     # 既に認証済み（waitingForBasicInfo等）の再アクセス:
     # 期限があるならチェック（安全のため）
@@ -78,5 +81,4 @@ def lambda_handler(event, context):
     if expires_val and now > expires_val:
         return {"success": False, "guest": None}
 
-    # 必要に応じてスライディング延長したい場合はここで延長しても良い
-    return {"success": True, "guest": None}
+    return {"success": True, "guest": {"guestId": guest_id, "bookingId": booking_id}}
