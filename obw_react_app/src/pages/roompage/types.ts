@@ -19,6 +19,7 @@ export interface GuestSession {
   checkOutDate?: string | Date | null
   promoConsent?: boolean
   passportImageUrl?: string | null
+  bookingId?: string
   registrationDate?: string    // YYYY-MM-DD
   approvalStatus: ApprovalStatus
   lastUpdated?: string
@@ -83,6 +84,7 @@ export interface RoomPageViewProps {
  */
 export interface HandleNextParams {
   roomId: string
+  bookingId: string | null
   name: string
   email: string
   address: string

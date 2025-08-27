@@ -5,7 +5,6 @@ import { generateClient } from 'aws-amplify/api'
 import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
 import { handleNextAction, handleRegisterAction, verifyOnLoad } from './roompage/handlers/roomPageHandlers'
-import { addGuestId } from './roompage/utils/guestIdsStorage'
 import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc } from './roompage/services/apiCalls'
 import { checkFormCompletion } from './roompage/utils/formValidation'
 
@@ -29,6 +28,8 @@ export default function RoomPage() {
   const [isRepresentativeFamily, setIsRepresentativeFamily] = useState(false)
   const [showFamilyQuestion, setShowFamilyQuestion] = useState(false)
   const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
+  const bookingId =
+    typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
 
   const client = useMemo(() => generateClient(), [])
 
@@ -84,6 +85,7 @@ export default function RoomPage() {
     if (!isInfoComplete) return
     await handleNextAction({
       roomId,
+      bookingId,
       name,
       email,
       address,
@@ -98,11 +100,6 @@ export default function RoomPage() {
       guestId: selectedGuestId,
       selectedGuest: selectedGuest,
     })
-    
-    // DynamoDB登録成功後、localStorageに保存
-    if (selectedGuestId) {
-      addGuestId(selectedGuestId)
-    }
     
     await refreshGuestSessions()
   }

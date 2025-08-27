@@ -1,7 +1,26 @@
 import type { HandleNextParams, HandleRegisterParams } from '../types'
 import { getMessage } from '@/i18n/messages'
-import { ensureGuestIdsContains } from '../utils/guestIdsStorage'
 import{ dbg } from '@/utils/debugLogger'
+
+// Cognito IdentityId など Amplify/SDK のローカルキャッシュを削除
+function clearCognitoIdentityCache() {
+  try {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (!k) continue
+      // 代表的なキー: com.amplify.Cognito.<region>:<identityPoolId>.identityId
+      if (
+        k.startsWith('com.amplify.Cognito') ||
+        (k.includes('Cognito') && k.endsWith('.identityId')) ||
+        k.startsWith('aws-amplify-federatedInfo')
+      ) {
+        keysToRemove.push(k)
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k))
+  } catch {}
+}
 
 const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updateBasicInfo' | 'uploadPassport'): string => {
   switch (`${currentStatus}-${action}`) {
@@ -25,6 +44,7 @@ const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updat
 export const handleNextAction = async (params: HandleNextParams) => {
   const {
     roomId,
+    bookingId,
     name,
     email,
     address,
@@ -44,14 +64,6 @@ export const handleNextAction = async (params: HandleNextParams) => {
 
   const formatDate = (date: Date | null) =>
     date ? date.toISOString().slice(0, 10) : null
-
-  // bookingId はバックエンド(verify)発行のみを使用。フロントでは生成しない。
-  const bookingId =
-    (typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null) || undefined
-  if (!bookingId) {
-    // 必須にしたい場合はここでエラー扱いにして return してください。
-    dbg('handleNextAction: bookingId not found in localStorage. Proceeding without it.')
-  }
 
   // guestIdがあればupdate、なければcreate
   const isUpdate = !!guestId
@@ -92,9 +104,7 @@ export const handleNextAction = async (params: HandleNextParams) => {
     checkOutDate: formatDate(checkOutDate),
     promoConsent,
     approvalStatus: getNextApprovalStatus(selectedGuest?.approvalStatus, 'updateBasicInfo'),
-  }
-  if (bookingId) {
-    baseInput.bookingId = bookingId // verify で得たもののみ付与
+    bookingId,
   }
 
   // update のときだけ guestId を含める
@@ -104,27 +114,11 @@ export const handleNextAction = async (params: HandleNextParams) => {
   dbg("mutation input:", variables.input)
 
   try {
-    const res = await client.graphql({
+    await client.graphql({
       query: mutation,
       variables,
       authMode: 'iam'
     })
-
-    // ローカルストレージにはguestIdsのみ追加
-    const newGuestId =
-      guestId ||
-      res?.data?.createGuest?.guestId ||
-      res?.data?.updateGuest?.guestId
-
-    const guestIdsRaw = localStorage.getItem('guestIds')
-    let guestIds: string[] = []
-    try {
-      guestIds = guestIdsRaw ? JSON.parse(guestIdsRaw) : []
-    } catch {}
-    if (!guestIds.includes(newGuestId)) {
-      guestIds.push(newGuestId)
-      localStorage.setItem('guestIds', JSON.stringify(guestIds))
-    }
 
     setMessage(getMessage("basicInfoSaved") as string)
   } catch (e) {
@@ -177,7 +171,7 @@ export const handleRegisterAction = async (params: HandleRegisterParams) => {
       authMode: 'iam'
     })
 
-    console.debug("Passport image update completed:", res)
+    dbg("Passport image update completed:", res)
 
     setMessage(getMessage("uploadSuccess") as string)
   } catch (e) {
@@ -223,7 +217,7 @@ export async function verifyOnLoad({ roomId, client, setSessionChecked, setSessi
       mutation VerifyAccessToken($roomNumber: String!, $guestId: String!, $token: String!) {
         verifyAccessToken(roomNumber: $roomNumber, guestId: $guestId, token: $token) {
           success
-          guest { bookingId }
+          guest { guestId bookingId }
         }
       }
     `
@@ -237,21 +231,18 @@ export async function verifyOnLoad({ roomId, client, setSessionChecked, setSessi
     
     if (!ok) {
       localStorage.removeItem('guestId')
-      localStorage.removeItem('guestIds')
       localStorage.removeItem('token')
+      localStorage.removeItem('bookingId')
+      clearCognitoIdentityCache()
       setSessionValid(false)
     } else {
-     const bookingId = res.data?.verifyAccessToken?.guest?.bookingId
-     if (bookingId) {
-       localStorage.setItem('bookingId', bookingId)
-     }
-      ensureGuestIdsContains(gid)
       setSessionValid(true)
     }
   } catch (e) {
     localStorage.removeItem('guestId')
-    localStorage.removeItem('guestIds')
     localStorage.removeItem('token')
+    localStorage.removeItem('bookingId')
+    clearCognitoIdentityCache()
     console.error('verify on load failed:', e)
     setSessionValid(false)
   } finally {

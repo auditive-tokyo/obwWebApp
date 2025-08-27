@@ -24,11 +24,12 @@ export default function Auth() {
         mutation VerifyAccessToken($roomNumber: String!, $guestId: String!, $token: String!) {
           verifyAccessToken(roomNumber: $roomNumber, guestId: $guestId, token: $token) {
             success
+            guest { guestId bookingId }
           }
         }
       `
       try {
-        type VerifyAccessTokenPayload = { verifyAccessToken: { success: boolean } }
+        type VerifyAccessTokenPayload = { verifyAccessToken: { success: boolean, guest?: { guestId?: string, bookingId?: string } } }
         const res = await client.graphql<VerifyAccessTokenPayload>({
           query,
           variables: { roomNumber: roomId, guestId, token },
@@ -39,18 +40,26 @@ export default function Auth() {
           if ('errors' in res && res.errors?.length) console.error('GraphQL errors:', res.errors)
         }
         if ('data' in res && res.data?.verifyAccessToken?.success) {
-          localStorage.setItem('guestId', guestId)
+          const g = res.data.verifyAccessToken.guest
+          localStorage.setItem('guestId', g?.guestId || guestId)
           localStorage.setItem('token', token)
-          setMessage('Verified. Redirecting...')
-          navigate(`/${roomId}`, { replace: true })
-        } else {
-          const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
+          if (g?.bookingId) localStorage.setItem('bookingId', g.bookingId)
+           setMessage('Verified. Redirecting...')
+           navigate(`/${roomId}`, { replace: true })
+         } else {
+           const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
           setMessage(`Verification failed${firstErr}`)
-          setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
-        }
+          localStorage.removeItem('guestId')
+          localStorage.removeItem('token')
+          localStorage.removeItem('bookingId')
+           setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
+         }
       } catch (e: any) {
         if (import.meta.env.DEV) console.error('VerifyAccessToken exception:', e)
         setMessage(`Verification error: ${e?.message || 'unknown'}`)
+        localStorage.removeItem('guestId')
+        localStorage.removeItem('token')
+        localStorage.removeItem('bookingId')
         setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1200)
       }
     }

@@ -1,6 +1,5 @@
 import { dbg } from '@/utils/debugLogger'
 import type { Client } from 'aws-amplify/api'
-import { getGuestIds, setGuestIds } from '../utils/guestIdsStorage'
 import type { GuestSession } from '../types'
 
 type Params = {
@@ -12,58 +11,38 @@ type Params = {
 export async function refreshGuestSessions({ client, roomId, setGuestSessions }: Params) {
   if (!roomId) { dbg('refreshGuestSessions: no roomId'); return }
 
-  let ids = getGuestIds()
-  // 互換: guestIds が無ければ単体 guestId を取り込む
-  if ((!ids || !ids.length) && typeof window !== 'undefined') {
-    const single = localStorage.getItem('guestId')
-    if (single) {
-      dbg('migrating single guestId -> guestIds:', single)
-      ids = [single]
-      setGuestIds(ids)
-    }
-  }
-
-  dbg('refreshGuestSessions start: roomId=', roomId, 'guestIds=', ids)
-  if (!ids.length) {
-    dbg('no guestIds -> set empty list')
+  const bookingId = typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
+  if (!bookingId) {
+    dbg('refreshGuestSessions: no bookingId -> set empty list')
     setGuestSessions([])
     return
   }
 
+  dbg('refreshGuestSessions via bookingId:', { roomId, bookingId })
+
   try {
-    const results = await Promise.all(
-      ids.map(async (gid: string) => {
-        const query = `
-          query GetGuest($roomNumber: String!, $guestId: String!) {
-            getGuest(roomNumber: $roomNumber, guestId: $guestId) {
-              guestId
-              guestName
-              approvalStatus
-              email
-              address
-              phone
-              occupation
-              nationality
-              checkInDate
-              checkOutDate
-              passportImageUrl
-            }
-          }
-        `
-        dbg('getGuest call ->', { roomNumber: roomId, guestId: gid })
-        try {
-          const res = await client.graphql({ query, variables: { roomNumber: roomId, guestId: gid }, authMode: 'iam' } as any)
-          const g = 'data' in res ? (res as any).data?.getGuest : null
-          dbg('getGuest result for', gid, '->', g ? { guestId: g.guestId, name: g.guestName, status: g.approvalStatus } : null)
-          return g
-        } catch (err) {
-          console.error('getGuest failed for', gid, err)
-          return null
+    const query = `
+      query ListGuestsByBooking($bookingId: String!) {
+        listGuestsByBooking(bookingId: $bookingId) {
+          guestId
+          guestName
+          approvalStatus
+          email
+          address
+          phone
+          occupation
+          nationality
+          checkInDate
+          checkOutDate
+          passportImageUrl
+          bookingId
         }
-      })
-    )
-    const list = results.filter(Boolean) as GuestSession[]
-    dbg('setGuestSessions length =', list.length, 'items =', list.map(g => ({ id: g.guestId, name: g.guestName, status: g.approvalStatus })))
+      }
+    `
+    const res = await client.graphql({ query, variables: { bookingId }, authMode: 'iam' } as any)
+    const items = ('data' in res ? (res as any).data?.listGuestsByBooking : null) || []
+    const list = (items || []).filter(Boolean) as GuestSession[]
+    dbg('setGuestSessions via bookingId length =', list.length)
     setGuestSessions(list)
   } catch (e) {
     console.error('load room sessions failed:', e)
@@ -71,6 +50,7 @@ export async function refreshGuestSessions({ client, roomId, setGuestSessions }:
   }
 }
 
+// 以下はそのまま（単体詳細取得）
 type GuestDetail = {
   guestName?: string
   email?: string
