@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { generateClient } from 'aws-amplify/api'
+import { clearCognitoIdentityCache } from '@/utils/clearCognitoCache'
 
 export default function Auth() {
   const { roomId = '' } = useParams<{ roomId: string }>()
@@ -52,6 +53,7 @@ export default function Auth() {
           localStorage.removeItem('guestId')
           localStorage.removeItem('token')
           localStorage.removeItem('bookingId')
+          clearCognitoIdentityCache()
            setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
          }
       } catch (e: any) {
@@ -60,6 +62,7 @@ export default function Auth() {
         localStorage.removeItem('guestId')
         localStorage.removeItem('token')
         localStorage.removeItem('bookingId')
+        clearCognitoIdentityCache()
         setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1200)
       }
     }

@@ -1,26 +1,7 @@
 import type { HandleNextParams, HandleRegisterParams } from '../types'
 import { getMessage } from '@/i18n/messages'
 import{ dbg } from '@/utils/debugLogger'
-
-// Cognito IdentityId など Amplify/SDK のローカルキャッシュを削除
-function clearCognitoIdentityCache() {
-  try {
-    const keysToRemove: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (!k) continue
-      // 代表的なキー: com.amplify.Cognito.<region>:<identityPoolId>.identityId
-      if (
-        k.startsWith('com.amplify.Cognito') ||
-        (k.includes('Cognito') && k.endsWith('.identityId')) ||
-        k.startsWith('aws-amplify-federatedInfo')
-      ) {
-        keysToRemove.push(k)
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k))
-  } catch {}
-}
+import { clearCognitoIdentityCache } from '@/utils/clearCognitoCache'
 
 const getNextApprovalStatus = (currentStatus: string | undefined, action: 'updateBasicInfo' | 'uploadPassport'): string => {
   switch (`${currentStatus}-${action}`) {
