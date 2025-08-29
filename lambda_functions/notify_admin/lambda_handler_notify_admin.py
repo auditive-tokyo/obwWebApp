@@ -11,7 +11,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 TOPIC_ARN = os.environ.get("ADMIN_TOPIC_ARN", "")
-ADMIN_BASE_URL = os.environ.get("ADMIN_BASE_URL", "")  # 例: https://admin.example.com/guests
+ADMIN_BASE_URL = os.environ.get("ADMIN_BASE_URL", "")
 
 def _s(attr, key="S"):
     return (attr or {}).get(key)
@@ -42,12 +42,9 @@ def handler(event, context):
             room_number = _s(new_img.get("roomNumber"))
             guest_id = _s(new_img.get("guestId"))
             guest_name = _s(new_img.get("guestName"))
-            email = _s(new_img.get("email"))
-            phone = _s(new_img.get("phone"))
 
             check_in = _s(new_img.get("checkInDate"))
             check_out = _s(new_img.get("checkOutDate"))
-            updated_at = _s(new_img.get("updatedAt")) or datetime.now(timezone.utc).isoformat()
 
             if ADMIN_BASE_URL:
                 base = ADMIN_BASE_URL.rstrip('/')
@@ -55,33 +52,28 @@ def handler(event, context):
             else:
                 admin_url = "(set ADMIN_BASE_URL to include link)"
 
-            subject = f"[GuestCheckin] Approval requested: room {room_number}, guest {guest_name or guest_id}"
-            message = {
-                "event": "guest_approval_requested",
-                "roomNumber": room_number,
-                "guestId": guest_id,
-                "guestName": guest_name,
-                "email": email,
-                "phone": phone,
-                "checkInDate": check_in,
-                "checkOutDate": check_out,
-                "approvalStatus": new_status,
-                "updatedAt": updated_at,
-                "adminUrl": admin_url,
-            }
+            display_name = guest_name or guest_id or "不明なゲスト"
+            lines = [
+                f"Room ({room_number}) の {display_name} さんが基本情報の登録と、IDの写真をアップロードしました。",
+                "Admin Pageより確認してください:",
+                f"滞在日: {check_in or '-'} ~ {check_out or '-'}",
+                "",
+                f"{admin_url}",
+            ]
+            message_text = "\n".join(lines)
 
             if not TOPIC_ARN:
-                logger.error("ADMIN_TOPIC_ARN is not set. Skipping publish.", extra={"message_body": message})
+                logger.error("ADMIN_TOPIC_ARN is not set. Skipping publish.", extra={"message_body": message_text})
                 continue
 
             response = sns.publish(
                 TopicArn=TOPIC_ARN,
-                Subject=subject,
-                Message=json.dumps(message, ensure_ascii=False, indent=2),
+                Message=message_text,
                 MessageAttributes={
                     "roomNumber": {"DataType": "String", "StringValue": room_number or ""},
                     "guestId": {"DataType": "String", "StringValue": guest_id or ""},
                     "eventType": {"DataType": "String", "StringValue": "guest_approval_requested"},
+                    "AWS.SNS.SMS.SMSType": {"DataType": "String", "StringValue": "Transactional"},
                 },
             )
             logger.info(f"Successfully published message for guest {guest_id} to SNS. MessageId: {response.get('MessageId')}")
@@ -89,6 +81,7 @@ def handler(event, context):
 
         except Exception as e:
             logger.error(f"Error processing record: {rec}", exc_info=True)
-            # Continue to the next record
+            # バッチサイズ1なので例外を投げればこのレコードのみ自動再試行される
+            raise
 
     return {"published": published}
