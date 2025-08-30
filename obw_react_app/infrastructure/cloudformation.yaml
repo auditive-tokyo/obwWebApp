@@ -99,7 +99,7 @@ Resources:
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
-        type Guest @aws_cognito_user_pools @aws_iam {
+        type Guest {
           roomNumber: String!
           guestId: String!
           bookingId: String
@@ -195,7 +195,7 @@ Resources:
         type Query {
           getGuest(roomNumber: String!, guestId: String!): Guest
           listGuestsByRoom(roomNumber: String!): [Guest]
-          listGuests: [Guest] @aws_cognito_user_pools
+          listGuests: [Guest]
           listGuestsByBooking(bookingId: String!): [Guest]
         }
 
