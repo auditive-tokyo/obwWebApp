@@ -535,7 +535,7 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: obw-admin-userpool
-      MfaConfiguration: OFF
+      MfaConfiguration: 'OFF'
       DeletionProtection: ACTIVE
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
