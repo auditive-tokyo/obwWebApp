@@ -6,7 +6,7 @@ on:
   #   types:
   #     - completed
   push:
-    branches: [main, feature/magic-link-access] # 本番では workflow_run を使うからpush:はコメントアウト
+    branches: [main, feature/*] # 本番では workflow_run を使うからpush:はコメントアウト
     paths:
       - 'obw_react_app/**'
       - '.github/workflows/frontend-deploy.yml'
@@ -48,20 +48,42 @@ jobs:
             --stack-name obw-appsync-stack \
             --query "Stacks[0].Outputs" \
             --output json > appsync_outputs.json
-          echo "VITE_APPSYNC_ENDPOINT=$(jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue' appsync_outputs.json)" >> $GITHUB_ENV
-          echo "VITE_COGNITO_IDENTITY_POOL_ID=$(jq -r '.[] | select(.OutputKey=="CognitoIdentityPoolId") | .OutputValue' appsync_outputs.json)" >> $GITHUB_ENV
-          # LambdaスタックからもVITE変数取得
+
+          echo "VITE_APPSYNC_ENDPOINT=$(jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue // empty' appsync_outputs.json)" >> $GITHUB_ENV
+          echo "VITE_COGNITO_IDENTITY_POOL_ID=$(jq -r '.[] | select(.OutputKey=="CognitoIdentityPoolId") | .OutputValue // empty' appsync_outputs.json)" >> $GITHUB_ENV
+
+          # 追加: Cognito関連
+          USER_POOL_ID=$(jq -r '.[] | select(.OutputKey=="AdminUserPoolId") | .OutputValue // empty' appsync_outputs.json)
+          CLIENT_ID=$(jq -r '.[] | select(.OutputKey=="AdminUserPoolClientId") | .OutputValue // empty' appsync_outputs.json)
+          DOMAIN_PREFIX=$(jq -r '.[] | select(.OutputKey=="AdminUserPoolDomainPrefix" or .OutputKey=="AdminCognitoDomainPrefix") | .OutputValue // empty' appsync_outputs.json)
+          CALLBACK_URL=$(jq -r '.[] | select(.OutputKey=="AdminHostedUICallbackURL") | .OutputValue // empty' appsync_outputs.json)
+          LOGOUT_URL=$(jq -r '.[] | select(.OutputKey=="AdminHostedUILogoutURL") | .OutputValue // empty' appsync_outputs.json)
+
+          echo "VITE_COGNITO_USER_POOL_ID=${USER_POOL_ID}" >> $GITHUB_ENV
+          echo "VITE_COGNITO_USER_POOL_CLIENT_ID=${CLIENT_ID}" >> $GITHUB_ENV
+          echo "VITE_COGNITO_OAUTH_DOMAIN=${DOMAIN_PREFIX}.auth.${AWS_REGION}.amazoncognito.com" >> $GITHUB_ENV
+          echo "VITE_COGNITO_REDIRECT_SIGNIN=${CALLBACK_URL}" >> $GITHUB_ENV
+          echo "VITE_COGNITO_REDIRECT_SIGNOUT=${LOGOUT_URL}" >> $GITHUB_ENV
+
+          # Lambdaスタックからの変数取得
           aws cloudformation describe-stacks \
             --stack-name obw-lambda-functions \
             --query "Stacks[0].Outputs" \
             --output json > lambda_outputs.json
-          echo "VITE_CHAT_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="ChatFunctionUrl") | .OutputValue' lambda_outputs.json)" >> $GITHUB_ENV
+          echo "VITE_CHAT_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="ChatFunctionUrl") | .OutputValue // empty' lambda_outputs.json)" >> $GITHUB_ENV
 
       - name: Create .env file
         run: |
           echo "VITE_APPSYNC_ENDPOINT=${{ env.VITE_APPSYNC_ENDPOINT }}" > .env
           echo "VITE_COGNITO_IDENTITY_POOL_ID=${{ env.VITE_COGNITO_IDENTITY_POOL_ID }}" >> .env
           echo "VITE_CHAT_LAMBDA_URL=${{ env.VITE_CHAT_LAMBDA_URL }}" >> .env
+
+          # 追加: Cognito関連
+          echo "VITE_COGNITO_USER_POOL_ID=${{ env.VITE_COGNITO_USER_POOL_ID }}" >> .env
+          echo "VITE_COGNITO_USER_POOL_CLIENT_ID=${{ env.VITE_COGNITO_USER_POOL_CLIENT_ID }}" >> .env
+          echo "VITE_COGNITO_OAUTH_DOMAIN=${{ env.VITE_COGNITO_OAUTH_DOMAIN }}" >> .env
+          echo "VITE_COGNITO_REDIRECT_SIGNIN=${{ env.VITE_COGNITO_REDIRECT_SIGNIN }}" >> .env
+          echo "VITE_COGNITO_REDIRECT_SIGNOUT=${{ env.VITE_COGNITO_REDIRECT_SIGNOUT }}" >> .env
 
       - name: Build
         run: npm run build
