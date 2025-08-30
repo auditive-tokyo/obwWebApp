@@ -5,7 +5,7 @@ on:
   #   workflows: ["Deploy Lambda Functions"]
   #   types: [completed]
   push:
-    branches: [main, feature/magic-link-access] # 本番では main ブランチを使用
+    branches: [main, feature/*] # 本番では main ブランチを使用
     paths:
       - 'obw_react_app/infrastructure/cloudformation.yaml'
       - '.github/workflows/infra-appsync.yml'

@@ -4,6 +4,18 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
+  AdminCognitoDomainPrefix:
+    Type: String
+    Description: Cognito Hosted UI domain prefix (must be globally unique)
+    Default: osakabaywheel-admin
+  AdminHostedUICallbackURLs:
+    Type: CommaDelimitedList
+    Description: Hosted UI callback URLs
+    Default: "https://app.osakabaywheel.com/admin/callback"
+  AdminHostedUILogoutURLs:
+    Type: CommaDelimitedList
+    Description: Hosted UI logout URLs
+    Default: "https://app.osakabaywheel.com/admin/logout"
 
 Conditions:
   DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
@@ -14,6 +26,11 @@ Resources:
     Properties:
       Name: GuestCheckinAPI
       AuthenticationType: AWS_IAM
+      AdditionalAuthenticationProviders:
+        - AuthenticationType: AMAZON_COGNITO_USER_POOLS
+          UserPoolConfig:
+            UserPoolId: !Ref AdminUserPool
+            AwsRegion: !Ref AWS::Region
 
   GuestTable:
     Type: AWS::DynamoDB::Table
@@ -513,6 +530,51 @@ Resources:
       Roles:
         unauthenticated: !GetAtt UnauthRole.Arn
 
+  # Admin Cognito resources
+  AdminUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: obw-admin-userpool
+      MfaConfiguration: OFF
+      DeletionProtection: ACTIVE
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 11
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      UsernameConfiguration:
+        CaseSensitive: false
+
+  AdminUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref AdminUserPool
+      ClientName: obw-admin-app-client
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs: !Ref AdminHostedUICallbackURLs
+      LogoutURLs: !Ref AdminHostedUILogoutURLs
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+
+  AdminUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref AdminCognitoDomainPrefix
+      UserPoolId: !Ref AdminUserPool
+
   RequestAccessResolver:
     Condition: DoLambdaIntegration
     Type: AWS::AppSync::Resolver
@@ -578,6 +640,21 @@ Outputs:
   CognitoIdentityPoolId:
     Description: "Cognito Identity Pool ID"
     Value: !Ref IdentityPool
+  AdminUserPoolId:
+    Description: "Admin Cognito User Pool ID"
+    Value: !Ref AdminUserPool
+  AdminUserPoolClientId:
+    Description: "Admin Cognito User Pool Client ID"
+    Value: !Ref AdminUserPoolClient
+  AdminUserPoolDomainPrefix:
+    Description: "Admin Cognito Hosted UI domain prefix"
+    Value: !Ref AdminCognitoDomainPrefix
+  AdminHostedUILoginURL:
+    Description: "Hosted UI Login URL for Admin"
+    Value:
+      Fn::Sub:
+        - "https://${Domain}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${ClientId}&response_type=code&scope=openid+email+profile&redirect_uri=${Callback}"
+        - { Domain: !Ref AdminCognitoDomainPrefix, ClientId: !Ref AdminUserPoolClient, Callback: !Select [0, !Ref AdminHostedUICallbackURLs] }
   GuestTableName:
     Description: "DynamoDB guest table name"
     Value: !Ref GuestTable
