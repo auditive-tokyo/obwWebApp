@@ -2,25 +2,47 @@ export type SupportedLang =
   | "ja"
   | "en";
 
-  type MessageKeys =
+type MessageKeys =
   | "close"
-  | "back"
+  | "preview"
   | "edit"
-  | "clear"
+  | "uploading"
+  | "upload"
+  | "unfilled"
+  | "unselect"
+  | "addNewPerson"
   | "roomStatus"
   | "welcome"
   | "registeringBasicInfo"
   | "basicInfoError"
   | "basicInfoSaved"
-  | "CompleteRegistration"
   | "uploadingPassportImage"
   | "uploadSuccess"
   | "uploadError"
-  | "registrationSuccess"
-  | "registrationError"
   | "enterBasicInfo"
   | "enterPassportImage"
-  | "passportUploaded"
+  | "statusPending"
+  | "statusApproved"
+  | "statusRejected"
+  | "noRegistrationYet"
+  | "selectGuestOrAddNew"
+  | "completeBasicInfoFirst"
+  | "familyRegistrationMessage"
+  | "familyQuestionTitle"
+  | "familyQuestionDescription"
+  | "no"
+  | "yes"
+  | "accessRequest"
+  | "nameRequired"
+  | "linkDeliveryMethod"
+  | "receiveByEmail"
+  | "receiveBySMS"
+  | "submitting"
+  | "sendLink"
+  | "allFieldsRequired"
+  | "sendFailed"
+  | "emailLinkSent"
+  | "smsLinkSent"
   | "name"
   | "namePlaceholder"
   | "email"
@@ -60,23 +82,45 @@ export type SupportedLang =
 type Messages = {
   [lang in SupportedLang]: {
     close: string;
-    back: string;
+    preview: string;
     edit: string;
-    clear: string;
+    uploading: string;
+    upload: string;
+    unfilled: string;
+    unselect: string;
+    addNewPerson: string;
     roomStatus: string;
     welcome: string;
     registeringBasicInfo: string;
     basicInfoError: string;
     basicInfoSaved: string;
-    CompleteRegistration: string;
     uploadingPassportImage: string;
     uploadSuccess: string;
     uploadError: string;
-    registrationSuccess: string;
-    registrationError: string;
     enterBasicInfo: string;
     enterPassportImage: string;
-    passportUploaded: string;
+    statusPending: string;
+    statusApproved: string;
+    statusRejected: string;
+    noRegistrationYet: string;
+    selectGuestOrAddNew: string;
+    completeBasicInfoFirst: string;
+    familyRegistrationMessage: string;
+    familyQuestionTitle: string;
+    familyQuestionDescription: string;
+    no: string;
+    yes: string;
+    accessRequest: string;
+    nameRequired: string;
+    linkDeliveryMethod: string;
+    receiveByEmail: string;
+    receiveBySMS: string;
+    submitting: string;
+    sendLink: string;
+    allFieldsRequired: string;
+    sendFailed: string;
+    emailLinkSent: string;
+    smsLinkSent: string;
     name: string;
     namePlaceholder: string;
     email: string;
@@ -118,23 +162,45 @@ type Messages = {
 const messages: Messages = {
   ja: {
     close: "閉じる",
-    back: "戻る",
+    preview: "この写真をアップロードしようとしています",
     edit: "入力・編集",
-    clear: "選択をクリア",
+    uploading: "アップロード中...",
+    upload: "アップロード",
+    unfilled: "(未入力)",
+    unselect: "選択を解除する",
+    addNewPerson: "+ ゲストを追加する",
     roomStatus: "この部屋の申請状況",
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
     basicInfoSaved: "基本情報を登録しました。パスポート写真をアップロードしてください。",
-    CompleteRegistration: "登録完了",
     uploadingPassportImage: "パスポート画像を更新中...",
     uploadSuccess: "パスポート画像のアップロードが完了しました！",
     uploadError: "パスポート画像のアップロードに失敗しました。もう一度お試しください。",
-    registrationSuccess: "登録が完了しました！",
-    registrationError: "登録に失敗しました。もう一度お試しください。",
     enterBasicInfo: "基本情報を入力してください",
     enterPassportImage: "パスポート画像をアップロードしてください",
-    passportUploaded: "アップロード完了",
+    statusPending: "現在承認待ちです。",
+    statusApproved: "承認されました。",
+    statusRejected: "承認されませんでした。",
+    noRegistrationYet: "現在、この部屋の登録はありません。",
+    selectGuestOrAddNew: "お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。",
+    completeBasicInfoFirst: "新しいゲストを追加する前に基本情報の登録を完了してください。",
+    familyRegistrationMessage: "代表者のご家族として登録します。お名前のみ入力してパスポート写真アップロードへお進みください。",
+    familyQuestionTitle: "代表者のご家族ですか？",
+    familyQuestionDescription: "代表者のご家族の場合は、お名前のみの入力で登録できます。",
+    no: "いいえ",
+    yes: "はい",
+    accessRequest: "アクセス申請",
+    nameRequired: "お名前",
+    linkDeliveryMethod: "リンクの受け取り方法",
+    receiveByEmail: "メールで受け取る",
+    receiveBySMS: "SMSで受け取る",
+    submitting: "送信中…",
+    sendLink: "リンクを送信",
+    allFieldsRequired: "お名前・Email・電話番号はすべて必須です",
+    sendFailed: "送信に失敗しました",
+    emailLinkSent: "メールにアクセスリンクを送信しました。ご確認ください。",
+    smsLinkSent: "SMSにアクセスリンクを送信しました。ご確認ください。",
     name: "お名前",
     namePlaceholder: "山田太郎",
     email: "メールアドレス",
@@ -180,23 +246,45 @@ const messages: Messages = {
   },
   en: {
     close: "Close",
-    back: "Back",
+    preview: "This photo is about to be uploaded",
     edit: "Input / Edit",
-    clear: "Clear Selection",
+    uploading: "Uploading...",
+    upload: "Upload",
+    unfilled: "(Unfilled)",
+    unselect: "Unselect",
+    addNewPerson: "+ Add Guest",
     roomStatus: "Room Status",
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
     registeringBasicInfo: "Registering basic information...",
     basicInfoError: "Failed to register basic information.",
     basicInfoSaved: "Basic information saved. Please upload your passport image.",
-    CompleteRegistration: "Complete Registration",
     uploadingPassportImage: "Updating passport image...",
     uploadSuccess: "Passport image upload completed!",
     uploadError: "Passport image upload failed. Please try again.",
-    registrationSuccess: "Registration completed!",
-    registrationError: "Registration failed. Please try again.",
     enterBasicInfo: "Please enter your basic information.",
     enterPassportImage: "Please upload your passport image.",
-    passportUploaded: "Upload completed",
+    statusPending: "Currently pending approval.",
+    statusApproved: "Approved.",
+    statusRejected: "Rejected.",
+    noRegistrationYet: "There are currently no registrations for this room.",
+    selectGuestOrAddNew: "Please enter your information. Select a person from the list above or press 'Add Guest'.",
+    completeBasicInfoFirst: "Please complete the basic information registration before adding a new guest.",
+    familyRegistrationMessage: "Registering as a family member of the representative. Please enter only your name and proceed to passport image upload.",
+    familyQuestionTitle: "Are you a family member of the representative?",
+    familyQuestionDescription: "Family members of the representative can register with only their name.",
+    no: "No",
+    yes: "Yes",
+    accessRequest: "Access Request",
+    nameRequired: "Name",
+    linkDeliveryMethod: "Link Delivery Method",
+    receiveByEmail: "Receive by Email",
+    receiveBySMS: "Receive by SMS",
+    submitting: "Submitting...",
+    sendLink: "Send Link",
+    allFieldsRequired: "Name, Email, and Phone number are all required",
+    sendFailed: "Failed to send",
+    emailLinkSent: "Access link sent to your email. Please check your inbox.",
+    smsLinkSent: "Access link sent to your SMS. Please check your messages.",
     name: "Name",
     namePlaceholder: "John Doe",
     phoneValidation: "Please enter a valid phone number.",

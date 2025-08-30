@@ -1,10 +1,10 @@
 import { Routes, Route, useLocation, matchPath } from 'react-router-dom'
 import MainPage from './pages/MainPage'
 import RoomPage from './pages/RoomPage'
-import CheckinPage from './pages/CheckinPage'
 import ErrorPage from './pages/ErrorPage'
 import Header from './header/Header'
 import ChatWidget from './components/ChatWidget'
+import Auth from './auth/Auth'
 
 const allowedRooms = ['201', '304']
 
@@ -20,11 +20,11 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<MainPage />} />
+          <Route path="/room/:roomId" element={<Auth />} />
           <Route
             path=":roomId"
             element={isValidRoom ? <RoomPage /> : <ErrorPage />}
           />
-          <Route path="/checkin" element={<CheckinPage />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
         {/* ルートがRoomPage以外のときだけグローバル用ChatWidgetを表示 */}

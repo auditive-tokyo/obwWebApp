@@ -4,7 +4,7 @@ import StructuredAddressInput from './StructuredAddressInput'
 import { BasicCheckInOutDate } from './BasicCheckInOutDate'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
-import { getMessage } from '../../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 type BasicInfoFormProps = {
   name: string
@@ -27,6 +27,8 @@ type BasicInfoFormProps = {
   setPromoConsent: (v: boolean) => void
   isInfoComplete: boolean
   onNext: () => void
+  isRepresentativeFamily?: boolean
+  hasRoomCheckDates?: boolean
 }
 
 function CustomPhoneInput(props: any) {
@@ -51,6 +53,8 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
     checkOutDate, setCheckOutDate,
     promoConsent, setPromoConsent,
     isInfoComplete, onNext,
+    isRepresentativeFamily = false,
+    hasRoomCheckDates = false,
   } = props
 
   const [addrOpen, setAddrOpen] = useState(false)
@@ -81,6 +85,15 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         {getMessage("enterBasicInfo")}
       </h2>
 
+      {/* 家族の場合は案内メッセージを表示 */}
+      {isRepresentativeFamily && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-700">
+            {getMessage("familyRegistrationMessage")}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-4">
         {/* 名前 */}
         <div>
@@ -96,135 +109,142 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
           />
         </div>
 
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {getMessage("email")}<span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="sample@example.com"
-            required
-          />
-          {emailError && (
-            <p className="mt-2 text-sm text-red-600">{emailError}</p>
-          )}
-        </div>
-
-        {/* プロモーション同意 */}
-        <div
-          className={
-            `rounded-md border border-gray-200 px-3 py-2 ` +
-            (promoConsent ? 'bg-pink-50' : 'bg-gray-50')
-          }
-        >
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={promoConsent}
-              onChange={e => setPromoConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              aria-describedby="promo-consent-help"
-            />
-            <div className="text-xs text-gray-700">
-              <div className="font-medium flex items-center gap-1">
-                <span role="img" aria-label="mail">📩</span>
-                {getMessage("emailConsent")}
-              </div>
-              <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
-                {(getMessage("promoConsent") as string).split('\n').map((line, i) => (
-                  <span key={i}>
-                    {line}
-                    <br />
-                  </span>
-                ))}
-              </p>
+        {/* 代表者の家族でない場合のみ、以下の項目を表示 */}
+        {!isRepresentativeFamily && (
+          <>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {getMessage("email")}<span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="sample@example.com"
+                required
+              />
+              {emailError && (
+                <p className="mt-2 text-sm text-red-600">{emailError}</p>
+              )}
             </div>
-          </label>
-        </div>
 
-        {/* 住所 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {getMessage("address")}<span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-gray-600 truncate">{addrSummary || getMessage("addressNotSet")}</div>
-            <button
-              type="button"
-              className="text-sm text-blue-600"
-              onClick={() => setAddrOpen(v => !v)}
+            {/* プロモーション同意 */}
+            <div
+              className={
+                `rounded-md border border-gray-200 px-3 py-2 ` +
+                (promoConsent ? 'bg-pink-50' : 'bg-gray-50')
+              }
             >
-              {addrOpen ? getMessage("close") : getMessage("edit")}
-            </button>
-          </div>
-          {addrOpen && (
-            <StructuredAddressInput
-              value={address}
-              onChange={setAddress}
-              onValidityChange={(valid) => { if (!valid) { setAddrOpen(true) } }}
-            />
-          )}
-        </div>
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={promoConsent}
+                  onChange={e => setPromoConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  aria-describedby="promo-consent-help"
+                />
+                <div className="text-xs text-gray-700">
+                  <div className="font-medium flex items-center gap-1">
+                    <span role="img" aria-label="mail">📩</span>
+                    {getMessage("emailConsent")}
+                  </div>
+                  <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
+                    {(getMessage("promoConsent") as string).split('\n').map((line, i) => (
+                      <span key={i}>
+                        {line}
+                        <br />
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              </label>
+            </div>
 
-        {/* 電話番号 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {getMessage("phone")}<span className="text-red-500">*</span>
-          </label>
-          <PhoneInput
-            international
-            defaultCountry="JP"
-            value={phone}
-            onChange={value => setPhone(value || "")}
-            className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            inputComponent={CustomPhoneInput}
-            style={{
-              '--PhoneInputCountryFlag-height': '1.2em',
-              '--PhoneInput-color--focus': '#3B82F6'
-            } as React.CSSProperties}
-          />
-          {phoneError && (
-            <p className="mt-2 text-sm text-red-600">{phoneError}</p>
-          )}
-        </div>
+            {/* 住所 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {getMessage("address")}<span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-gray-600 truncate">{addrSummary || getMessage("addressNotSet")}</div>
+                <button
+                  type="button"
+                  className="text-sm text-blue-600"
+                  onClick={() => setAddrOpen(v => !v)}
+                >
+                  {addrOpen ? getMessage("close") : getMessage("edit")}
+                </button>
+              </div>
+              {addrOpen && (
+                <StructuredAddressInput
+                  value={address}
+                  onChange={setAddress}
+                  onValidityChange={(valid) => { if (!valid) { setAddrOpen(true) } }}
+                />
+              )}
+            </div>
 
-        {/* 職業 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {getMessage("occupation")}<span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={occupation}
-            onChange={e => setOccupation(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder={getMessage("occupationPlaceholder") as string}
-          />
-        </div>
+            {/* 電話番号 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {getMessage("phone")}<span className="text-red-500">*</span>
+              </label>
+              <PhoneInput
+                international
+                defaultCountry="JP"
+                value={phone}
+                onChange={value => setPhone(value || "")}
+                className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                inputComponent={CustomPhoneInput}
+                style={{
+                  '--PhoneInputCountryFlag-height': '1.2em',
+                  '--PhoneInput-color--focus': '#3B82F6'
+                } as React.CSSProperties}
+              />
+              {phoneError && (
+                <p className="mt-2 text-sm text-red-600">{phoneError}</p>
+              )}
+            </div>
 
-        {/* 国籍 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {getMessage("nationality")}<span className="text-red-500">*</span>
-          </label>
-          <CountrySelect
-            value={nationality}
-            onChange={setNationality}
-            placeholder={getMessage("nationalityPlaceholder") as string}
-          />
-        </div>
+            {/* 職業 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {getMessage("occupation")}<span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={occupation}
+                onChange={e => setOccupation(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder={getMessage("occupationPlaceholder") as string}
+              />
+            </div>
 
-        {/* チェックイン・アウト日 */}
-        <BasicCheckInOutDate
-          checkInDate={checkInDate}
-          setCheckInDate={setCheckInDate}
-          checkOutDate={checkOutDate}
-          setCheckOutDate={setCheckOutDate}
-        />
+            {/* 国籍 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {getMessage("nationality")}<span className="text-red-500">*</span>
+              </label>
+              <CountrySelect
+                value={nationality}
+                onChange={setNationality}
+                placeholder={getMessage("nationalityPlaceholder") as string}
+              />
+            </div>
+
+            {/* チェックイン・アウト日（非家族 かつ 部屋日付未設定のときのみ表示） */}
+            {!hasRoomCheckDates && (
+              <BasicCheckInOutDate
+                checkInDate={checkInDate}
+                setCheckInDate={setCheckInDate}
+                checkOutDate={checkOutDate}
+                setCheckOutDate={setCheckOutDate}
+              />
+            )}
+          </>
+        )}
 
         {/* 次へボタン */}
         <div className="pt-4">

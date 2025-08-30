@@ -1,4 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  EnableLambdaIntegration:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+Conditions:
+  DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
+
 Resources:
   AppSyncApi:
     Type: AWS::AppSync::GraphQLApi
@@ -13,14 +22,60 @@ Resources:
       AttributeDefinitions:
         - AttributeName: roomNumber
           AttributeType: S
-        - AttributeName: guestName
+        - AttributeName: guestId
+          AttributeType: S
+        - AttributeName: sessionTokenHash     # GSI用
+          AttributeType: S
+        - AttributeName: bookingId            # GSI用
+          AttributeType: S
+        - AttributeName: checkInDate          # GSI用
+          AttributeType: S
+        - AttributeName: checkOutDate         # GSI用
           AttributeType: S
       KeySchema:
         - AttributeName: roomNumber
           KeyType: HASH
-        - AttributeName: guestName
+        - AttributeName: guestId
           KeyType: RANGE
-      TableName: guest-checkin-table
+      GlobalSecondaryIndexes:
+        # トークンでの検索・認証
+        - IndexName: SessionTokenHashIndex
+          KeySchema:
+            - AttributeName: sessionTokenHash
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        # 予約単位で取得
+        - IndexName: BookingIndex
+          KeySchema:
+            - AttributeName: bookingId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        # 部屋×チェックイン日で並べる（特定日を含む検索は Filter で checkOutDate >= :day）
+        - IndexName: RoomCheckInIndex
+          KeySchema:
+            - AttributeName: roomNumber
+              KeyType: HASH
+            - AttributeName: checkInDate
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # チェックアウト日で並べるクエリ
+        - IndexName: RoomCheckOutIndex
+          KeySchema:
+            - AttributeName: roomNumber
+              KeyType: HASH
+            - AttributeName: checkOutDate
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: pendingVerificationTtl
+        Enabled: true
+      TableName: guest
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
 
   AppSyncSchema:
     Type: AWS::AppSync::GraphQLSchema
@@ -28,24 +83,31 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
         type Guest {
-          roomNumber: String! 
+          roomNumber: String!
+          guestId: String!
+          bookingId: String
           guestName: String!
-          email: String!
-          address: String!
-          phone: String!
+          email: String
+          address: String
+          phone: String
           occupation: String
-          nationality: String!
+          nationality: String
           passportImageUrl: String
-          checkInDate: AWSDate!
-          checkOutDate: AWSDate!
-          approvalStatus: String! # pending, approved, rejected
-          promoConsent: Boolean! # Consent for promotional communications
+          checkInDate: AWSDate
+          checkOutDate: AWSDate
+          approvalStatus: String!
+          promoConsent: Boolean
+          sessionTokenExpiresAt: AWSTimestamp
+          sessionTokenHash: String
+          pendingVerificationTtl: AWSTimestamp
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
         }
 
         input CreateGuestInput {
           roomNumber: String!
+          guestId: String!
+          bookingId: String
           guestName: String!
           email: String!
           address: String!
@@ -60,28 +122,64 @@ Resources:
 
         input UpdateGuestInput {
           roomNumber: String!
-          guestName: String!
+          guestId: String!
+          bookingId: String
+          guestName: String
           email: String
           address: String
           phone: String
           occupation: String
           nationality: String
-          approvalStatus: String
           passportImageUrl: String
           checkInDate: AWSDate
           checkOutDate: AWSDate
+          approvalStatus: String
           promoConsent: Boolean
+        }
+
+        input RequestAccessInput {
+          roomNumber: String!
+          guestName: String!
+          email: String!
+          phone: String!
+          contactChannel: String!
+        }
+
+        input GetPresignedUrlInput {
+          filename: String!
+          roomId: String!
+          timestamp: String!
+        }
+
+        type RequestAccessResult {
+          success: Boolean!
+          guestId: String!
+        }
+
+        type VerifyTokenResult {
+          success: Boolean!
+          guest: Guest
+        }
+
+        type PresignedUrlResult {
+          putUrl: String!
+          getUrl: String!
+          baseUrl: String!
         }
 
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
           updateGuest(input: UpdateGuestInput!): Guest
+          requestAccess(input: RequestAccessInput!): RequestAccessResult
+          verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
+          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult
         }
 
         type Query {
-          getGuest(roomNumber: String!, guestName: String!): Guest
+          getGuest(roomNumber: String!, guestId: String!): Guest
           listGuestsByRoom(roomNumber: String!): [Guest]
           listGuests: [Guest]
+          listGuestsByBooking(bookingId: String!): [Guest]
         }
 
   GuestTableDataSource:
@@ -94,6 +192,53 @@ Resources:
       DynamoDBConfig:
         TableName: !Ref GuestTable
         AwsRegion: !Ref AWS::Region
+
+  # AppSync が Lambda を呼び出すためのロール（Lambda Invoke許可）
+  AppSyncLambdaRole:
+    Condition: DoLambdaIntegration
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdaForAppSync
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !ImportValue Obw-RequestAccessFunctionArn
+                  - !ImportValue Obw-VerifyAccessTokenFunctionArn
+                  - !ImportValue Obw-GetPresignedUrlFunctionArn
+
+  RequestAccessLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: requestAccessLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-RequestAccessFunctionArn
+
+  VerifyAccessTokenLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: verifyAccessTokenLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-VerifyAccessTokenFunctionArn
 
   AppSyncDynamoDBRole:
     Type: AWS::IAM::Role
@@ -110,21 +255,25 @@ Resources:
 
   CreateGuestResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: createGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
           "operation": "PutItem",
           "key": {
             "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
-            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId)
           },
           "attributeValues": {
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestId),
+            "bookingId": $util.dynamodb.toDynamoDBJson($ctx.args.input.bookingId),
             "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName),
             "email": $util.dynamodb.toDynamoDBJson($ctx.args.input.email),
             "address": $util.dynamodb.toDynamoDBJson($ctx.args.input.address),
@@ -134,7 +283,7 @@ Resources:
             "passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl),
             "checkInDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkInDate),
             "checkOutDate": $util.dynamodb.toDynamoDBJson($ctx.args.input.checkOutDate),
-            "approvalStatus": $util.dynamodb.toDynamoDBJson("waitingForPassportImage"),
+            "approvalStatus": $util.dynamodb.toDynamoDBJson("pendingVerification"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
@@ -145,32 +294,94 @@ Resources:
 
   UpdateGuestResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: updateGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
+        #set($exp = "SET #updatedAt = :updatedAt")
+        #set($names = { "#updatedAt": "updatedAt" })
+        #set($values = { ":updatedAt": { "S": "$util.time.nowISO8601()" } })
+
+        ## Strings
+        #if(!$util.isNullOrEmpty($ctx.args.input.bookingId))
+          #set($exp = $exp + ", #bookingId = :bookingId")
+          $util.qr($names.put("#bookingId","bookingId"))
+          $util.qr($values.put(":bookingId", { "S": "$ctx.args.input.bookingId" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
+          #set($exp = $exp + ", #guestName = :guestName")
+          $util.qr($names.put("#guestName","guestName"))
+          $util.qr($values.put(":guestName", { "S": "$ctx.args.input.guestName" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.email))
+          #set($exp = $exp + ", #email = :email")
+          $util.qr($names.put("#email","email"))
+          $util.qr($values.put(":email", { "S": "$ctx.args.input.email" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.address))
+          #set($exp = $exp + ", #address = :address")
+          $util.qr($names.put("#address","address"))
+          $util.qr($values.put(":address", { "S": "$ctx.args.input.address" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.phone))
+          #set($exp = $exp + ", #phone = :phone")
+          $util.qr($names.put("#phone","phone"))
+          $util.qr($values.put(":phone", { "S": "$ctx.args.input.phone" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.occupation))
+          #set($exp = $exp + ", #occupation = :occupation")
+          $util.qr($names.put("#occupation","occupation"))
+          $util.qr($values.put(":occupation", { "S": "$ctx.args.input.occupation" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.nationality))
+          #set($exp = $exp + ", #nationality = :nationality")
+          $util.qr($names.put("#nationality","nationality"))
+          $util.qr($values.put(":nationality", { "S": "$ctx.args.input.nationality" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.passportImageUrl))
+          #set($exp = $exp + ", #passportImageUrl = :passportImageUrl")
+          $util.qr($names.put("#passportImageUrl","passportImageUrl"))
+          $util.qr($values.put(":passportImageUrl", { "S": "$ctx.args.input.passportImageUrl" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.checkInDate))
+          #set($exp = $exp + ", #checkInDate = :checkInDate")
+          $util.qr($names.put("#checkInDate","checkInDate"))
+          $util.qr($values.put(":checkInDate", { "S": "$ctx.args.input.checkInDate" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.checkOutDate))
+          #set($exp = $exp + ", #checkOutDate = :checkOutDate")
+          $util.qr($names.put("#checkOutDate","checkOutDate"))
+          $util.qr($values.put(":checkOutDate", { "S": "$ctx.args.input.checkOutDate" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.approvalStatus))
+          #set($exp = $exp + ", #approvalStatus = :approvalStatus")
+          $util.qr($names.put("#approvalStatus","approvalStatus"))
+          $util.qr($values.put(":approvalStatus", { "S": "$ctx.args.input.approvalStatus" }))
+        #end
+
+        ## Booleans
+        #if(!$util.isNull($ctx.args.input.promoConsent))
+          #set($exp = $exp + ", #promoConsent = :promoConsent")
+          $util.qr($names.put("#promoConsent","promoConsent"))
+          $util.qr($values.put(":promoConsent", { "BOOL": $ctx.args.input.promoConsent }))
+        #end
+
         {
           "version": "2017-02-28",
           "operation": "UpdateItem",
           "key": {
-            "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.input.roomNumber),
-            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.input.guestName)
+            "roomNumber": { "S": "$ctx.args.input.roomNumber" },
+            "guestId": { "S": "$ctx.args.input.guestId" }
           },
           "update": {
-            "expression": "SET #updatedAt = :updatedAt, #approvalStatus = :approvalStatus, #passportImageUrl = :passportImageUrl",
-            "expressionNames": {
-              "#updatedAt": "updatedAt",
-              "#approvalStatus": "approvalStatus",
-              "#passportImageUrl": "passportImageUrl"
-            },
-            "expressionValues": {
-              ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
-              ":approvalStatus": $util.dynamodb.toDynamoDBJson($ctx.args.input.approvalStatus),
-              ":passportImageUrl": $util.dynamodb.toDynamoDBJson($ctx.args.input.passportImageUrl)
-            }
+            "expression": "$exp",
+            "expressionNames": $util.toJson($names),
+            "expressionValues": $util.toJson($values)
           }
         }
       ResponseMappingTemplate: |
@@ -178,19 +389,21 @@ Resources:
 
   GetGuestResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: getGuest
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
           "operation": "GetItem",
           "key": {
             "roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber),
-            "guestName": $util.dynamodb.toDynamoDBJson($ctx.args.guestName)
+            "guestId": $util.dynamodb.toDynamoDBJson($ctx.args.guestId)
           }
         }
       ResponseMappingTemplate: |
@@ -198,12 +411,14 @@ Resources:
 
   ListGuestsResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuests
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -214,12 +429,14 @@ Resources:
 
   ListGuestsByRoomResolver:
     Type: AWS::AppSync::Resolver
-    DependsOn: AppSyncSchema
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByRoom
-      DataSourceName: !GetAtt GuestTableDataSource.Name
+      DataSourceName: guestcheckintable
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -228,6 +445,31 @@ Resources:
             "expression": "roomNumber = :roomNumber",
             "expressionValues": {
               ":roomNumber": $util.dynamodb.toDynamoDBJson($ctx.args.roomNumber)
+            }
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
+
+  ListGuestsByBookingResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: listGuestsByBooking
+      DataSourceName: guestcheckintable
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "BookingIndex",
+          "query": {
+            "expression": "bookingId = :b",
+            "expressionValues": {
+              ":b": $util.dynamodb.toDynamoDBJson($ctx.args.bookingId)
             }
           }
         }
@@ -271,10 +513,78 @@ Resources:
       Roles:
         unauthenticated: !GetAtt UnauthRole.Arn
 
+  RequestAccessResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - RequestAccessLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: requestAccess
+      DataSourceName: !GetAtt RequestAccessLambdaDataSource.Name
+
+  VerifyAccessTokenResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - VerifyAccessTokenLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: verifyAccessToken
+      DataSourceName: !GetAtt VerifyAccessTokenLambdaDataSource.Name
+
+  GetPresignedUrlLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: getPresignedUrlLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-GetPresignedUrlFunctionArn
+
+  GetPresignedUrlResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - GetPresignedUrlLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: getPresignedUrl
+      DataSourceName: getPresignedUrlLambda
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
+
 Outputs:
   ApiEndpoint:
     Description: "AppSync API Endpoint"
     Value: !GetAtt AppSyncApi.GraphQLUrl
+  AppSyncApiId:
+    Description: "AppSync API ID"
+    Value: !GetAtt AppSyncApi.ApiId
   CognitoIdentityPoolId:
     Description: "Cognito Identity Pool ID"
     Value: !Ref IdentityPool
+  GuestTableName:
+    Description: "DynamoDB guest table name"
+    Value: !Ref GuestTable
+    Export:
+      Name: Obw-GuestTableName
+  GuestTableStreamArn:
+    Description: "DynamoDB Stream ARN for GuestTable"
+    Value: !GetAtt GuestTable.StreamArn
+    Export:
+      Name: Obw-GuestTableStreamArn

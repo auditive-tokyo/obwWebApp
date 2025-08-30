@@ -1,13 +1,15 @@
 import { useParams } from 'react-router-dom'
+import AccessForm from '@/components/AccessForm'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
-import { saveGuestSession, loadGuestSession, listGuestSessionsByRoom } from './roompage/sessionUtils'
 import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
-import { handleNext as handleNextAction, handleRegister as handleRegisterAction } from './roompage/roomPageHandlers'
+import { handleNextAction, handleRegisterAction, verifyOnLoad } from './roompage/handlers/roomPageHandlers'
+import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc } from './roompage/services/apiCalls'
+import { checkFormCompletion } from './roompage/utils/formValidation'
 
-function RoomPage() {
-  const { roomId } = useParams<{ roomId: string }>()
+export default function RoomPage() {
+  const { roomId = '' } = useParams<{ roomId: string }>()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [address, setAddress] = useState("")
@@ -19,94 +21,231 @@ function RoomPage() {
   const [promoConsent, setPromoConsent] = useState(false)
   const [passportImageUrl, setPassportImageUrl] = useState<string | null>(null)
   const [message, setMessage] = useState("")
-  const [currentStep, setCurrentStep] = useState<'info' | 'upload'>('info')
-  const [guestSessions, setGuestSessions] = useState<GuestSession[]>([])  // ← 追加
-
-  // 一覧を読み込むヘルパー
-  const refreshGuestSessions = useCallback(() => {
-    if (roomId) setGuestSessions(listGuestSessionsByRoom(roomId))
-  }, [roomId])
-
-  // 初回/部屋変更時に読み込み
-  useEffect(() => {
-    refreshGuestSessions()
-  }, [refreshGuestSessions])
-
-  const handleNext = async () => {
-    if (isInfoComplete) {
-      await handleNextAction({
-        roomId: roomId || "",
-        name,
-        email,
-        address,
-        phone,
-        occupation,
-        nationality,
-        checkInDate,
-        checkOutDate,
-        promoConsent,
-        client,
-        setMessage,
-        setCurrentStep
-      })
-      // 保存後に一覧を再取得
-      if (roomId) setGuestSessions(listGuestSessionsByRoom(roomId))
-    }
-  }
-
-  const handleRegister = async (rid: string, gname: string) => {
-    await handleRegisterAction({
-      roomId: rid,              // ← クリック選択または現在の部屋IDを使用
-      name: gname,              // ← クリック選択の宿泊者名を使用（親stateのnameは使わない）
-      email,
-      passportImageUrl,
-      client,
-      setMessage,
-      loadGuestSession,
-      saveGuestSession
-    })
-    if (roomId) setGuestSessions(listGuestSessionsByRoom(roomId))
-  }
-
-  // ページロード時のセッション復旧
-  useEffect(() => {
-    if (roomId && name) {
-      const session = loadGuestSession(roomId, name)
-      if (session) {
-        // ← 他のstateも復元
-        setPhone(session.phone)
-        
-        // ← ステップも復旧
-        if (session.approvalStatus !== 'waitingForPassportImage') {
-          setCurrentStep('upload')
-        }
-      }
-    }
-  }, [roomId, name])
+  const [guestSessions, setGuestSessions] = useState<GuestSession[]>([])
+  const [sessionChecked, setSessionChecked] = useState(false)
+  const [sessionValid, setSessionValid] = useState(false)
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null)
+  const [isRepresentativeFamily, setIsRepresentativeFamily] = useState(false)
+  const [showFamilyQuestion, setShowFamilyQuestion] = useState(false)
+  const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
+  const bookingId =
+    typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
 
   const client = useMemo(() => generateClient(), [])
 
-  // バリデーション
-  const isInfoComplete = Boolean(
-    name.trim() && 
-    email.trim() && 
-    address.trim() && 
-    phone.trim() && 
-    occupation.trim() && 
-    nationality.trim() && 
-    checkInDate && 
-    checkOutDate
-  )
-
-  const handleBack = () => {
-    setCurrentStep('info')
+  // 部屋レベルのチェックイン/アウト日を guestSessions から算出（先頭に見つかった値で可）
+  const parseToDate = (d: any): Date | null => {
+    if (!d) return null
+    if (d instanceof Date) return d
+    const dt = new Date(d)
+    return isNaN(dt.getTime()) ? null : dt
   }
 
+  const roomCheckInDate = useMemo(() => {
+    const found = guestSessions.find(g => g.checkInDate)?.checkInDate ?? null
+    return parseToDate(found)
+  }, [guestSessions])
+
+  const roomCheckOutDate = useMemo(() => {
+    const found = guestSessions.find(g => g.checkOutDate)?.checkOutDate ?? null
+    return parseToDate(found)
+  }, [guestSessions])
+
+  const hasRoomCheckDates = useMemo(
+    () => !!(roomCheckInDate && roomCheckOutDate),
+    [roomCheckInDate, roomCheckOutDate]
+  )
+
+  // サービス関数のラッパー（引数を束ねる）
+  const refreshGuestSessions = useCallback(() => {
+    return refreshGuestSessionsSvc({ client, roomId, setGuestSessions })
+  }, [client, roomId, setGuestSessions])
+
+  // 入力完了判定
+  const isInfoComplete = useMemo(() => 
+    checkFormCompletion({
+      name,
+      email,
+      address,
+      phone,
+      occupation,
+      nationality,
+      checkInDate,
+      checkOutDate,
+      guestCount: guestSessions.length,
+      isRepresentativeFamily,
+      hasRoomCheckDates
+    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily, hasRoomCheckDates])
+
+  // 戻る（TODO: 現状はダミー、将来のために残す）
+  const handleBack = () => {}
+
+  // 次へ（基本情報送信）
+  const handleNext = async () => {
+    if (!isInfoComplete) return
+    await handleNextAction({
+      roomId,
+      bookingId,
+      name,
+      email,
+      address,
+      phone,
+      occupation,
+      nationality,
+      checkInDate: hasRoomCheckDates ? roomCheckInDate : checkInDate,
+      checkOutDate: hasRoomCheckDates ? roomCheckOutDate : checkOutDate,
+      promoConsent,
+      client,
+      setMessage,
+      guestId: selectedGuestId,
+      selectedGuest: selectedGuest,
+    })
+    
+    await refreshGuestSessions()
+  }
+
+  // 登録（パスポート画像など）
+  const handleRegister = async (rid: string, guestId: string) => {
+    await handleRegisterAction({
+      roomId: rid,
+      guestId: guestId,
+      passportImageUrl,
+      client,
+      setMessage,
+    })
+    await refreshGuestSessions()
+  }
+
+  // 認証チェック（ページロード/リロード時）
+  useEffect(() => {
+    verifyOnLoad({ roomId, client, setSessionChecked, setSessionValid })
+  }, [roomId, client])
+
+  useEffect(() => {
+    if (selectedGuest) {
+      setName(selectedGuest.guestName || '')
+      setEmail(selectedGuest.email || '')
+      setAddress(selectedGuest.address || '')
+      setPhone(selectedGuest.phone || '')
+      setOccupation(selectedGuest.occupation || '')
+      setNationality(selectedGuest.nationality || '')
+      setCheckInDate(selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null)
+      setCheckOutDate(selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null)
+      setPassportImageUrl(selectedGuest.passportImageUrl ?? null)
+      setPromoConsent(!!selectedGuest.promoConsent)
+    } else {
+      setName('')
+      setEmail('')
+      setAddress('')
+      setPhone('')
+      setOccupation('')
+      setNationality('')
+      setCheckInDate(null)
+      setCheckOutDate(null)
+      setPassportImageUrl(null)
+      setPromoConsent(false)
+    }
+    // selectedGuestの切替時のみ同期され、入力中に上書きされない
+  }, [selectedGuest?.guestId])
+
+  // 検証OKのときだけ一覧取得（このガードは残す）
+  useEffect(() => {
+    if (sessionValid) refreshGuestSessions()
+  }, [sessionValid, refreshGuestSessions])
+
+  // 自分のゲスト情報をDynamoDBから読み込む（services 経由）
+  const loadMyGuest = useCallback(async () => {
+    if (!roomId) return
+    const g = await loadMyGuestSvc({ client, roomId })
+    if (!g) return
+    setName(g.guestName || "")
+    setEmail(g.email || "")
+    setAddress(g.address || "")
+    setPhone(g.phone || "")
+    setOccupation(g.occupation || "")
+    setNationality(g.nationality || "")
+    setPassportImageUrl(g.passportImageUrl || null)
+    // 日付は必要に応じて
+    setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
+    setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
+  }, [client, roomId])
+
+  // 実際の新規ゲスト作成処理
+  const handleCreateNewGuest = useCallback((isFamily: boolean) => {
+    const newId =
+      (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
+      Math.random().toString(36).slice(0) + Date.now().toString(36)
+    
+    setIsRepresentativeFamily(isFamily)
+    setSelectedGuestId(newId)
+    // 未保存の新規ゲストを一時的にリストへ反映（表示上のプレースホルダー）
+    setGuestSessions(prev => {
+      if (prev.some(p => p.guestId === newId)) return prev
+      const placeholder: GuestSession = {
+        roomNumber: roomId || '',
+        guestId: newId,
+        guestName: '',
+        phone: '',
+        registrationDate: new Date().toISOString().slice(0,10),
+        approvalStatus: 'waitingForBasicInfo',
+        lastUpdated: new Date().toISOString()
+      }
+      return [placeholder, ...prev]
+    })
+    // 入力欄をクリア
+    setName('')
+    setEmail('')
+    setAddress('')
+    setPhone('')
+    setOccupation('')
+    setNationality('')
+    setCheckInDate(null)
+    setCheckOutDate(null)
+    setPromoConsent(false)
+  }, [roomId])
+
+  // 新規ゲスト追加のクリック処理（家族質問を表示）
+  const handleAddGuestClick = useCallback(() => {
+    const hasExistingGuests = guestSessions.length > 0
+    if (hasExistingGuests) {
+      // 既存ゲストがいる場合は家族質問を表示
+      setShowFamilyQuestion(true)
+    } else {
+      // 初回ゲストの場合は直接フォームへ
+      handleCreateNewGuest(false)
+    }
+  }, [guestSessions.length, handleCreateNewGuest])
+
+  // 家族質問への回答処理
+  const handleFamilyResponse = useCallback((isFamily: boolean) => {
+    setShowFamilyQuestion(false)
+    handleCreateNewGuest(isFamily)
+  }, [handleCreateNewGuest])
+  
+  // 検証OKのときだけ自分の情報を取得
+  useEffect(() => {
+    if (sessionValid) loadMyGuest()
+  }, [sessionValid, loadMyGuest])
+
+  // 認証していない/検証未完了の分岐
+  if (!sessionChecked) {
+    return <div style={{ padding: 16 }}>Loading...</div>
+  }
+  const gid = typeof window !== 'undefined' ? localStorage.getItem('guestId') : null
+  const tok = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  if (!gid || !tok) {
+    return (
+      <div style={{ padding: 16 }}>
+        <AccessForm roomNumber={roomId} />
+      </div>
+    )
+  }
+
+  // ここから先は認証済みUI（既存の登録/アップロード画面など）
   return (
     <>
-      <RoomPageView 
+      <RoomPageView
         roomId={roomId || ""}
-        currentStep={currentStep}
         name={name}
         setName={setName}
         email={email}
@@ -125,8 +264,12 @@ function RoomPage() {
         setCheckOutDate={setCheckOutDate}
         promoConsent={promoConsent}
         setPromoConsent={setPromoConsent}
-        passportImageUrl={passportImageUrl}
-        setPassportImageUrl={setPassportImageUrl}
+        hasRoomCheckDates={hasRoomCheckDates}
+        roomCheckInDate={roomCheckInDate}
+        roomCheckOutDate={roomCheckOutDate}
+        isRepresentativeFamily={isRepresentativeFamily}
+        showFamilyQuestion={showFamilyQuestion}
+        onFamilyResponse={handleFamilyResponse}
         handleNext={handleNext}
         handleBack={handleBack}
         handleRegister={handleRegister}
@@ -134,9 +277,15 @@ function RoomPage() {
         message={message}
         client={client}
         guestSessions={guestSessions}
+        selectedGuest={selectedGuest}
+        // 文字列(gid)でも、オブジェクト(GuestSession)でも受けられるようにする
+        onSelectGuest={(g) => {
+          const id = typeof g === 'string' ? g : g?.guestId ?? null
+          if (id) setIsRepresentativeFamily(false)
+          setSelectedGuestId(id)
+        }}
+        onAddGuest={handleAddGuestClick}
       />
     </>
   )
 }
-
-export default RoomPage

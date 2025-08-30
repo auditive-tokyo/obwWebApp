@@ -2,7 +2,7 @@ name: Deploy Lambda Functions
 
 on:
   push:
-    branches: [main, feature/chat-frontend] # 本番では main ブランチを使用
+    branches: [main, feature/magic-link-access] # 本番では main ブランチを使用
     paths:
       - 'lambda_functions/**'
       - 'layers/**'
@@ -16,6 +16,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    concurrency:
+      group: obw-appsync-stack
+      cancel-in-progress: false
 
     steps:
       - name: Checkout main repository
@@ -53,6 +56,45 @@ jobs:
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
+      - name: Ensure AppSync base stack exists (EnableLambdaIntegration=false)
+        run: |
+          set -e
+          if ! aws cloudformation describe-stacks --stack-name obw-appsync-stack >/dev/null 2>&1; then
+            echo "obw-appsync-stack not found. Deploying base stack..."
+            aws cloudformation deploy \
+              --template-file obw_react_app/infrastructure/cloudformation.yaml \
+              --stack-name obw-appsync-stack \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --parameter-overrides EnableLambdaIntegration=false \
+              --no-fail-on-empty-changeset
+          else
+            echo "obw-appsync-stack exists. Skipping base deploy."
+          fi
+
+      - name: Get GuestTableName from CloudFormation (Outputs or Exports)
+        id: get_guest_table_name
+        run: |
+          set -e
+          GUEST_TABLE_NAME=$(aws cloudformation describe-stacks \
+            --stack-name obw-appsync-stack \
+            --query "Stacks[0].Outputs[?OutputKey=='GuestTableName'].OutputValue" \
+            --output text || true)
+
+          if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
+            echo "Outputs not found. Trying Exports (Obw-GuestTableName)..."
+            GUEST_TABLE_NAME=$(aws cloudformation list-exports \
+              --query "Exports[?Name=='Obw-GuestTableName'].Value" \
+              --output text || true)
+          fi
+
+          if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
+            echo "GuestTableName not found. Ensure cloudformation.yaml has Outputs.GuestTableName and stack deployed." >&2
+            exit 1
+          fi
+
+          echo "GuestTableName is $GUEST_TABLE_NAME"
+          echo "guest_table_name=$GUEST_TABLE_NAME" >> $GITHUB_OUTPUT
+
       - name: SAM Build
         run: sam build --use-container
 
@@ -69,10 +111,44 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
+              GuestTableName="${{ steps.get_guest_table_name.outputs.guest_table_name }}" \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
+            --no-fail-on-empty-changeset
+
+      - name: Wait for Lambda exports (Function ARNs)
+        run: |
+          set -e
+          for i in {1..10}; do
+            COUNT=$(aws cloudformation list-exports \
+              --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn'])" \
+              --output text || echo 0)
+            if [ "$COUNT" -ge 2 ]; then
+              echo "Lambda exports found."
+              break
+            fi
+            echo "Waiting for Lambda exports... ($i/10)"
+            sleep 6
+          done
+
+      - name: Wait until AppSync stack is idle
+        run: |
+          for i in {1..20}; do
+            STATUS=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack --query "Stacks[0].StackStatus" --output text || echo "")
+            echo "AppSync stack status: $STATUS"
+            if [[ "$STATUS" != *"_IN_PROGRESS" ]]; then break; fi
+            sleep 9
+          done
+
+      - name: Enable Lambda integration in AppSync
+        run: |
+          aws cloudformation deploy \
+            --template-file obw_react_app/infrastructure/cloudformation.yaml \
+            --stack-name obw-appsync-stack \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides EnableLambdaIntegration=true \
             --no-fail-on-empty-changeset
 
       - name: Get Immediate Response Function URL from Alias

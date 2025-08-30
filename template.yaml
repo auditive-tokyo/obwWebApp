@@ -38,6 +38,9 @@ Parameters:
     Type: String
     Description: "Function URL for Immediate Response, provided from Outputs"
     Default: ""
+  GuestTableName:
+    Type: String
+    Description: "DynamoDB guest table name (from AppSync stack)"
 
 Resources:
   # TwilioのLambda用レイヤー
@@ -134,17 +137,6 @@ Resources:
       Environment:
         Variables:
           UPLOAD_BUCKET: !Ref PassportUploadBucket
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - http://localhost:5173 # テスト終わったら削除
-            - https://app.osakabaywheel.com
-          AllowHeaders:
-            - content-type
-          AllowMethods:
-            - POST
-          AllowCredentials: false
       Policies:
         - S3WritePolicy:
             BucketName: !Ref PassportUploadBucket
@@ -196,6 +188,95 @@ Resources:
           - POST
         AllowCredentials: false
 
+  RequestAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: request-access-function
+      Handler: lambda_handler_request_access.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      CodeUri: lambda_functions/request_access/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref GuestTableName
+          MAX_TOKEN_LIFETIME_HOURS: "1"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GuestTableName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: "*"
+
+  VerifyAccessTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: verify-access-token-function
+      Handler: lambda_handler_verify_access.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      CodeUri: lambda_functions/verify_access/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref GuestTableName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GuestTableName
+        - DynamoDBWritePolicy:
+            TableName: !Ref GuestTableName
+
+  # 管理者への通知Lambda
+  NotifyAdminOnPendingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: obw-notify-admin-on-pending
+      CodeUri: lambda_functions/notify_admin/
+      Handler: lambda_handler_notify_admin.handler
+      MemorySize: 256
+      Environment:
+        Variables:
+          ADMIN_TOPIC_ARN: !Ref AdminNotificationsTopic          # 既存のSNSトピックを参照 or パラメータ化
+          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"  # 任意の管理画面URL
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaDynamoDBExecutionRole
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AdminNotificationsTopic.TopicName
+      Events:
+        FromGuestTableStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !ImportValue Obw-GuestTableStreamArn
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 0
+            StartingPosition: LATEST
+            FilterCriteria:
+              Filters:
+                - Pattern: |
+                    {
+                      "eventName": ["INSERT", "MODIFY"],
+                      "dynamodb": {
+                        "NewImage": {
+                          "approvalStatus": {
+                            "S": ["pending"]
+                          }
+                        }
+                      }
+                    }
+
+  AdminNotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: obw-admin-guest-approval
+
 Outputs:
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
@@ -203,12 +284,24 @@ Outputs:
   AiProcessingFunctionArn:
     Description: "ARN for AI Processing function"
     Value: !GetAtt AiProcessingFunction.Arn
-  GetPresignedUrlFunctionUrl:
-    Description: "Function URL for GetPresignedUrl Lambda"
-    Value: !GetAtt GetPresignedUrlFunctionUrl.FunctionUrl
   ChatFunctionUrl:
     Description: "Function URL for ResponseApiFunction"
     Value: !GetAtt ChatFunctionUrl.FunctionUrl
   PassportUploadBucketName:
     Description: "S3 bucket for passport uploads"
     Value: !Ref PassportUploadBucket
+  RequestAccessFunctionArn:
+    Description: "ARN for request-access Lambda"
+    Value: !GetAtt RequestAccessFunction.Arn
+    Export:
+      Name: Obw-RequestAccessFunctionArn
+  VerifyAccessTokenFunctionArn:
+    Description: "ARN for verify-access-token Lambda"
+    Value: !GetAtt VerifyAccessTokenFunction.Arn
+    Export:
+      Name: Obw-VerifyAccessTokenFunctionArn
+  GetPresignedUrlFunctionArn:
+    Description: "ARN for GetPresignedUrl Lambda"
+    Value: !GetAtt GetPresignedUrlFunction.Arn
+    Export:
+      Name: Obw-GetPresignedUrlFunctionArn

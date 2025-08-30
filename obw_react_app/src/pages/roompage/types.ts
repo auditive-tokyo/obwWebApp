@@ -1,6 +1,5 @@
-// import { loadGuestSession, saveGuestSession } from './sessionUtils'
-
 type ApprovalStatus =
+  | 'waitingForBasicInfo'
   | 'waitingForPassportImage'
   | 'pending'
   | 'approved'
@@ -8,16 +7,25 @@ type ApprovalStatus =
 
 export interface GuestSession {
   roomNumber: string
+  guestId: string
   guestName: string
   phone: string
-  registrationDate: string    // YYYY-MM-DD
+  // 以降は任意項目（getGuestで返る可能性のある項目）
+  email?: string
+  address?: string
+  occupation?: string
+  nationality?: string
+  checkInDate?: string | Date | null
+  checkOutDate?: string | Date | null
+  promoConsent?: boolean
+  passportImageUrl?: string | null
+  bookingId?: string
+  registrationDate?: string    // YYYY-MM-DD
   approvalStatus: ApprovalStatus
-  lastUpdated: string
+  lastUpdated?: string
+  createdAt?: string
+  updatedAt?: string
 }
-
-// 実装に依存しない関数型を宣言
-export type LoadGuestSessionFn = (roomNumber: string, guestName: string) => GuestSession | null
-export type SaveGuestSessionFn = (data: GuestSession) => void
 
 /**
  * RoomPageViewコンポーネント用のprops型
@@ -25,7 +33,6 @@ export type SaveGuestSessionFn = (data: GuestSession) => void
  */
 export interface RoomPageViewProps {
   roomId: string // 部屋番号
-  currentStep: 'info' | 'upload' // 現在の画面ステップ
 
   // 基本情報入力欄
   name: string
@@ -47,14 +54,17 @@ export interface RoomPageViewProps {
   promoConsent: boolean
   setPromoConsent: (value: boolean) => void
 
-  // パスポート画像アップロード欄
-  passportImageUrl: string | null
-  setPassportImageUrl: (url: string | null) => void
+  // 家族登録関連
+  isRepresentativeFamily: boolean
+  showFamilyQuestion: boolean
+  onFamilyResponse: (isFamily: boolean) => void
+
+  // パスポート画像アップロード欄（統合後はビューでは未使用）
 
   // 画面遷移・登録ハンドラー
   handleNext: () => void
   handleBack: () => void
-  handleRegister: (roomId: string, guestName: string) => Promise<void>
+  handleRegister: (roomId: string, guestId: string) => Promise<void>
 
   // 画面状態
   isInfoComplete: boolean
@@ -63,6 +73,9 @@ export interface RoomPageViewProps {
 
   // この部屋の申請状況一覧（任意）
   guestSessions?: GuestSession[]
+  selectedGuest: GuestSession | null
+  onSelectGuest: (g: string | GuestSession | null) => void
+  onAddGuest: () => void
 }
 
 /**
@@ -71,6 +84,7 @@ export interface RoomPageViewProps {
  */
 export interface HandleNextParams {
   roomId: string
+  bookingId: string | null
   name: string
   email: string
   address: string
@@ -82,7 +96,8 @@ export interface HandleNextParams {
   promoConsent: boolean
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  setCurrentStep: (step: 'info' | 'upload') => void // 画面ステップ更新用
+  guestId?: string | null
+  selectedGuest?: GuestSession | null 
 }
 
 /**
@@ -91,13 +106,10 @@ export interface HandleNextParams {
  */
 export interface HandleRegisterParams {
   roomId: string
-  name: string
-  email: string
+  guestId: string
   passportImageUrl: string | null
   client: any // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
-  loadGuestSession: LoadGuestSessionFn // セッション読込関数
-  saveGuestSession: SaveGuestSessionFn // セッション保存関数
 }
 
 /**
@@ -107,6 +119,7 @@ export interface HandleRegisterParams {
 export type PassportUploadScreenProps = {
   roomId: string
   name: string
+  guestId: string
   client: any
   passportImageUrl: string | null
   setPassportImageUrl: (url: string | null) => void

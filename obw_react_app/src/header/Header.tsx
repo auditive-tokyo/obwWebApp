@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { setLanguage, saveLang, loadLang } from "../i18n/languageUtils";
-import { SupportedLang } from "../i18n/messages";
+import { setLanguage, saveLang, loadLang } from "@/i18n/languageUtils";
+import { SupportedLang } from "@/i18n/messages";
 
 function Header() {
   const [lang, setLang] = useState<SupportedLang>('en');

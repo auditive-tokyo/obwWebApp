@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { getMessage } from '../../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
 
 /**
  * セキュリティ・法的情報に関するカード表示コンポーネント

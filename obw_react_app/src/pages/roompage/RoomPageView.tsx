@@ -1,15 +1,20 @@
 import ChatWidget from '../../components/ChatWidget'
 import type { RoomPageViewProps } from './types'
-import { PassportUploadScreen } from './components/PassportUploadScreen'
+import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
-import { useState } from 'react'
-import { getMessage } from '../../i18n/messages'
+import { getMessage } from '@/i18n/messages'
+import { dbg } from '@/utils/debugLogger'
 
-export function RoomPageView(props: RoomPageViewProps) {
+export function RoomPageView(
+  props: RoomPageViewProps & {
+    hasRoomCheckDates?: boolean
+    roomCheckInDate?: Date | null
+    roomCheckOutDate?: Date | null
+  }
+) {
   const {
     roomId,
-    currentStep,
     name,
     setName,
     email,
@@ -28,91 +33,134 @@ export function RoomPageView(props: RoomPageViewProps) {
     setCheckOutDate,
     promoConsent,
     setPromoConsent,
-    passportImageUrl,
-    setPassportImageUrl,
+    isRepresentativeFamily,
+    showFamilyQuestion,
+    onFamilyResponse,
     handleNext,
     handleBack,
-    handleRegister,
     isInfoComplete,
     message,
     client,
-    guestSessions
+    guestSessions,
+    selectedGuest,
+    onSelectGuest,
+    onAddGuest,
+    hasRoomCheckDates,
+    roomCheckInDate,
+    roomCheckOutDate,
   } = props
-
-  // 申請リストから選択された人
-  const [selectedSession, setSelectedSession] = useState<any | null>(null)
+  const selectedSession = selectedGuest
 
   // クリック選択時の表示判定
-  const shouldShowUploadForSession = (g: any) => {
-    const step = g?.currentStep || g?.step || g?.statusStep
-    const status = g?.approvalStatus
-    return (
-      step === 'waitingForPassportImage' ||
-      step === 'upload' ||
-      status === 'waitingForPassportImage'
-    )
-  }
+  const shouldShowBasicInfoForSession = (g: any) =>
+    g?.approvalStatus === 'waitingForBasicInfo'
+
+  const shouldShowUploadForSession = (g: any) =>
+    g?.approvalStatus === 'waitingForPassportImage'
+
   const getStatusMessage = (g: any): string | null => {
     const status = g?.approvalStatus
-    if (status === 'pending') return '現在承認待ちです。'
-    if (status === 'approved') return '承認されました。'
-    if (status === 'rejected') return '承認されませんでした。'
+    if (status === 'pending') return getMessage("statusPending") as string
+    if (status === 'approved') return getMessage("statusApproved") as string
+    if (status === 'rejected') return getMessage("statusRejected") as string
     return null
   }
 
-  const handleRegisterWrapper = async (rid: string, gname: string) => {
-    try {
-      await handleRegister(rid, gname)
-      alert(getMessage("registrationSuccess") as string)
-      window.location.reload()
-    } catch (e) {
-      alert(getMessage("registrationError") as string)
+  const getStatusLabel = (status?: string): string => {
+    switch (status) {
+      case 'waitingForBasicInfo':
+        return getMessage('enterBasicInfo') as string
+      case 'waitingForPassportImage':
+        return getMessage('enterPassportImage') as string
+      case 'pending':
+        return getMessage('statusPending') as string
+      case 'approved':
+        return getMessage('statusApproved') as string
+      case 'rejected':
+        return getMessage('statusRejected') as string
+      default:
+        return status ?? ''
     }
   }
 
-  const showForm = !selectedSession && currentStep === 'info'
-  const showUpload = selectedSession ? shouldShowUploadForSession(selectedSession) : currentStep === 'upload'
-  const showStatus = selectedSession && !showUpload && !!getStatusMessage(selectedSession)
+  // 「Add Guest」ボタンを無効化する条件:
+  // どれかのセッションが waitingForBasicInfo かつ guestId を持っている場合は無効化
+  const disableAddGuest = !!guestSessions?.some((g: any) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
 
-  console.debug('selectedSession:', selectedSession)
-  console.debug('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  // 選択されている人がいる場合のみフォーム/アップロードを出す
+  const showForm =
+    !!selectedSession && shouldShowBasicInfoForSession(selectedSession)
 
-  const clearSelection = () => setSelectedSession(null)
+  const showUpload =
+    !!selectedSession && shouldShowUploadForSession(selectedSession)
 
-  // 選択中の人/未選択時の有効値
-  const effectiveRoomId = (selectedSession?.roomNumber ?? roomId) || ""
-  const effectiveGuestName = selectedSession?.guestName ?? name
+  const showStatus =
+    selectedSession &&
+    !showForm &&
+    !showUpload &&
+    !!getStatusMessage(selectedSession)
+
+  dbg('selectedSession:', selectedSession)
+  dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  const BasicInfoFormAny = BasicInfoForm as any
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* ヘッダーカード（ROOM + Room Status + 申請状況リスト） */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
             ROOM {roomId}
           </h1>
+          {hasRoomCheckDates && (
+            <div className="text-sm text-gray-600 mb-2">
+              {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+            </div>
+          )}
+          
           {guestSessions && guestSessions.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
-                {getMessage("roomStatus")}
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-700">
+                  {getMessage("roomStatus")}
+                </h3>
+                <div className="relative inline-block group">
+                  <button
+                    type="button"
+                    onClick={onAddGuest}
+                    disabled={disableAddGuest}
+                    title={disableAddGuest ? getMessage("completeBasicInfoFirst") as string : undefined}
+                    className={
+                      "text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200 " +
+                      (disableAddGuest ? "opacity-50 cursor-not-allowed pointer-events-none" : "hover:from-blue-400 hover:to-blue-500")
+                    }
+                  >
+                    {getMessage("addNewPerson")}
+                  </button>
+                  {disableAddGuest && (
+                    <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-max max-w-xs rounded bg-gray-800 text-white text-xs px-2 py-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                     {getMessage("completeBasicInfoFirst")}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <ul className="divide-y divide-gray-200 border border-gray-100 rounded-md">
                 {guestSessions.map(g => {
-                  const isSelected = selectedSession &&
-                    selectedSession.roomNumber === g.roomNumber &&
-                    selectedSession.guestName === g.guestName
+                  const isSelected =
+                    !!selectedSession && selectedSession.guestId === g.guestId
                   return (
                     <li
-                      key={`${g.roomNumber}_${g.guestName}`}
+                      key={g.guestId || `${g.roomNumber}_${g.guestName}`}
                       className={
                         "py-2 px-3 flex items-center justify-between cursor-pointer select-none " +
                         (isSelected ? "bg-blue-50 ring-1 ring-blue-300 rounded-md" : "hover:bg-gray-50")
                       }
-                      onClick={() => setSelectedSession(g)}
+                      onClick={() => onSelectGuest(g.guestId)}
                       aria-selected={isSelected}
-                      title={new Date(g.lastUpdated).toLocaleString()}
+                      title={g.lastUpdated ? new Date(g.lastUpdated).toLocaleString() : ''}
                     >
-                      <span className="text-sm text-gray-800 truncate">{g.guestName}</span>
+                      <span className="text-sm text-gray-800 truncate">{g.guestName || getMessage("unfilled")}</span>
                       <span
                         className={
                           'text-xs px-2 py-0.5 rounded-full ' +
@@ -122,36 +170,83 @@ export function RoomPageView(props: RoomPageViewProps) {
                             ? 'bg-red-100 text-red-700'
                             : g.approvalStatus === 'pending'
                             ? 'bg-yellow-100 text-yellow-700'
+                            : g.approvalStatus === 'waitingForBasicInfo'
+                            ? 'bg-indigo-100 text-indigo-700'
                             : 'bg-blue-100 text-blue-700')
                         }
                       >
-                        {g.approvalStatus}
+                        {getStatusLabel(g.approvalStatus)}
                       </span>
                     </li>
                   )
                 })}
               </ul>
+
               {selectedSession && (
                 <div className="mt-3 flex justify-end">
                   <button
                     type="button"
                     className="text-sm text-blue-600 hover:underline"
-                    onClick={clearSelection}
+                    onClick={() => onSelectGuest(null)}
                   >
-                    {getMessage("clear")}
+                    {getMessage("unselect")}
                   </button>
                 </div>
               )}
             </div>
           )}
+
+          {!guestSessions?.length && (
+            <div className="flex items-center justify-between">
+             <div className="text-sm text-gray-600">{getMessage("noRegistrationYet")}</div>
+            </div>
+          )}
         </div>
+
+        {/* 家族質問モーダル */}
+        {showFamilyQuestion && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                {getMessage("familyQuestionTitle")}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {getMessage("familyQuestionDescription")}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => onFamilyResponse(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  {getMessage("no")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onFamilyResponse(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {getMessage("yes")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* セキュリティ・法的情報カード */}
         <SecurityInfoCards />
 
-        {/* 基本情報入力フォーム（新規 or 未選択時のみ） */}
+        {/* 未選択時の案内テキスト */}
+        {!selectedSession && !showForm && !showUpload && (
+          <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
+           {getMessage("selectGuestOrAddNew")}
+          </div>
+        )}
+
+        {/* 基本情報入力フォーム（新規 or waitingForBasicInfo の人を選択時） */}
         {showForm && (
-          <BasicInfoForm
+          <BasicInfoFormAny
+            // 常にローカルstateをフォームに渡す（selectedSessionの値は使わない）
             name={name}
             setName={setName}
             phone={phone}
@@ -170,52 +265,34 @@ export function RoomPageView(props: RoomPageViewProps) {
             setCheckOutDate={setCheckOutDate}
             promoConsent={promoConsent}
             setPromoConsent={setPromoConsent}
+            isRepresentativeFamily={isRepresentativeFamily}
+            hasRoomCheckDates={hasRoomCheckDates}
             isInfoComplete={isInfoComplete}
             onNext={handleNext}
           />
         )}
 
-        {/* クリック選択: ステータスメッセージ表示 */}
-        {showStatus && (
-          <div className="bg-white rounded-lg shadow-md p-6 mt-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              {selectedSession?.guestName} | Status
-            </h2>
-            <p className="text-gray-700">{getStatusMessage(selectedSession)}</p>
+        {/* パスポートアップロード画面 */}
+        {showUpload && (
+          <div className="mt-4">
+            <PassportUpload
+              roomId={(selectedSession?.roomNumber ?? roomId) || ""}
+              guestName={selectedSession?.guestName ?? name}
+              guestId={selectedSession?.guestId ?? ""}
+              client={client}
+              onBack={selectedSession ? () => onSelectGuest(null) : handleBack}
+              showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
+            />
           </div>
         )}
 
-        {/* パスポートアップロード画面（クリック選択 or 従来ステップ） */}
-        {showUpload && (
-          <div className="mt-4">
-            <PassportUploadScreen
-              roomId={effectiveRoomId}
-              name={effectiveGuestName}
-              client={client}
-              passportImageUrl={passportImageUrl}
-              setPassportImageUrl={setPassportImageUrl}
-              onBack={
-                selectedSession
-                  ? () => {
-                      // setEditSession(selectedSession);
-                      setSelectedSession(null);
-
-                      // ここでeditSessionの値をstateに反映
-                      setName(selectedSession.guestName ?? "");
-                      setPhone(selectedSession.phone ?? "");
-                      setEmail(selectedSession.email ?? "");
-                      setAddress(selectedSession.address ?? "");
-                      setOccupation(selectedSession.occupation ?? "");
-                      setNationality(selectedSession.nationality ?? "");
-                      setCheckInDate(selectedSession.checkInDate ?? null);
-                      setCheckOutDate(selectedSession.checkOutDate ?? null);
-                      setPromoConsent(selectedSession.promoConsent ?? false);
-                    }
-                  : handleBack
-              }
-              onRegister={handleRegisterWrapper}
-              showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
-            />
+        {/* ステータスメッセージ */}
+        {showStatus && (
+          <div className="bg-white rounded-lg shadow-md p-6 mt-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
+              {selectedSession?.guestName}
+            </h2>
+            <p className="text-gray-700">{getStatusMessage(selectedSession)}</p>
           </div>
         )}
 
