@@ -649,12 +649,12 @@ Outputs:
   AdminUserPoolDomainPrefix:
     Description: "Admin Cognito Hosted UI domain prefix"
     Value: !Ref AdminCognitoDomainPrefix
-  AdminHostedUILoginURL:
-    Description: "Hosted UI Login URL for Admin"
-    Value:
-      Fn::Sub:
-        - "https://${Domain}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${ClientId}&response_type=code&scope=openid+email+profile&redirect_uri=${Callback}"
-        - { Domain: !Ref AdminCognitoDomainPrefix, ClientId: !Ref AdminUserPoolClient, Callback: !Select [0, !Ref AdminHostedUICallbackURLs] }
+  AdminHostedUICallbackURL:
+    Description: "First Hosted UI callback URL"
+    Value: !Select [0, !Ref AdminHostedUICallbackURLs]
+  AdminHostedUILogoutURL:
+    Description: "First Hosted UI logout URL"
+    Value: !Select [0, !Ref AdminHostedUILogoutURLs]
   GuestTableName:
     Description: "DynamoDB guest table name"
     Value: !Ref GuestTable
