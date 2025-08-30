@@ -6,6 +6,7 @@ import Header from './header/Header'
 import ChatWidget from './components/ChatWidget'
 import Auth from './auth/Auth'
 import AdminAuth from './auth/AdminAuth'
+import AdminLogout from './auth/AdminLogout'
 
 const allowedRooms = ['201', '304']
 
@@ -25,6 +26,7 @@ function App() {
           {/* Admin routes protected by Cognito Hosted UI */}
           <Route path="/admin" element={<AdminAuth />} />
           <Route path="/admin/callback" element={<AdminAuth />} />
+          <Route path="/admin/logout" element={<AdminLogout />} />
           <Route
             path=":roomId"
             element={isValidRoom ? <RoomPage /> : <ErrorPage />}
