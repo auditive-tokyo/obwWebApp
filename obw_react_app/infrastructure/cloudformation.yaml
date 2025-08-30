@@ -195,7 +195,7 @@ Resources:
         type Query {
           getGuest(roomNumber: String!, guestId: String!): Guest
           listGuestsByRoom(roomNumber: String!): [Guest]
-          listGuests: [Guest]
+          listGuests: [Guest] @aws_cognito_user_pools
           listGuestsByBooking(bookingId: String!): [Guest]
         }
 
