@@ -189,7 +189,7 @@ Resources:
           updateGuest(input: UpdateGuestInput!): Guest
           requestAccess(input: RequestAccessInput!): RequestAccessResult
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
-          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult
+          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools
         }
 
         type Query {
