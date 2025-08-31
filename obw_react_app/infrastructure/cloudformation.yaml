@@ -497,6 +497,9 @@ Resources:
     Type: AWS::Cognito::IdentityPool
     Properties:
       AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders:
+        - ProviderName: !Sub cognito-idp.${AWS::Region}.amazonaws.com/${AdminUserPool}
+          ClientId: !Ref AdminUserPoolClient
 
   UnauthRole:
     Type: AWS::IAM::Role
@@ -521,7 +524,30 @@ Resources:
               - Effect: Allow
                 Action:
                   - appsync:GraphQL
-                Resource: "*"
+                Resource:
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/getGuest
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/listGuestsByBooking
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/verifyAccessToken
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/getPresignedUrl
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/updateGuest
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/requestAccess
+
+  AuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies: []
 
   IdentityPoolRoleAttachment:
     Type: AWS::Cognito::IdentityPoolRoleAttachment
@@ -529,6 +555,7 @@ Resources:
       IdentityPoolId: !Ref IdentityPool
       Roles:
         unauthenticated: !GetAtt UnauthRole.Arn
+        authenticated: !GetAtt AuthRole.Arn
 
   # Admin Cognito resources
   AdminUserPool:
