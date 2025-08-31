@@ -178,7 +178,7 @@ Resources:
           guest: Guest
         }
 
-        type PresignedUrlResult {
+        type PresignedUrlResult @aws_cognito_user_pools @aws_iam {
           putUrl: String!
           getUrl: String!
           baseUrl: String!
@@ -188,8 +188,8 @@ Resources:
           createGuest(input: CreateGuestInput!): Guest
           updateGuest(input: UpdateGuestInput!): Guest
           requestAccess(input: RequestAccessInput!): RequestAccessResult
-          verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
-          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools
+          verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
+          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
         }
 
         type Query {
@@ -327,7 +327,7 @@ Resources:
         ## Strings
         #if(!$util.isNullOrEmpty($ctx.args.input.bookingId))
           #set($exp = $exp + ", #bookingId = :bookingId")
-          $util.qr($names.put("#bookingId","bookingId"))
+          $util.qr($names.put("#bookingId","guestId"))
           $util.qr($values.put(":bookingId", { "S": "$ctx.args.input.bookingId" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
