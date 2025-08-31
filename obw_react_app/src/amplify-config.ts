@@ -9,8 +9,8 @@ const oauthDomain = import.meta.env.VITE_COGNITO_OAUTH_DOMAIN as string | undefi
 const oauthRedirectSignIn = import.meta.env.VITE_COGNITO_REDIRECT_SIGNIN as string | undefined; // comma-separated list
 const oauthRedirectSignOut = import.meta.env.VITE_COGNITO_REDIRECT_SIGNOUT as string | undefined; // comma-separated list
 
-if (!endpoint || !identityPoolId) {
-  throw new Error("必要な環境変数が設定されていません: VITE_APPSYNC_ENDPOINT, VITE_COGNITO_IDENTITY_POOL_ID");
+if (!endpoint) {
+  throw new Error("必要な環境変数が設定されていません: VITE_APPSYNC_ENDPOINT");
 }
 
 // Conditionally build admin User Pool / Hosted UI config
@@ -18,14 +18,19 @@ const adminUserPoolConfigured = Boolean(
   userPoolId && userPoolClientId && oauthDomain && oauthRedirectSignIn && oauthRedirectSignOut
 );
 
-const baseCognito = {
-  identityPoolId,
-  allowGuestAccess: true,
-};
+// If admin (User Pool) is NOT configured, we require an Identity Pool for guest/IAM usage
+if (!adminUserPoolConfigured && !identityPoolId) {
+  throw new Error("必要な環境変数が設定されていません: VITE_COGNITO_IDENTITY_POOL_ID");
+}
+
+const baseCognito = identityPoolId
+  ? { identityPoolId, allowGuestAccess: true }
+  : { allowGuestAccess: false };
 
 const cognitoConfig = adminUserPoolConfigured
   ? {
-      ...baseCognito,
+      // Support both: keep Identity Pool for guests and User Pool for admin
+      ...(identityPoolId ? { identityPoolId, allowGuestAccess: true } : { allowGuestAccess: false }),
       userPoolId: userPoolId!,
       userPoolClientId: userPoolClientId!,
       loginWith: {
@@ -45,6 +50,7 @@ export const amplifyConfig: ResourcesConfig = {
     GraphQL: {
       endpoint,
       region: 'ap-northeast-1',
+      // Default to IAM so guest flows work out-of-the-box; admin will pass authMode: 'userPool' in calls
       defaultAuthMode: 'iam',
     }
   },
