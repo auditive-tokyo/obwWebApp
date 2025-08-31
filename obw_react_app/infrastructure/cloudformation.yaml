@@ -327,7 +327,7 @@ Resources:
         ## Strings
         #if(!$util.isNullOrEmpty($ctx.args.input.bookingId))
           #set($exp = $exp + ", #bookingId = :bookingId")
-          $util.qr($names.put("#bookingId","guestId"))
+          $util.qr($names.put("#bookingId","bookingId"))
           $util.qr($values.put(":bookingId", { "S": "$ctx.args.input.bookingId" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
