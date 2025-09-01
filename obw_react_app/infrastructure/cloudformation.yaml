@@ -190,6 +190,7 @@ Resources:
           requestAccess(input: RequestAccessInput!): RequestAccessResult
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
+          adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools(cognito_groups: ["admin"])
         }
 
         type Query {
@@ -234,6 +235,7 @@ Resources:
                   - !ImportValue Obw-RequestAccessFunctionArn
                   - !ImportValue Obw-VerifyAccessTokenFunctionArn
                   - !ImportValue Obw-GetPresignedUrlFunctionArn
+                  - !ImportValue Obw-AdminApproveGuestFunctionArn
 
   RequestAccessLambdaDataSource:
     Condition: DoLambdaIntegration
@@ -256,6 +258,17 @@ Resources:
       ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
       LambdaConfig:
         LambdaFunctionArn: !ImportValue Obw-VerifyAccessTokenFunctionArn
+
+  AdminApproveGuestLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: adminApproveGuestLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-AdminApproveGuestFunctionArn
 
   AppSyncDynamoDBRole:
     Type: AWS::IAM::Role
@@ -648,6 +661,26 @@ Resources:
       TypeName: Mutation
       FieldName: getPresignedUrl
       DataSourceName: getPresignedUrlLambda
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
+
+  AdminApproveGuestResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - AdminApproveGuestLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: adminApproveGuest
+      DataSourceName: !GetAtt AdminApproveGuestLambdaDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
