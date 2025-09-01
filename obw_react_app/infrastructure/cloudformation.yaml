@@ -190,7 +190,7 @@ Resources:
           requestAccess(input: RequestAccessInput!): RequestAccessResult
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
-          adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools(cognito_groups: ["admin"])
+          adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
         }
 
         type Query {
