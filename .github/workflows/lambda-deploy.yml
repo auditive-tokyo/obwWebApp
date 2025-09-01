@@ -2,7 +2,7 @@ name: Deploy Lambda Functions
 
 on:
   push:
-    branches: [main, feature/magic-link-access] # 本番では main ブランチを使用
+    branches: [main, feature/*] # 本番では main ブランチを使用
     paths:
       - 'lambda_functions/**'
       - 'layers/**'
@@ -71,6 +71,15 @@ jobs:
             echo "obw-appsync-stack exists. Skipping base deploy."
           fi
 
+      - name: Force disable Lambda integration in AppSync (idempotent)
+        run: |
+          aws cloudformation deploy \
+            --template-file obw_react_app/infrastructure/cloudformation.yaml \
+            --stack-name obw-appsync-stack \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides EnableLambdaIntegration=false \
+            --no-fail-on-empty-changeset
+
       - name: Get GuestTableName from CloudFormation (Outputs or Exports)
         id: get_guest_table_name
         run: |
@@ -121,15 +130,15 @@ jobs:
       - name: Wait for Lambda exports (Function ARNs)
         run: |
           set -e
-          for i in {1..10}; do
+          for i in {1..15}; do
             COUNT=$(aws cloudformation list-exports \
-              --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn'])" \
+              --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn' || Name=='Obw-AdminApproveGuestFunctionArn'])" \
               --output text || echo 0)
-            if [ "$COUNT" -ge 2 ]; then
-              echo "Lambda exports found."
+            if [ "$COUNT" -ge 4 ]; then
+              echo "All Lambda exports found."
               break
             fi
-            echo "Waiting for Lambda exports... ($i/10)"
+            echo "Waiting for Lambda exports... ($i/15)"
             sleep 6
           done
 
