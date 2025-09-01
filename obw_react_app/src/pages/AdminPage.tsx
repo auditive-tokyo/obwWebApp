@@ -176,12 +176,23 @@ export default function AdminPage() {
       // 楽観更新
       setAll(prev => prev.map(x => x.guestId === g.guestId ? { ...x, approvalStatus: 'approved' } : x))
       if (detail?.guestId === g.guestId) setDetail({ ...detail, approvalStatus: 'approved' })
+
+      // 承認完了ダイアログ
+      window.alert(`${g.guestName} を承認しました。`)
     } catch (e) {
       console.error('[AdminPage] approveGuest failed:', e)
       alert('承認に失敗しました')
     } finally {
       setApprovingId(null)
     }
+  }
+
+  // 承認前の確認ダイアログ
+  const confirmApprove = async (g: Guest) => {
+    if (!g) return
+    const ok = window.confirm(`${g.guestName} を承認します。よろしいですか？`)
+    if (!ok) return
+    await approveGuest(g)
   }
 
   return (
@@ -241,7 +252,7 @@ export default function AdminPage() {
                   cursor: 'pointer'
                 }}
                 disabled={approvingId === g.guestId}
-                onClick={() => approveGuest(g)}
+                onClick={() => confirmApprove(g)}
               >
                 {approvingId === g.guestId ? '承認中…' : '承認'}
               </button>
@@ -332,7 +343,7 @@ export default function AdminPage() {
                   cursor: 'pointer'
                 }}
                 disabled={approvingId === detail.guestId || (detail.approvalStatus || '').toLowerCase() === 'approved'}
-                onClick={() => approveGuest(detail)}
+                onClick={() => confirmApprove(detail)}
               >
                 {approvingId === detail.guestId ? '承認中…' : '承認'}
               </button>
