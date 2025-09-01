@@ -22,6 +22,32 @@ type Guest = {
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
 
+// 住所の整形（JSONなら各フィールドを順番に結合）
+function formatAddress(val?: string | null): string {
+  if (!val) return ''
+  const s = String(val).trim()
+  if (!s) return ''
+  try {
+    const obj = JSON.parse(s)
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      const parts = [
+        obj.addressLine1,
+        obj.addressLine2,
+        obj.city,
+        obj.state,
+        obj.country,
+        obj.zipcode,
+      ]
+        .map(v => (v == null ? '' : String(v).trim()))
+        .filter(Boolean)
+      return parts.join(', ')
+    }
+    return s
+  } catch {
+    return s
+  }
+}
+
 export default function AdminPage() {
   const [all, setAll] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
@@ -31,6 +57,7 @@ export default function AdminPage() {
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)
   const [signing, setSigning] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
 
   // ユニークな部屋番号のプルダウン候補（201がなければ補完）
   const roomOptions = useMemo(() => {
@@ -156,8 +183,8 @@ export default function AdminPage() {
     setApprovingId(g.guestId)
     try {
       const mutation = `
-        mutation UpdateGuest($input: UpdateGuestInput!) {
-          updateGuest(input: $input) {
+        mutation AdminApproveGuest($roomNumber: String!, $guestId: String!) {
+          adminApproveGuest(roomNumber: $roomNumber, guestId: $guestId) {
             guestId
             approvalStatus
           }
@@ -165,20 +192,12 @@ export default function AdminPage() {
       `
       await client.graphql({
         query: mutation,
-        variables: {
-          input: {
-            guestId: g.guestId,
-            roomNumber: g.roomNumber,
-            approvalStatus: 'approved',
-          },
-        },
+        variables: { roomNumber: g.roomNumber, guestId: g.guestId },
       } as any)
-      // 楽観更新
-      setAll(prev => prev.map(x => x.guestId === g.guestId ? { ...x, approvalStatus: 'approved' } : x))
-      if (detail?.guestId === g.guestId) setDetail({ ...detail, approvalStatus: 'approved' })
 
-      // 承認完了ダイアログ
+      setAll(prev => prev.map(x => x.guestId === g.guestId ? { ...x, approvalStatus: 'approved' } : x))
       window.alert(`${g.guestName} を承認しました。`)
+      if (detail?.guestId === g.guestId) { setDetail(null); setSignedPassportUrl(null) }
     } catch (e) {
       console.error('[AdminPage] approveGuest failed:', e)
       alert('承認に失敗しました')
@@ -193,6 +212,54 @@ export default function AdminPage() {
     const ok = window.confirm(`${g.guestName} を承認します。よろしいですか？`)
     if (!ok) return
     await approveGuest(g)
+  }
+
+  // 拒否処理（approvalStatus を 'rejected' に更新）
+  const rejectGuest = async (g: Guest) => {
+    if (!g) return
+    setRejectingId(g.guestId)
+    try {
+      const mutation = `
+        mutation UpdateGuest($input: UpdateGuestInput!) {
+          updateGuest(input: $input) {
+            guestId
+            approvalStatus
+          }
+        }
+      `
+      await client.graphql({
+        query: mutation,
+        variables: {
+          input: {
+            guestId: g.guestId,
+            roomNumber: g.roomNumber,
+            approvalStatus: 'rejected',
+          },
+        },
+      } as any)
+      // 楽観更新
+      setAll(prev => prev.map(x => x.guestId === g.guestId ? { ...x, approvalStatus: 'rejected' } : x))
+      // モーダルを開いていたら閉じる
+      if (detail?.guestId === g.guestId) {
+        setDetail(null)
+        setSignedPassportUrl(null)
+      }
+      // 拒否完了ダイアログ
+      window.alert(`${g.guestName} を拒否しました。`)
+    } catch (e) {
+      console.error('[AdminPage] rejectGuest failed:', e)
+      alert('拒否に失敗しました')
+    } finally {
+      setRejectingId(null)
+    }
+  }
+
+  // 拒否前の確認ダイアログ
+  const confirmReject = async (g: Guest) => {
+    if (!g) return
+    const ok = window.confirm(`${g.guestName} を拒否します。よろしいですか？`)
+    if (!ok) return
+    await rejectGuest(g)
   }
 
   return (
@@ -251,11 +318,26 @@ export default function AdminPage() {
                   borderRadius: 4,
                   cursor: 'pointer'
                 }}
-                disabled={approvingId === g.guestId}
+                disabled={approvingId === g.guestId || rejectingId === g.guestId}
                 onClick={() => confirmApprove(g)}
               >
                 {approvingId === g.guestId ? '承認中…' : '承認'}
               </button>
+             <button
+               type="button"
+               style={{
+                 backgroundColor: '#c62828',
+                 color: '#fff',
+                 border: 'none',
+                 padding: '6px 12px',
+                 borderRadius: 4,
+                 cursor: 'pointer'
+               }}
+               disabled={rejectingId === g.guestId || approvingId === g.guestId}
+               onClick={() => confirmReject(g)}
+             >
+               {rejectingId === g.guestId ? '拒否中…' : '拒否'}
+             </button>
             </div>
           </li>
         ))}
@@ -298,7 +380,8 @@ export default function AdminPage() {
               <dt>チェックアウト</dt><dd>{detail.checkOutDate || '-'}</dd>
               <dt>メール</dt><dd>{detail.email || '-'}</dd>
               <dt>電話</dt><dd>{detail.phone || '-'}</dd>
-              <dt>住所</dt><dd>{detail.address || '-'}</dd>
+              <dt>住所</dt>
+              <dd>{formatAddress(detail.address) || '-'}</dd>
               <dt>職業</dt><dd>{detail.occupation || '-'}</dd>
               <dt>国籍</dt><dd>{detail.nationality || '-'}</dd>
               <dt>パスポート</dt>
@@ -332,20 +415,35 @@ export default function AdminPage() {
               </dd>
             </dl>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+             <button
+               type="button"
+               style={{
+                 backgroundColor: '#2e7d32',
+                 color: '#fff',
+                 border: 'none',
+                 padding: '8px 14px',
+                 borderRadius: 4,
+                 cursor: 'pointer'
+               }}
+               disabled={approvingId === detail.guestId || (detail.approvalStatus || '').toLowerCase() === 'approved'}
+               onClick={() => confirmApprove(detail)}
+             >
+               {approvingId === detail.guestId ? '承認中…' : '承認'}
+             </button>
               <button
                 type="button"
                 style={{
-                  backgroundColor: '#2e7d32',
+                  backgroundColor: '#c62828',
                   color: '#fff',
                   border: 'none',
                   padding: '8px 14px',
                   borderRadius: 4,
                   cursor: 'pointer'
                 }}
-                disabled={approvingId === detail.guestId || (detail.approvalStatus || '').toLowerCase() === 'approved'}
-                onClick={() => confirmApprove(detail)}
+                disabled={rejectingId === detail.guestId || (detail.approvalStatus || '').toLowerCase() === 'rejected'}
+                onClick={() => confirmReject(detail)}
               >
-                {approvingId === detail.guestId ? '承認中…' : '承認'}
+                {rejectingId === detail.guestId ? '拒否中…' : '拒否'}
               </button>
             </div>
           </div>

@@ -134,7 +134,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             <div
               className={
                 `rounded-md border border-gray-200 px-3 py-2 ` +
-                (promoConsent ? 'bg-pink-50' : 'bg-gray-50')
+                (promoConsent ? 'bg-green-50' : 'bg-gray-50')
               }
             >
               <label className="flex items-start gap-3 cursor-pointer select-none">
