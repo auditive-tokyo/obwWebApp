@@ -281,8 +281,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: admin-approve-guest-function
-      CodeUri: lambda_functions/admin_approve_guest/
-      Handler: lambda_handler_admin_approve_guest.lambda_handler
+      CodeUri: lambda_functions/admin_upate_checkout_date/
+      Handler: lambda_handler_admin_upate_checkout_date.lambda_handler
       Runtime: python3.13
       Timeout: 30
       MemorySize: 128
