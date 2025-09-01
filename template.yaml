@@ -181,7 +181,7 @@ Resources:
       Cors:
         AllowOrigins:
           - http://localhost:5173 # テスト終わったら削除
-          - https://app.osakabaywheel.com
+          - https://osakabaywheel.com
         AllowHeaders:
           - content-type
         AllowMethods:
@@ -277,6 +277,24 @@ Resources:
     Properties:
       TopicName: obw-admin-guest-approval
 
+  AdminApproveGuestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: admin-approve-guest-function
+      CodeUri: lambda_functions/admin_approve_guest/
+      Handler: lambda_handler_admin_approve_guest.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref GuestTableName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GuestTableName
+        - DynamoDBWritePolicy:
+            TableName: !Ref GuestTableName
+
 Outputs:
   ImmediateResponseFunctionArn:
     Description: "ARN for Immediate Response function"
@@ -305,3 +323,8 @@ Outputs:
     Value: !GetAtt GetPresignedUrlFunction.Arn
     Export:
       Name: Obw-GetPresignedUrlFunctionArn
+  AdminApproveGuestFunctionArn:
+    Description: "ARN for admin-approve-guest Lambda"
+    Value: !GetAtt AdminApproveGuestFunction.Arn
+    Export:
+      Name: Obw-AdminApproveGuestFunctionArn
