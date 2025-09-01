@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 // Amplify Auth (v6 modular). Assumes Amplify is configured elsewhere in the app.
 import { getCurrentUser, signInWithRedirect } from 'aws-amplify/auth'
 import AdminPage from '../pages/AdminPage'
+import { dbg } from '@/utils/debugLogger'
 
 export default function AdminAuth() {
   const location = useLocation()
@@ -28,7 +29,7 @@ export default function AdminAuth() {
 
   useEffect(() => {
     async function ensureAuthenticated() {
-      console.log('[AdminAuth] path:', location.pathname, 'search:', location.search)
+      dbg('path:', location.pathname, 'search:', location.search)
 
       // /admin配下に来たら先にゲスト情報を掃除
       clearGuestStorage()
@@ -37,7 +38,7 @@ export default function AdminAuth() {
         if (location.pathname.startsWith('/admin/callback')) {
           setMessage('Completing sign-in...')
           const qs = new URLSearchParams(location.search)
-          console.log('[AdminAuth] callback detected. code:', qs.get('code'), 'state:', qs.get('state'))
+          dbg('callback detected. code:', qs.get('code'), 'state:', qs.get('state'))
 
           // Hosted UI 戻り直後はトークン確立待ち（短時間リトライ）
           const deadline = Date.now() + 8000
@@ -45,7 +46,7 @@ export default function AdminAuth() {
           while (Date.now() < deadline) {
             try {
               const u = await getCurrentUser()
-              console.log('[AdminAuth] getCurrentUser OK on callback:', u)
+              dbg('getCurrentUser OK on callback:', u)
               ok = true
               break
             } catch (e) {
@@ -63,19 +64,19 @@ export default function AdminAuth() {
 
           setReady(true)
           setMessage('')
-          console.log('[AdminAuth] navigate -> /admin')
+          dbg('navigate -> /admin')
           navigate('/admin', { replace: true })
           return
         }
 
-        console.log('[AdminAuth] checking current user...')
+        dbg('checking current user...')
         const u = await getCurrentUser()
-        console.log('[AdminAuth] signed in as:', u)
+        dbg('signed in as:', u)
         setReady(true)
         setMessage('')
       } catch (e) {
         console.warn('[AdminAuth] not signed in. Redirecting to Hosted UI.', e)
-        console.log('[AdminAuth] env:', {
+        console.warn('env:', {
           domain: import.meta.env.VITE_COGNITO_OAUTH_DOMAIN,
           clientId: import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID,
           redirect: import.meta.env.VITE_COGNITO_REDIRECT_SIGNIN,
