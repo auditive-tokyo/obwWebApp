@@ -181,7 +181,7 @@ Resources:
       Cors:
         AllowOrigins:
           - http://localhost:5173 # テスト終わったら削除
-          - https://www.osakabaywheel.com
+          - https://app.osakabaywheel.com
         AllowHeaders:
           - content-type
         AllowMethods:
