@@ -51,6 +51,12 @@ export function RoomPageView(
   } = props
   const selectedSession = selectedGuest
 
+  // 鍵の4桁コード文書へのアクセス許可: guestSessions の中に approved が1人でもいればOK
+  const hasApprovedGuest =
+    Array.isArray(guestSessions) &&
+    guestSessions.some(g => (g?.approvalStatus || '').toLowerCase() === 'approved')
+  const chatRoomId = hasApprovedGuest ? (roomId || '') : ''
+
   // クリック選択時の表示判定
   const shouldShowBasicInfoForSession = (g: any) =>
     g?.approvalStatus === 'waitingForBasicInfo'
@@ -239,7 +245,9 @@ export function RoomPageView(
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
           <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
-           {getMessage("selectGuestOrAddNew")}
+           {hasApprovedGuest
+             ? getMessage("chatInstructionAfterApproved")
+             : getMessage("selectGuestOrAddNew")}
           </div>
         )}
 
@@ -305,7 +313,7 @@ export function RoomPageView(
 
         {/* チャット */}
         <div className="mt-8">
-          <ChatWidget roomId={roomId || ""} />
+          <ChatWidget roomId={chatRoomId} />
         </div>
       </div>
     </div>

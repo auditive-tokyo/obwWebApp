@@ -76,8 +76,8 @@ type MessageKeys =
   | "aboutSecurity"
   | "lawInfoShort"
   | "lawInfo"
-  | "securityInfoShort"
-  | "securityInfo";
+  | "securityInfo"
+  | "chatInstructionAfterApproved";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -156,6 +156,7 @@ type Messages = {
     lawInfo: string[];
     securityInfoShort: string;
     securityInfo: string[];
+    chatInstructionAfterApproved: string;
   }
 };
 
@@ -242,7 +243,9 @@ const messages: Messages = {
       "お客様の個人情報はAWS KMS（暗号化サービス）により高度に保護されています。",
       "通信は全てSSL暗号化により安全に送信されます。",
       "データの保管・管理は国際的なセキュリティ基準に準拠しています。"
-    ]
+    ],
+    chatInstructionAfterApproved:
+      "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。"
   },
   en: {
     close: "Close",
@@ -326,7 +329,9 @@ const messages: Messages = {
       "Your personal information is highly protected by AWS KMS (encryption service).",
       "All communications are securely transmitted via SSL encryption.",
       "Data storage and management comply with international security standards."
-    ]
+    ],
+    chatInstructionAfterApproved:
+      "You can now access information such as the room door code. Please ask the chatbot at the bottom right."
   }
 };
 

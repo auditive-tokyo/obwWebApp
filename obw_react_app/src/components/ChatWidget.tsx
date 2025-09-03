@@ -8,7 +8,7 @@ const ChatWidget = ({ roomId }: RoomProps) => {
   return (
     <>
       <button
-        className="fixed right-6 bottom-6 z-60 bg-teal-100 hover:bg-teal-200 rounded-full px-4 py-1 shadow-lg inline-flex items-center gap-2 border border-teal-200"
+        className="fixed right-6 bottom-6 z-60 bg-blue-100 hover:bg-blue-200 rounded-full px-4 py-1 shadow-lg inline-flex items-center gap-2 border border-blue-200"
         onClick={() => setOpen(prev => !prev)}
       >
         <span className="leading-none">Ask anything to OBW AI Bot!</span>
