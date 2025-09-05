@@ -244,11 +244,20 @@ export function RoomPageView(
 
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
-          <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
-           {hasApprovedGuest
-             ? getMessage("chatInstructionAfterApproved")
-             : getMessage("selectGuestOrAddNew")}
-          </div>
+          hasApprovedGuest ? (
+            <div className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6">
+              <div className="flex items-center gap-3">
+                <img src="/icons8-bot-64.png" alt="" className="w-8 h-8 shrink-0" />
+                <p className="text-lg font-semibold text-teal-900">
+                  {getMessage("chatInstructionAfterApproved")}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
+              {getMessage("selectGuestOrAddNew")}
+            </div>
+          )
         )}
 
         {/* 基本情報入力フォーム（新規 or waitingForBasicInfo の人を選択時） */}
