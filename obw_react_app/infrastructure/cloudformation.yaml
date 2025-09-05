@@ -114,6 +114,7 @@ Resources:
           checkOutDate: AWSDate
           approvalStatus: String!
           promoConsent: Boolean
+          isFamilyMember: Boolean
           sessionTokenExpiresAt: AWSTimestamp
           sessionTokenHash: String
           pendingVerificationTtl: AWSTimestamp
@@ -135,6 +136,7 @@ Resources:
           checkInDate: AWSDate!
           checkOutDate: AWSDate!
           promoConsent: Boolean!
+          isFamilyMember: Boolean
         }
 
         input UpdateGuestInput {
@@ -152,6 +154,7 @@ Resources:
           checkOutDate: AWSDate
           approvalStatus: String
           promoConsent: Boolean
+          isFamilyMember: Boolean
         }
 
         input RequestAccessInput {
@@ -316,7 +319,8 @@ Resources:
             "approvalStatus": $util.dynamodb.toDynamoDBJson("pendingVerification"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
-            "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
+            "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent),
+            "isFamilyMember": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.isFamilyMember, false))
           }
         }
       ResponseMappingTemplate: |
@@ -399,6 +403,12 @@ Resources:
           #set($exp = $exp + ", #promoConsent = :promoConsent")
           $util.qr($names.put("#promoConsent","promoConsent"))
           $util.qr($values.put(":promoConsent", { "BOOL": $ctx.args.input.promoConsent }))
+        #end
+
+        #if(!$util.isNull($ctx.args.input.isFamilyMember))
+          #set($exp = $exp + ", #isFamilyMember = :isFamilyMember")
+          $util.qr($names.put("#isFamilyMember","isFamilyMember"))
+          $util.qr($values.put(":isFamilyMember", { "BOOL": $ctx.args.input.isFamilyMember }))
         #end
 
         {
