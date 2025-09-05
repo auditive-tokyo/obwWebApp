@@ -76,6 +76,7 @@ type MessageKeys =
   | "aboutSecurity"
   | "lawInfoShort"
   | "lawInfo"
+  | "securityInfoShort"
   | "securityInfo"
   | "chatInstructionAfterApproved";
 
