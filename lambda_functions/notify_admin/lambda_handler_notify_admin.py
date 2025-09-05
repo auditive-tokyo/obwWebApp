@@ -57,19 +57,13 @@ def handler(event, context):
             check_in = _s(new_img.get("checkInDate"))
             check_out = _s(new_img.get("checkOutDate"))
 
-            if ADMIN_BASE_URL:
-                base = ADMIN_BASE_URL.rstrip('/')
-                admin_url = f"{base}/admin"
-            else:
-                admin_url = "(set ADMIN_BASE_URL to include link)"
-
             display_name = guest_name or guest_id or "不明なゲスト"
             lines = [
                 f"Room ({room_number}) の {display_name} さんが基本情報の登録と、IDの写真をアップロードしました。",
                 "Admin Pageより確認してください:",
                 f"滞在日: {check_in or '-'} ~ {check_out or '-'}",
                 "",
-                f"{admin_url}",
+                f"{ADMIN_BASE_URL}",
             ]
             message_text = "\n".join(lines)
 
