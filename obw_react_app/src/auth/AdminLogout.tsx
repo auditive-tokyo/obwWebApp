@@ -8,6 +8,7 @@ export default function AdminLogout() {
       localStorage.removeItem('guestId')
       localStorage.removeItem('token')
       localStorage.removeItem('bookingId')
+      localStorage.removeItem('responseId')
       clearCognitoIdentityCache?.()
     } catch {}
 

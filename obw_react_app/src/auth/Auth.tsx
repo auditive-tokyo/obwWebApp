@@ -41,6 +41,11 @@ export default function Auth() {
 
       if (!roomId || !guestId || !token) {
         setMessage('Missing params. Redirecting...')
+        localStorage.removeItem('guestId')
+        localStorage.removeItem('token')
+        localStorage.removeItem('bookingId')
+        localStorage.removeItem('responseId')
+        clearCognitoIdentityCache()
         navigate(`/${roomId || ''}`, { replace: true })
         return
       }
@@ -76,6 +81,7 @@ export default function Auth() {
           localStorage.removeItem('guestId')
           localStorage.removeItem('token')
           localStorage.removeItem('bookingId')
+          localStorage.removeItem('responseId')
           clearCognitoIdentityCache()
            setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
          }
@@ -85,6 +91,7 @@ export default function Auth() {
         localStorage.removeItem('guestId')
         localStorage.removeItem('token')
         localStorage.removeItem('bookingId')
+        localStorage.removeItem('responseId')
         clearCognitoIdentityCache()
         setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1200)
       }

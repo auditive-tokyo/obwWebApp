@@ -13,7 +13,7 @@ export default function AdminAuth() {
 
   // Adminルート入場時にゲスト用キーを掃除
   const clearGuestStorage = () => {
-    const KEYS = ['bookingId', 'guestId', 'token'] // 必要なら実キー名に合わせて調整
+    const KEYS = ['bookingId', 'guestId', 'token', 'responseId'] // 必要なら実キー名に合わせて調整
     try {
       for (const k of KEYS) localStorage.removeItem(k)
       // プレフィックスで管理している場合の掃除（任意）
