@@ -27,6 +27,9 @@ export default function RoomPage() {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null)
   const [isRepresentativeFamily, setIsRepresentativeFamily] = useState(false)
   const [showFamilyQuestion, setShowFamilyQuestion] = useState(false)
+  // 「編集に戻る」用の制御フラグ（親で制御）
+  const [forceShowForm, setForceShowForm] = useState<boolean | null>(null)
+  const [overrideFamilyForEdit, setOverrideFamilyForEdit] = useState<boolean | null>(null)
   const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
   const bookingId =
     typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
@@ -77,8 +80,13 @@ export default function RoomPage() {
       hasRoomCheckDates
     }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily, hasRoomCheckDates])
 
-  // 戻る（TODO: 現状はダミー、将来のために残す）
-  const handleBack = () => {}
+  // 戻る（パスポート→基本情報フォームへ。家族は名前のみ）
+  const handleBack = () => {
+    const isFamily = !!(selectedGuest as any)?.isFamilyMember
+    setIsRepresentativeFamily(isFamily)
+    setForceShowForm(true)
+    setOverrideFamilyForEdit(isFamily)
+  }
 
   // 次へ（基本情報送信）
   const handleNext = async () => {
@@ -99,7 +107,12 @@ export default function RoomPage() {
       setMessage,
       guestId: selectedGuestId,
       selectedGuest: selectedGuest,
+      isFamilyMember: isRepresentativeFamily,
     })
+
+    // 編集モードの強制表示を解除し、パスポート画面へ切り替えられるようにする
+    setForceShowForm(null)
+    setOverrideFamilyForEdit(null)
     
     await refreshGuestSessions()
   }
@@ -133,25 +146,37 @@ export default function RoomPage() {
       setCheckOutDate(selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null)
       setPassportImageUrl(selectedGuest.passportImageUrl ?? null)
       setPromoConsent(!!selectedGuest.promoConsent)
+      // 家族フラグはサーバ値をそのまま採用
+      setIsRepresentativeFamily(!!(selectedGuest as any)?.isFamilyMember)
     } else {
-      setName('')
-      setEmail('')
-      setAddress('')
-      setPhone('')
-      setOccupation('')
-      setNationality('')
-      setCheckInDate(null)
-      setCheckOutDate(null)
-      setPassportImageUrl(null)
-      setPromoConsent(false)
+      setName(''); setEmail(''); setAddress(''); setPhone('')
+      setOccupation(''); setNationality('')
+      setCheckInDate(null); setCheckOutDate(null)
+      setPassportImageUrl(null); setPromoConsent(false)
     }
-    // selectedGuestの切替時のみ同期され、入力中に上書きされない
-  }, [selectedGuest?.guestId])
+  }, [selectedGuest])
 
   // 検証OKのときだけ一覧取得（このガードは残す）
   useEffect(() => {
     if (sessionValid) refreshGuestSessions()
   }, [sessionValid, refreshGuestSessions])
+
+  // デバッグ: 選択中ゲストの情報がリスト更新でどう変化したか追跡
+  useEffect(() => {
+    const g = guestSessions.find(gs => gs.guestId === selectedGuestId)
+    if (g) {
+      console.debug('guestSessions updated for selected guest', {
+        guestId: g.guestId,
+        approvalStatus: g.approvalStatus,
+        isFamilyMember: (g as any)?.isFamilyMember,
+        flags: {
+          isRepresentativeFamily: (g as any)?.isRepresentativeFamily,
+          isFamily: (g as any)?.isFamily,
+          role: (g as any)?.role,
+        }
+      })
+    }
+  }, [guestSessions, selectedGuestId])
 
   // 自分のゲスト情報をDynamoDBから読み込む（services 経由）
   const loadMyGuest = useCallback(async () => {
@@ -188,8 +213,10 @@ export default function RoomPage() {
         phone: '',
         registrationDate: new Date().toISOString().slice(0,10),
         approvalStatus: 'waitingForBasicInfo',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        isFamilyMember: isFamily
       }
+      console.debug('created placeholder guest', placeholder)
       return [placeholder, ...prev]
     })
     // 入力欄をクリア
@@ -268,6 +295,8 @@ export default function RoomPage() {
         roomCheckInDate={roomCheckInDate}
         roomCheckOutDate={roomCheckOutDate}
         isRepresentativeFamily={isRepresentativeFamily}
+        forceShowForm={forceShowForm}
+        overrideIsRepresentativeFamily={overrideFamilyForEdit}
         showFamilyQuestion={showFamilyQuestion}
         onFamilyResponse={handleFamilyResponse}
         handleNext={handleNext}
@@ -281,7 +310,11 @@ export default function RoomPage() {
         // 文字列(gid)でも、オブジェクト(GuestSession)でも受けられるようにする
         onSelectGuest={(g) => {
           const id = typeof g === 'string' ? g : g?.guestId ?? null
-          if (id) setIsRepresentativeFamily(false)
+          if (id) {
+            // ゲスト切替時は強制表示フラグをリセット
+            setForceShowForm(null)
+            setOverrideFamilyForEdit(null)
+          }
           setSelectedGuestId(id)
         }}
         onAddGuest={handleAddGuestClick}

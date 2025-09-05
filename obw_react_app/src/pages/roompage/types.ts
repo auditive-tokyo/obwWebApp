@@ -18,6 +18,7 @@ export interface GuestSession {
   checkInDate?: string | Date | null
   checkOutDate?: string | Date | null
   promoConsent?: boolean
+  isFamilyMember?: boolean
   passportImageUrl?: string | null
   bookingId?: string
   registrationDate?: string    // YYYY-MM-DD
@@ -94,10 +95,11 @@ export interface HandleNextParams {
   checkInDate: Date | null
   checkOutDate: Date | null
   promoConsent: boolean
-  client: any // GraphQLクライアント等
-  setMessage: (message: string) => void // メッセージ表示用
+  client: any
+  setMessage: (message: string) => void
   guestId?: string | null
   selectedGuest?: GuestSession | null 
+  isFamilyMember?: boolean
 }
 
 /**

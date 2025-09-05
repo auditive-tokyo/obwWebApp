@@ -11,6 +11,8 @@ export function RoomPageView(
     hasRoomCheckDates?: boolean
     roomCheckInDate?: Date | null
     roomCheckOutDate?: Date | null
+    forceShowForm?: boolean | null
+    overrideIsRepresentativeFamily?: boolean | null
   }
 ) {
   const {
@@ -48,6 +50,8 @@ export function RoomPageView(
     hasRoomCheckDates,
     roomCheckInDate,
     roomCheckOutDate,
+    forceShowForm,
+    overrideIsRepresentativeFamily,
   } = props
   const selectedSession = selectedGuest
 
@@ -95,10 +99,12 @@ export function RoomPageView(
 
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
-    !!selectedSession && shouldShowBasicInfoForSession(selectedSession)
+    forceShowForm === true
+      ? true
+      : (!!selectedSession && shouldShowBasicInfoForSession(selectedSession))
 
   const showUpload =
-    !!selectedSession && shouldShowUploadForSession(selectedSession)
+    !!selectedSession && !showForm && shouldShowUploadForSession(selectedSession)
 
   const showStatus =
     selectedSession &&
@@ -282,7 +288,9 @@ export function RoomPageView(
             setCheckOutDate={setCheckOutDate}
             promoConsent={promoConsent}
             setPromoConsent={setPromoConsent}
-            isRepresentativeFamily={isRepresentativeFamily}
+            isRepresentativeFamily={
+              overrideIsRepresentativeFamily ?? isRepresentativeFamily
+            }
             hasRoomCheckDates={hasRoomCheckDates}
             isInfoComplete={isInfoComplete}
             onNext={handleNext}
@@ -297,7 +305,7 @@ export function RoomPageView(
               guestName={selectedSession?.guestName ?? name}
               guestId={selectedSession?.guestId ?? ""}
               client={client}
-              onBack={selectedSession ? () => onSelectGuest(null) : handleBack}
+              onBack={handleBack}
               showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
             />
           </div>

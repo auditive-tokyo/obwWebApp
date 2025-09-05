@@ -36,6 +36,7 @@ export async function refreshGuestSessions({ client, roomId, setGuestSessions }:
           checkOutDate
           passportImageUrl
           bookingId
+          isFamilyMember
         }
       }
     `
@@ -62,6 +63,7 @@ type GuestDetail = {
   checkInDate?: string
   checkOutDate?: string
   passportImageUrl?: string | null
+  isFamilyMember?: boolean
 }
 
 export async function loadMyGuest({ client, roomId }: { client: Client; roomId: string }): Promise<GuestDetail | null> {
@@ -82,6 +84,7 @@ export async function loadMyGuest({ client, roomId }: { client: Client; roomId: 
         checkInDate
         checkOutDate
         passportImageUrl
+        isFamilyMember
       }
     }
   `

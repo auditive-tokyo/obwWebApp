@@ -39,6 +39,7 @@ export const handleNextAction = async (params: HandleNextParams) => {
     setMessage,
     guestId,
     selectedGuest,
+    isFamilyMember,
   } = params
 
   setMessage(getMessage("registeringBasicInfo") as string)
@@ -86,6 +87,9 @@ export const handleNextAction = async (params: HandleNextParams) => {
     promoConsent,
     approvalStatus: getNextApprovalStatus(selectedGuest?.approvalStatus, 'updateBasicInfo'),
     bookingId,
+  }
+  if (typeof isFamilyMember === 'boolean') {
+    baseInput.isFamilyMember = isFamilyMember
   }
 
   // update のときだけ guestId を含める
