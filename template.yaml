@@ -41,6 +41,12 @@ Parameters:
   GuestTableName:
     Type: String
     Description: "DynamoDB guest table name (from AppSync stack)"
+  TelegramBotTokenParam:
+    Type: String
+    NoEcho: true
+  TelegramChatIdParam:
+    Type: String
+    NoEcho: true
 
 Resources:
   # TwilioのLambda用レイヤー
@@ -240,16 +246,16 @@ Resources:
       FunctionName: obw-notify-admin-on-pending
       CodeUri: lambda_functions/notify_admin/
       Handler: lambda_handler_notify_admin.handler
+      Runtime: python3.13
       MemorySize: 256
       Environment:
         Variables:
-          ADMIN_TOPIC_ARN: !Ref AdminNotificationsTopic          # 既存のSNSトピックを参照 or パラメータ化
-          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"  # 任意の管理画面URL
+          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
+          TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaDynamoDBExecutionRole
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt AdminNotificationsTopic.TopicName
       Events:
         FromGuestTableStream:
           Type: DynamoDB
@@ -271,11 +277,6 @@ Resources:
                         }
                       }
                     }
-
-  AdminNotificationsTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: obw-admin-guest-approval
 
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function

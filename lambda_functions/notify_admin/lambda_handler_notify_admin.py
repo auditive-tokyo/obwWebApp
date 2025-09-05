@@ -1,24 +1,36 @@
 import os
-import json
-import boto3
 import logging
-from datetime import datetime, timezone
-from urllib.parse import quote
-
-sns = boto3.client("sns")
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-TOPIC_ARN = os.environ.get("ADMIN_TOPIC_ARN", "")
 ADMIN_BASE_URL = os.environ.get("ADMIN_BASE_URL", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")  # 例: "-1001234567890"
 
 def _s(attr, key="S"):
     return (attr or {}).get(key)
 
+def send_telegram(text: str) -> None:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID is not set")
+    api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    body = urlencode({
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "disable_web_page_preview": "true",
+        # "parse_mode": "MarkdownV2",
+    }).encode("utf-8")
+    req = Request(api, data=body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urlopen(req, timeout=10) as resp:
+        body = resp.read()
+        if resp.status != 200:
+            raise RuntimeError(f"Telegram send failed: {resp.status} {body}")
+
 def handler(event, context):
-    # event は DynamoDB Streams のレコード配列
-    # フィルタで NewImage.approvalStatus = pending のみ受けるが、念のためコード側でも遷移判定
+    # DynamoDB Streams レコード配列を処理
     published = 0
     for rec in event.get("Records", []):
         try:
@@ -34,21 +46,20 @@ def handler(event, context):
             new_status = _s(new_img.get("approvalStatus"))
             old_status = _s(old_img.get("approvalStatus"))
 
+            # 新規 or pending へ遷移したときのみ通知
             if new_status != "pending" or (event_name == "MODIFY" and old_status == "pending"):
-                # pending 以外、または MODIFY で既に pending のままならスキップ
                 logger.info(f"Skipping record. new_status: {new_status}, old_status: {old_status}, eventName: {event_name}")
                 continue
 
             room_number = _s(new_img.get("roomNumber"))
             guest_id = _s(new_img.get("guestId"))
             guest_name = _s(new_img.get("guestName"))
-
             check_in = _s(new_img.get("checkInDate"))
             check_out = _s(new_img.get("checkOutDate"))
 
             if ADMIN_BASE_URL:
                 base = ADMIN_BASE_URL.rstrip('/')
-                admin_url = f"{base}/rooms/{quote(room_number or '', safe='')}/guests/{quote(guest_id or '', safe='')}"
+                admin_url = f"{base}/admin"
             else:
                 admin_url = "(set ADMIN_BASE_URL to include link)"
 
@@ -62,26 +73,14 @@ def handler(event, context):
             ]
             message_text = "\n".join(lines)
 
-            if not TOPIC_ARN:
-                logger.error("ADMIN_TOPIC_ARN is not set. Skipping publish.", extra={"message_body": message_text})
-                continue
-
-            response = sns.publish(
-                TopicArn=TOPIC_ARN,
-                Message=message_text,
-                MessageAttributes={
-                    "roomNumber": {"DataType": "String", "StringValue": room_number or ""},
-                    "guestId": {"DataType": "String", "StringValue": guest_id or ""},
-                    "eventType": {"DataType": "String", "StringValue": "guest_approval_requested"},
-                    "AWS.SNS.SMS.SMSType": {"DataType": "String", "StringValue": "Transactional"},
-                },
-            )
-            logger.info(f"Successfully published message for guest {guest_id} to SNS. MessageId: {response.get('MessageId')}")
+            # Telegram 送信（失敗時は例外で再試行）
+            send_telegram(message_text)
+            logger.info(f"Sent Telegram message for guest {guest_id}")
             published += 1
 
-        except Exception as e:
+        except Exception:
             logger.error(f"Error processing record: {rec}", exc_info=True)
-            # バッチサイズ1なので例外を投げればこのレコードのみ自動再試行される
+            # バッチサイズ1前提、例外で当該レコードのみ再試行
             raise
 
     return {"published": published}

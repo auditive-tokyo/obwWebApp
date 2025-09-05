@@ -113,6 +113,8 @@ jobs:
           OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           sam deploy \
             --stack-name obw-lambda-functions \
@@ -125,6 +127,8 @@ jobs:
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
+              TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
+              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
       - name: Wait for Lambda exports (Function ARNs)
@@ -174,6 +178,8 @@ jobs:
           OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
 
@@ -189,7 +195,9 @@ jobs:
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
+              TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
+              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET"
 
           aws cloudformation wait stack-update-complete --stack-name obw-lambda-functions
 
