@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: auditive-tokyo/ServerlessResponseAPI
-          ref: main
+          ref: OBW-Customized
           path: external/ServerlessResponseAPI
 
       - name: Configure AWS credentials (OIDC)
