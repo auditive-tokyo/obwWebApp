@@ -245,8 +245,8 @@ export function RoomPageView(
           </div>
         )}
 
-        {/* セキュリティ・法的情報カード */}
-        <SecurityInfoCards />
+        {/* セキュリティ・法的情報カード（approvedが1人でもいれば非表示） */}
+        {!hasApprovedGuest && <SecurityInfoCards />}
 
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
