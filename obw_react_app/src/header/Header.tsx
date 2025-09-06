@@ -29,15 +29,17 @@ function Header() {
   return (
     <header ref={headerRef} className="w-full bg-white shadow p-4 mb-4 flex justify-center items-center">
       <h1 className="text-3xl font-bold text-center">Osaka Bay Wheel WebApp</h1>
-      <div className="ml-4">
+      <div className="ml-4 relative">
         <select
           value={lang}
           onChange={handleLangChange}
-          className="px-3 py-2 rounded bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
+          className="appearance-none px-2 pr-5 py-1 rounded-full bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 shadow-sm"
         >
           <option value="en">🇺🇸 EN</option>
           <option value="ja">🇯🇵 JA</option>
         </select>
+        {/* カスタム矢印 */}
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">▾</span>
       </div>
     </header>
   );
