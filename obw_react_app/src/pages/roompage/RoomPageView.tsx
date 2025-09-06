@@ -297,7 +297,7 @@ export function RoomPageView(
           />
         )}
 
-        {/* パスポートアップロード画面 */}
+        {/* IDアップロード画面 */}
         {showUpload && (
           <div className="mt-4">
             <PassportUpload

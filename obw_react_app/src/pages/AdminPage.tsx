@@ -384,7 +384,7 @@ export default function AdminPage() {
               <dd>{formatAddress(detail.address) || '-'}</dd>
               <dt>職業</dt><dd>{detail.occupation || '-'}</dd>
               <dt>国籍</dt><dd>{detail.nationality || '-'}</dd>
-              <dt>パスポート</dt>
+              <dt>ID画像</dt>
               <dd>
                 {!detail.passportImageUrl && '-' }
                 {detail.passportImageUrl && (

@@ -60,7 +60,7 @@ export interface RoomPageViewProps {
   showFamilyQuestion: boolean
   onFamilyResponse: (isFamily: boolean) => void
 
-  // パスポート画像アップロード欄（統合後はビューでは未使用）
+  // ID画像アップロード欄（統合後はビューでは未使用）
 
   // 画面遷移・登録ハンドラー
   handleNext: () => void
@@ -103,7 +103,7 @@ export interface HandleNextParams {
 }
 
 /**
- * パスポート画像登録処理用のパラメータ型
+ * ID画像登録処理用のパラメータ型
  * - GraphQL登録やセッション保存に必要な値をまとめる
  */
 export interface HandleRegisterParams {
@@ -115,7 +115,7 @@ export interface HandleRegisterParams {
 }
 
 /**
- * パスポートアップロード画面用のprops型
+ * IDアップロード画面用のprops型
  * - 画面表示・アップロード・画面遷移に必要な値をまとめる
  */
 export type PassportUploadScreenProps = {

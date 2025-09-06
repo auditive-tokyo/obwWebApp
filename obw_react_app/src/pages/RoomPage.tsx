@@ -80,7 +80,7 @@ export default function RoomPage() {
       hasRoomCheckDates
     }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily, hasRoomCheckDates])
 
-  // 戻る（パスポート→基本情報フォームへ。家族は名前のみ）
+  // 戻る（ID→基本情報フォームへ。家族は名前のみ）
   const handleBack = () => {
     const isFamily = !!(selectedGuest as any)?.isFamilyMember
     setIsRepresentativeFamily(isFamily)
@@ -110,14 +110,14 @@ export default function RoomPage() {
       isFamilyMember: isRepresentativeFamily,
     })
 
-    // 編集モードの強制表示を解除し、パスポート画面へ切り替えられるようにする
+    // 編集モードの強制表示を解除し、ID画面へ切り替えられるようにする
     setForceShowForm(null)
     setOverrideFamilyForEdit(null)
     
     await refreshGuestSessions()
   }
 
-  // 登録（パスポート画像など）
+  // 登録（ID画像など）
   const handleRegister = async (rid: string, guestId: string) => {
     await handleRegisterAction({
       roomId: rid,

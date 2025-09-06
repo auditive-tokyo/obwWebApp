@@ -113,8 +113,8 @@ export const handleNextAction = async (params: HandleNextParams) => {
 }
 
 /**
- * パスポート画像登録処理
- * - アップロードされたパスポート画像URLをGraphQL経由でDBに登録
+ * ID画像登録処理
+ * - アップロードされたID画像URLをGraphQL経由でDBに登録
  * - ローカルセッションのステータスを更新
  * - ステータスや画面メッセージを更新
  */
