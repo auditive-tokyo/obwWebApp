@@ -56,20 +56,37 @@ const ChatInterface: React.FC<RoomProps> = ({ roomId }) => {
     });
     setInput('');
 
+    // AIストリーム受信時の更新（final時に images をトップレベルへ正規化）
+    const handleStreamDelta = (
+      payload: string | { assistant_response_text: string; reference_files?: string[]; images?: string[] },
+      isDone: boolean = false
+    ) => {
+      setMessages(curr =>
+        curr.map(m => {
+          if (m.id !== aiMessageId) return m;
+          if (typeof payload === 'string') {
+            return { ...m, text: payload };
+          }
+          const next = {
+            ...m,
+            text: payload,
+            loading: isDone ? false : m.loading,
+            timestamp: isDone ? getTimestamp() : m.timestamp,
+          };
+          if (isDone && Array.isArray(payload.images)) {
+            next.images = payload.images; // 画像URLを格納
+          }
+          return next;
+        })
+      );
+    };
+
     // roomIdを使ってAIにリクエスト
     await fetchAIResponseStream(
       input,
       roomId ? [roomId, "common"] : ["common"],
-      (delta, isDone = false) => {
-        setMessages(prev => {
-          // 考え中バブルを見つけて、そのテキストを更新する
-          return prev.map(msg =>
-            msg.id === aiMessageId
-              ? { ...msg, text: delta, loading: !isDone, timestamp: isDone ? getTimestamp() : undefined }
-              : msg
-          );
-        });
-      });
+      handleStreamDelta
+    );
   }
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

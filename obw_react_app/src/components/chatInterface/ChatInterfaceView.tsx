@@ -33,7 +33,11 @@ const ChatInterfaceView: React.FC<Props> = ({
           <div className="messages-content">
             {messages.map((msg) =>
               msg.loading ? (
-                <div key={msg.id} className={`message new ${!msg.text ? 'loading' : ''}`}>
+                <div
+                  key={msg.id}
+                  className={`message new ${!msg.text ? 'loading' : ''} ${msg.personal ? 'message-personal' : 'message-ai'}`}
+                  data-testid={msg.personal ? 'user-msg-loading' : 'ai-msg-loading'}
+                >
                   <figure className="avatar">
                     <img src="https://osakabaywheel.com/img/logo_color.svg" alt="avatar" />
                   </figure>
@@ -53,7 +57,8 @@ const ChatInterfaceView: React.FC<Props> = ({
               ) : (
                 <div
                   key={msg.id}
-                  className={`message${msg.personal ? ' message-personal' : ''} new`}
+                  className={`message new ${msg.personal ? 'message-personal' : 'message-ai'}`}
+                  data-testid={msg.personal ? 'user-msg' : 'ai-msg'}
                 >
                   {!msg.personal && (
                     <figure className="avatar">
@@ -81,6 +86,24 @@ const ChatInterfaceView: React.FC<Props> = ({
                   ) : (
                     <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
                   )}
+                  {/* 画像は msg.images（正規化済み）か、未正規化なら msg.text.images から表示 */}
+                  {!msg.personal && (() => {
+                    const imgs =
+                      Array.isArray(msg.images) && msg.images.length > 0
+                        ? msg.images
+                        : (typeof msg.text === "object" &&
+                           Array.isArray((msg.text as any).images) &&
+                           (msg.text as any).images.length > 0
+                           ? (msg.text as any).images
+                           : []);
+                    return imgs.length > 0 ? (
+                      <div className="ai-images">
+                        {imgs.map((url: string, i: number) => (
+                          <img key={i} src={url} alt={`ai-${i}`} className="ai-inline-image" loading="lazy" />
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                   {msg.timestamp && <div className="timestamp">{msg.timestamp}</div>}
                 </div>
               )
