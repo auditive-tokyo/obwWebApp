@@ -1,58 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
-import { generateClient } from 'aws-amplify/api'
-import { getCurrentUser } from 'aws-amplify/auth'
-import { dbg } from '@/utils/debugLogger'
-
-type Guest = {
-  roomNumber: string
-  guestId: string
-  guestName: string
-  approvalStatus: string
-  checkInDate?: string
-  checkOutDate?: string
-  bookingId?: string
-  email?: string
-  phone?: string
-  address?: string
-  occupation?: string
-  nationality?: string
-  passportImageUrl?: string
-}
+import { useEffect, useMemo, useState } from 'react';
+import { generateClient } from 'aws-amplify/api';
+import type { Guest, ApprovalStatus } from './adminpage/types/types';
+import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
+import { rejectGuest } from './handlers/rejectGuest';
+import { approveGuest } from './handlers/approveGuest';
+import { fetchGuests } from './handlers/fetchGuests';
+import { DetailsModal } from './adminpage/components/detailsModal';
 
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
-
-// 住所の整形（JSONなら各フィールドを順番に結合）
-function formatAddress(val?: string | null): string {
-  if (!val) return ''
-  const s = String(val).trim()
-  if (!s) return ''
-  try {
-    const obj = JSON.parse(s)
-    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-      const parts = [
-        obj.addressLine1,
-        obj.addressLine2,
-        obj.city,
-        obj.state,
-        obj.country,
-        obj.zipcode,
-      ]
-        .map(v => (v == null ? '' : String(v).trim()))
-        .filter(Boolean)
-      return parts.join(', ')
-    }
-    return s
-  } catch {
-    return s
-  }
-}
 
 export default function AdminPage() {
   const [all, setAll] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [roomFilter, setRoomFilter] = useState('201')
+  const [statusFilter, setStatusFilter] = useState('pending')
   const [detail, setDetail] = useState<Guest | null>(null)
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)
   const [signing, setSigning] = useState(false)
@@ -66,59 +29,42 @@ export default function AdminPage() {
     return Array.from(set).sort()
   }, [all])
 
-  const pending = useMemo(
-    () => all.filter(g =>
-      (g.approvalStatus || '').trim().toLowerCase() === 'pending' &&
-      (!roomFilter || g.roomNumber === roomFilter)
-    ),
-    [all, roomFilter]
-  )
+  const statusOptions: ApprovalStatus[] = [
+    'pending',
+    'waitingForBasicInfo',
+    'waitingForPassportImage',
+    'approved',
+    'rejected'
+  ];
+  const filteredGuests = useMemo(() => {
+    const sf = (statusFilter || '').toLowerCase()
+    const base = all.filter(g => {
+      const st = (g.approvalStatus || '').trim().toLowerCase()
+      const statusOk = !sf || st === sf
+      const roomOk = !roomFilter || g.roomNumber === roomFilter
+      return statusOk && roomOk
+    })
 
-  const fetchGuests = async () => {
-    dbg('fetchGuests start')
-    setLoading(true); setError(null)
-    try {
-      await getCurrentUser()
-        .then(u => dbg('current user OK:', u))
-        .catch(e => { dbg('getCurrentUser failed:', e); throw e })
+    // 予約IDでグループ化ソート
+    return [...base].sort((a, b) => {
+      const aId = a.bookingId || ''
+      const bId = b.bookingId || ''
+      if (aId === bId) {
+        // 同じ予約ID内での並び（氏名 → guestId フォールバック）
+        const nameCmp = (a.guestName || '').localeCompare(b.guestName || '')
+        if (nameCmp !== 0) return nameCmp
+        return (a.guestId || '').localeCompare(b.guestId || '')
+      }
+      // 予約IDありを先に
+      if (aId && !bId) return -1
+      if (!aId && bId) return 1
+      return aId.localeCompare(bId)
+    })
+  }, [all, roomFilter, statusFilter])
 
-      const query = `
-        query ListGuests {
-          listGuests {
-            roomNumber
-            guestId
-            guestName
-            approvalStatus
-            checkInDate
-            checkOutDate
-            bookingId
-            email
-            phone
-            address
-            occupation
-            nationality
-            passportImageUrl
-          }
-        }
-      `
-      dbg('calling listGuests (userPool)')
-      // authModeはクライアント側に固定済み
-      const res = await client.graphql({ query } as any)
-      const payload: any = 'data' in res ? (res as any).data?.listGuests : null
-      const items: any[] = Array.isArray(payload) ? payload : []
-      dbg('listGuests payload:', payload)
-      dbg('items length:', items?.length)
-      setAll((items || []).filter(Boolean))
-    } catch (e: any) {
-      console.error('[AdminPage] listGuests failed:', e)
-      setError(e?.message || 'Failed to load')
-    } finally {
-      setLoading(false)
-      dbg('fetchGuests end')
-    }
-  }
-
-  useEffect(() => { fetchGuests() }, [])
+  useEffect(() => {
+    fetchGuests({ client, setAll, setLoading, setError });
+  }, [client]);
 
   // ESCで閉じる
   useEffect(() => {
@@ -128,130 +74,34 @@ export default function AdminPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [detail])
 
-  // 詳細を開いたら署名URLを取得
+  // 詳細を開いたら署名URL取得
   useEffect(() => {
     if (detail?.passportImageUrl) {
-      fetchPassportSignedUrl(detail)
+      fetchPassportSignedUrl({
+        client,
+        guest: detail,
+        setSignedPassportUrl,
+        setSigning
+      });
     } else {
-      setSignedPassportUrl(null)
+      setSignedPassportUrl(null);
     }
-  }, [detail])
-
-  // passportImageUrl から S3キーを取り出す（https://{bucket}.s3.amazonaws.com/<key> 想定）
-  const extractS3Key = (url: string) => {
-    try {
-      const u = new URL(url)
-      return decodeURIComponent(u.pathname.replace(/^\/+/, '')) // 先頭の/除去
-    } catch { return null }
-  }
-
-  // 署名URLを取得（既存の get_presigned_url Lambda を AppSync で呼ぶ想定）
-  const fetchPassportSignedUrl = async (g: Guest) => {
-    if (!g.passportImageUrl) { setSignedPassportUrl(null); return }
-    const key = extractS3Key(g.passportImageUrl)
-    if (!key) { setSignedPassportUrl(null); return }
-    // 例: key = roomId/timestamp/filename
-    const [roomId, timestamp, ...rest] = key.split('/')
-    const filename = rest.join('/')
-    if (!roomId || !timestamp || !filename) { setSignedPassportUrl(null); return }
-    setSigning(true)
-    try {
-      const query = `
-        mutation GetPresignedUrl($input: GetPresignedUrlInput!) {
-          getPresignedUrl(input: $input) {
-            getUrl
-          }
-        }
-      `
-      const res = await client.graphql({
-        query,
-        variables: { input: { roomId, timestamp, filename } }
-      } as any)
-      const url = (res as any)?.data?.getPresignedUrl?.getUrl || null
-      setSignedPassportUrl(url)
-    } catch (e) {
-      console.warn('[AdminPage] fetchPassportSignedUrl failed', e)
-      setSignedPassportUrl(null)
-    } finally {
-      setSigning(false)
-    }
-  }
-
-  // 承認処理（approvalStatus を 'approved' に更新）
-  const approveGuest = async (g: Guest) => {
-    if (!g) return
-    setApprovingId(g.guestId)
-    try {
-      const mutation = `
-        mutation AdminApproveGuest($roomNumber: String!, $guestId: String!) {
-          adminApproveGuest(roomNumber: $roomNumber, guestId: $guestId) {
-            guestId
-            approvalStatus
-          }
-        }
-      `
-      await client.graphql({
-        query: mutation,
-        variables: { roomNumber: g.roomNumber, guestId: g.guestId },
-      } as any)
-
-      setAll(prev => prev.map(x => x.guestId === g.guestId ? { ...x, approvalStatus: 'approved' } : x))
-      window.alert(`${g.guestName} を承認しました。`)
-      if (detail?.guestId === g.guestId) { setDetail(null); setSignedPassportUrl(null) }
-    } catch (e) {
-      console.error('[AdminPage] approveGuest failed:', e)
-      alert('承認に失敗しました')
-    } finally {
-      setApprovingId(null)
-    }
-  }
+  }, [detail, client])
 
   // 承認前の確認ダイアログ
   const confirmApprove = async (g: Guest) => {
     if (!g) return
     const ok = window.confirm(`${g.guestName} を承認します。よろしいですか？`)
     if (!ok) return
-    await approveGuest(g)
-  }
-
-  // 拒否処理（approvalStatus を 'rejected' に更新）
-  const rejectGuest = async (g: Guest) => {
-    if (!g) return
-    setRejectingId(g.guestId)
-    try {
-      const mutation = `
-        mutation UpdateGuest($input: UpdateGuestInput!) {
-          updateGuest(input: $input) {
-            guestId
-            approvalStatus
-          }
-        }
-      `
-      await client.graphql({
-        query: mutation,
-        variables: {
-          input: {
-            guestId: g.guestId,
-            roomNumber: g.roomNumber,
-            approvalStatus: 'rejected',
-          },
-        },
-      } as any)
-      // 楽観更新
-      setAll(prev => prev.map(x => x.guestId === g.guestId ? { ...x, approvalStatus: 'rejected' } : x))
-      // モーダルを開いていたら閉じる
-      if (detail?.guestId === g.guestId) {
-        setDetail(null)
-        setSignedPassportUrl(null)
-      }
-      // 拒否完了ダイアログ
-      window.alert(`${g.guestName} を拒否しました。`)
-    } catch (e) {
-      console.error('[AdminPage] rejectGuest failed:', e)
-      alert('拒否に失敗しました')
-    } finally {
-      setRejectingId(null)
-    }
+    await approveGuest({
+      client,
+      guest: g,
+      detail,
+      setAll,
+      setDetail,
+      setSignedPassportUrl,
+      setApprovingId
+    })
   }
 
   // 拒否前の確認ダイアログ
@@ -259,7 +109,15 @@ export default function AdminPage() {
     if (!g) return
     const ok = window.confirm(`${g.guestName} を拒否します。よろしいですか？`)
     if (!ok) return
-    await rejectGuest(g)
+    await rejectGuest({
+      client,
+      guest: g,
+      detail,
+      setAll,
+      setDetail,
+      setSignedPassportUrl,
+      setRejectingId
+    })
   }
 
   return (
@@ -267,7 +125,10 @@ export default function AdminPage() {
       <h1>承認待ちリスト</h1>
 
       <div style={{ marginBottom: 12 }}>
-        <button onClick={fetchGuests} disabled={loading}>
+        <button
+          onClick={() => fetchGuests({ client, setAll, setLoading, setError })}
+          disabled={loading}
+        >
           {loading ? '更新中…' : '更新'}
         </button>
         <select
@@ -279,13 +140,22 @@ export default function AdminPage() {
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
+        <select
+          style={{ marginLeft: 12 }}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          {statusOptions.map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
       </div>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      {!loading && pending.length === 0 && <p>承認待ちはありません。</p>}
+      {!loading && filteredGuests.length === 0 && <p>該当するゲストはありません。</p>}
 
       <ul>
-        {pending.map(g => (
+        {filteredGuests.map(g => (
           <li
             key={`${g.roomNumber}:${g.guestId}`}
             style={{ marginBottom: 8, display: 'flex', alignItems: 'center' }}
@@ -345,109 +215,16 @@ export default function AdminPage() {
 
       {/* 詳細モーダル */}
       {detail && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-          }}
-          onClick={() => setDetail(null)}
-        >
-          <div
-            style={{
-              background: '#fff',
-              padding: 16,
-              borderRadius: 8,
-              width: 'min(720px, 90vw)',
-              maxHeight: '90vh',
-              overflow: 'auto'
-            }}
-             onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>ゲスト詳細</h2>
-              <button onClick={() => setDetail(null)}>閉じる</button>
-            </div>
-            <hr />
-            <dl style={{ display: 'grid', gridTemplateColumns: '8em 1fr', rowGap: 6, columnGap: 12 }}>
-              <dt>Room</dt><dd>{detail.roomNumber}</dd>
-              <dt>氏名</dt><dd>{detail.guestName}</dd>
-              <dt>Guest ID</dt><dd>{detail.guestId}</dd>
-              <dt>予約ID</dt><dd>{detail.bookingId || '-'}</dd>
-              <dt>承認</dt><dd>{detail.approvalStatus || '-'}</dd>
-              <dt>チェックイン</dt><dd>{detail.checkInDate || '-'}</dd>
-              <dt>チェックアウト</dt><dd>{detail.checkOutDate || '-'}</dd>
-              <dt>メール</dt><dd>{detail.email || '-'}</dd>
-              <dt>電話</dt><dd>{detail.phone || '-'}</dd>
-              <dt>住所</dt>
-              <dd>{formatAddress(detail.address) || '-'}</dd>
-              <dt>職業</dt><dd>{detail.occupation || '-'}</dd>
-              <dt>国籍</dt><dd>{detail.nationality || '-'}</dd>
-              <dt>ID画像</dt>
-              <dd>
-                {!detail.passportImageUrl && '-' }
-                {detail.passportImageUrl && (
-                  <>
-                    <div style={{ marginBottom: 4 }}>
-                      {signing ? '画像URL取得中…' : signedPassportUrl
-                        ? <a href={signedPassportUrl} target="_blank" rel="noreferrer">署名付きURLで開く</a>
-                        : '画像URLの取得に失敗しました'}
-                    </div>
-                    {signedPassportUrl && (
-                      <div style={{ marginTop: 8 }}>
-                        <img
-                          src={signedPassportUrl}
-                          alt="passport"
-                          style={{
-                            maxWidth: '100%',
-                            height: 'auto',
-                            maxHeight: '70vh',
-                            objectFit: 'contain',
-                            border: '1px solid #ddd',
-                            borderRadius: 4
-                          }}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-              </dd>
-            </dl>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-             <button
-               type="button"
-               style={{
-                 backgroundColor: '#2e7d32',
-                 color: '#fff',
-                 border: 'none',
-                 padding: '8px 14px',
-                 borderRadius: 4,
-                 cursor: 'pointer'
-               }}
-               disabled={approvingId === detail.guestId || (detail.approvalStatus || '').toLowerCase() === 'approved'}
-               onClick={() => confirmApprove(detail)}
-             >
-               {approvingId === detail.guestId ? '承認中…' : '承認'}
-             </button>
-              <button
-                type="button"
-                style={{
-                  backgroundColor: '#c62828',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '8px 14px',
-                  borderRadius: 4,
-                  cursor: 'pointer'
-                }}
-                disabled={rejectingId === detail.guestId || (detail.approvalStatus || '').toLowerCase() === 'rejected'}
-                onClick={() => confirmReject(detail)}
-              >
-                {rejectingId === detail.guestId ? '拒否中…' : '拒否'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DetailsModal
+          detail={detail}
+            onClose={() => setDetail(null)}
+            signing={signing}
+            signedPassportUrl={signedPassportUrl}
+            approvingId={approvingId}
+            rejectingId={rejectingId}
+            confirmApprove={confirmApprove}
+            confirmReject={confirmReject}
+        />
       )}
     </div>
   )
