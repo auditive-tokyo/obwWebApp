@@ -163,6 +163,7 @@ Resources:
           email: String!
           phone: String!
           contactChannel: String!
+          lang: String
         }
 
         input GetPresignedUrlInput {
