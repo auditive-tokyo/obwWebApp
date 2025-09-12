@@ -14,7 +14,6 @@ Globals:
 Parameters:
   OpenAiApiKey:
     Type: String
-    Description: "OpenAI API Key"
     NoEcho: true
   OpenAiVectorStoreId:
     Type: String
@@ -46,6 +45,10 @@ Parameters:
     NoEcho: true
   TelegramChatIdParam:
     Type: String
+    NoEcho: true
+  SendGridApiKey:
+    Type: String
+    Description: "SendGrid API Key"
     NoEcho: true
 
 Resources:
@@ -207,15 +210,11 @@ Resources:
         Variables:
           TABLE_NAME: !Ref GuestTableName
           MAX_TOKEN_LIFETIME_HOURS: "1"
+          SENDGRID_API_KEY: !Ref SendGridApiKey
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GuestTableName
         - Statement:
-            - Effect: Allow
-              Action:
-                - ses:SendEmail
-                - ses:SendRawEmail
-              Resource: "*"
             - Effect: Allow
               Action:
                 - sns:Publish

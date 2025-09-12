@@ -115,6 +115,7 @@ jobs:
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}  # ← 追加
         run: |
           sam deploy \
             --stack-name obw-lambda-functions \
@@ -129,6 +130,7 @@ jobs:
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
               TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
               TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
+              SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
       - name: Wait for Lambda exports (Function ARNs)
@@ -180,6 +182,7 @@ jobs:
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}  # ← 追加
         run: |
           echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
 
@@ -197,7 +200,8 @@ jobs:
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
               TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
-              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET"
+              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
+              SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET"
 
           aws cloudformation wait stack-update-complete --stack-name obw-lambda-functions
 

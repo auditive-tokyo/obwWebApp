@@ -6,14 +6,16 @@ import hashlib
 import time
 import secrets
 from datetime import datetime, timezone
+import json
+from urllib import request, error
 
 dynamodb = boto3.client('dynamodb')
-ses = boto3.client('ses')
 sns = boto3.client('sns')
 
 TABLE_NAME = os.environ.get("TABLE_NAME")
 APP_BASE_URL = "https://app.osakabaywheel.com"
-MAIL_FROM = "keigochezstudio@gmail.com"
+MAIL_FROM = "osakabaywheel4224@gmail.com"
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 
 def generate_token():
     return base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
@@ -28,6 +30,39 @@ def now_iso_ms_z() -> str:
 def generate_booking_id(length=11) -> str:
     alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def send_via_sendgrid(to_email: str, subject: str, text_body: str):
+    if not SENDGRID_API_KEY:
+        raise RuntimeError("Missing SENDGRID_API_KEY env")
+    payload = {
+        "personalizations": [{
+            "to": [{"email": to_email}],
+            "subject": subject
+        }],
+        "from": {"email": MAIL_FROM},
+        "content": [
+            {"type": "text/plain", "value": text_body}
+        ]
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        "https://api.sendgrid.com/v3/mail/send",
+        method="POST",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {SENDGRID_API_KEY}",
+            "Content-Type": "application/json"
+        }
+    )
+    try:
+        with request.urlopen(req, timeout=10) as resp:
+            if resp.status not in (200, 202):
+                raise RuntimeError(f"SendGrid unexpected status {resp.status}")
+    except error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"SendGrid HTTPError {e.code}: {body}") from e
+    except error.URLError as e:
+        raise RuntimeError(f"SendGrid URLError: {e}") from e
 
 def lambda_handler(event, context):
     args = event.get('arguments', {}).get('input', {})
@@ -75,14 +110,14 @@ def lambda_handler(event, context):
 
     # Send Magic Link
     if contact_channel == "email":
-        ses.send_email(
-            Source=MAIL_FROM,
-            Destination={"ToAddresses": [email]},
-            Message={
-                "Subject": {"Data": f"Osaka Bay Wheel Guest Access"},
-                "Body": {"Text": {"Data": f"Access your guest page: {link}"}}
-            }
-        )
+        try:
+            send_via_sendgrid(
+                to_email=email,
+                subject="Osaka Bay Wheel Guest Access",
+                text_body=f"Access your guest page:\n{link}\n\nThis link is valid for 24 hours."
+            )
+        except Exception as e:
+            return {"success": False, "error": f"Email send failed: {e}"}
     elif contact_channel == "sms":
         sns.publish(
             PhoneNumber=phone,
