@@ -36,6 +36,20 @@ export default function RoomPage() {
 
   const client = useMemo(() => generateClient(), [])
 
+  // セッション状態に応じて responseId をクリアする
+  // - token が存在しない（すでに他で削除済み / 初回未取得）場合は即削除
+  // - token はあるが検証完了(sessionChecked)して無効(sessionValid=false)な場合も削除
+  useEffect(() => {
+    const tok = localStorage.getItem('token')
+    if (!tok) {
+      localStorage.removeItem('responseId')
+      return
+    }
+    if (sessionChecked && !sessionValid) {
+      localStorage.removeItem('responseId')
+    }
+  }, [sessionChecked, sessionValid])
+
   // 部屋レベルのチェックイン/アウト日を guestSessions から算出（先頭に見つかった値で可）
   const parseToDate = (d: any): Date | null => {
     if (!d) return null
