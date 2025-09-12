@@ -104,11 +104,10 @@ export default function AccessForm({ roomNumber }: Props) {
       {/* セキュリティ / 法令情報カード（フォーム上部に配置） */}
       <section className="bg-white/70 backdrop-blur border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-5">
         <h4 className="text-sm font-semibold text-gray-700 mb-2">
-          {getMessage("whyWeAsk") || "Why we ask for this information"}
+          {getMessage("whyWeAsk")}
         </h4>
         <p className="text-xs text-gray-500 leading-relaxed mb-4">
-          {getMessage("securityIntro") ||
-            "We collect identity details only for legal compliance and guest safety."}
+          {getMessage("securityIntro")}
         </p>
         <SecurityInfoCards />
       </section>
