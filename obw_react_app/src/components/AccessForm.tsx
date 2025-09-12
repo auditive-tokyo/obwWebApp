@@ -70,6 +70,7 @@ export default function AccessForm({ roomNumber }: Props) {
             email,
             phone,
             contactChannel: delivery,
+            ...(localStorage.getItem('lang') ? { lang: localStorage.getItem('lang') } : {})
           },
         },
         authMode: 'iam',
