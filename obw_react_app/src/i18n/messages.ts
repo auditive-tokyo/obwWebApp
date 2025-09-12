@@ -78,7 +78,9 @@ type MessageKeys =
   | "lawInfo"
   | "securityInfoShort"
   | "securityInfo"
-  | "chatInstructionAfterApproved";
+  | "chatInstructionAfterApproved"
+  | "whyWeAsk"
+  | "securityIntro";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -158,6 +160,8 @@ type Messages = {
     securityInfoShort: string;
     securityInfo: string[];
     chatInstructionAfterApproved: string;
+    whyWeAsk: string;
+    securityIntro: string;
   }
 };
 
@@ -246,7 +250,9 @@ const messages: Messages = {
       "データの保管・管理は国際的なセキュリティ基準に準拠しています。"
     ],
     chatInstructionAfterApproved:
-      "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。"
+      "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
+    whyWeAsk: "この情報をお願いする理由",
+    securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。"
   },
   en: {
     close: "Close",
@@ -332,7 +338,9 @@ const messages: Messages = {
       "Data storage and management comply with international security standards."
     ],
     chatInstructionAfterApproved:
-      "You can now access information such as the room door code. Please ask the chatbot at the bottom right."
+      "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
+    whyWeAsk: "Why we ask for this information",
+    securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details."
   }
 };
 
