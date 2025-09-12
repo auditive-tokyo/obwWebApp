@@ -64,6 +64,38 @@ def send_via_sendgrid(to_email: str, subject: str, text_body: str):
     except error.URLError as e:
         raise RuntimeError(f"SendGrid URLError: {e}") from e
 
+def build_email_body(lang: str, link: str) -> str:
+    if lang == 'ja':
+        return (
+            "ゲストページへのアクセスリンクです:\n"
+            f"{link}\n\n"
+            "このリンクは大切に保管してください。同じ部屋に宿泊するご家族・ご友人以外には共有しないでください。\n\n"
+            "複数のデバイスやブラウザからアクセスする場合も、このリンクを開くことでセッションを復元できます。\n\n"
+            "注意: 基本情報の入力が完了しないまま24時間経過するとこのリンクは無効になります。\n"
+            "基本情報送信後は、同じリンクで再アクセスしてセッションを復元できます。\n"
+        )
+    # default English
+    return (
+        "Guest page access link:\n"
+        f"{link}\n\n"
+        "Please keep this link secure. Do NOT share it with anyone except family or companions staying in the same room.\n\n"
+        "If you use multiple devices or browsers, opening this link restores your session.\n\n"
+        "Note: If you do NOT complete the basic information within 24 hours, this link becomes invalid.\n"
+        "After submitting the basic information you can still revisit using the same link to restore your session.\n"
+    )
+
+# SMS本文生成（短縮）
+def build_sms(lang: str, link: str) -> str:
+    if lang == 'ja':
+        return (
+            f"リンク: {link} 家族/同行者以外共有禁止。"
+            "基本情報未入力で24h後無効。入力後は同リンクで再アクセス可"
+        )
+    return (
+        f"Link: {link} Do not share outside companions. "
+        "If basic info not submitted in 24h it expires. After submit reuse link."
+    )
+
 def lambda_handler(event, context):
     args = event.get('arguments', {}).get('input', {})
     room_number = args.get('roomNumber')
@@ -71,6 +103,7 @@ def lambda_handler(event, context):
     email = args.get('email')
     phone = args.get('phone')
     contact_channel = args.get('contactChannel')  # "email" or "sms"
+    lang = args.get('lang', 'en')
 
     if not room_number or not guest_name or not email or not phone:
         return {"success": False, "error": "Missing required fields"}
@@ -111,17 +144,17 @@ def lambda_handler(event, context):
     # Send Magic Link
     if contact_channel == "email":
         try:
+            text_body = build_email_body(lang, link)
+            subject = "Osaka Bay Wheel ゲストアクセス" if lang == 'ja' else "Osaka Bay Wheel Guest Access"
             send_via_sendgrid(
                 to_email=email,
-                subject="Osaka Bay Wheel Guest Access",
-                text_body=f"Access your guest page:\n{link}\n\nThis link is valid for 24 hours."
+                subject=subject,
+                text_body=text_body
             )
         except Exception as e:
             return {"success": False, "error": f"Email send failed: {e}"}
     elif contact_channel == "sms":
-        sns.publish(
-            PhoneNumber=phone,
-            Message=f"Access your guest page: {link}"
-        )
+        sms_body = build_sms(lang, link)
+        sns.publish(PhoneNumber=phone, Message=sms_body)
 
     return {"success": True, "guestId": guest_id}
