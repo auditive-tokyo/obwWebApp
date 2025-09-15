@@ -50,7 +50,7 @@ async def openai_vector_search_with_file_search_tool(
         }
 
         request_payload = {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "instructions": system_instructions,
             "input": [{"role": "user", "content": query_text}],
             "tools": [

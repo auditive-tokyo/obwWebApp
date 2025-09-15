@@ -61,7 +61,7 @@ async def classify_message_urgency_with_openai_tool_calling(
 """
     try:
         response = await openai_async_client.responses.create(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             instructions=system_instructions,
             input=[
                 {"role": "user", "content": user_message}
