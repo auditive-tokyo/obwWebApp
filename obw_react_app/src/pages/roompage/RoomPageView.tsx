@@ -123,6 +123,8 @@ export function RoomPageView(
 
   // 位置情報同期モーダルの状態
   const [showGeoModal, setShowGeoModal] = useState(false)
+  // 現在地詳細ポップアップの状態
+  const [showLocationDetail, setShowLocationDetail] = useState(false)
 
   // 位置情報同期の確認後実行
   const handleGeoConfirm = async () => {
@@ -130,6 +132,12 @@ export function RoomPageView(
     if (handleSyncGeo) {
       await handleSyncGeo()
     }
+  }
+
+  // 同期解除機能（位置情報をクリア）
+  const handleClearLocation = () => {
+    // TODO: 位置情報をDBから削除する処理を実装
+    console.log('位置情報を削除')
   }
 
   return (
@@ -143,33 +151,71 @@ export function RoomPageView(
             </h1>
             {/* 同期ボタン（右上）とメッセージ */}
             <div className="flex items-center gap-2">
-              {/* 自分（ログイン中ユーザー）の currentLocation を常に表示 */}
-              <span className="text-xs text-gray-500">
-                {myCurrentLocation 
-                  ? `現在地: ${myCurrentLocation.split('@')[0]}` 
-                  : "現在地を同期"
-                }
-              </span>
-              <button 
-                type="button"
-                onClick={() => setShowGeoModal(true)} // モーダルを開く
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                title="現在地を同期"
-              >
-                <svg 
-                  className="w-5 h-5" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-                  />
-                </svg>
-              </button>
+              {myCurrentLocation ? (
+                // 位置情報がある場合: 現在地ボタンと同期解除ボタン + クルクル
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationDetail(true)}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    現在地
+                  </button>
+                  <span className="text-xs text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={handleClearLocation}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    同期解除
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShowGeoModal(true)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                    title="現在地を再同期"
+                  >
+                    <svg 
+                      className="w-5 h-5" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                // 位置情報がない場合: 同期ボタン
+                <>
+                  <span className="text-xs text-gray-500">現在地を同期</span>
+                  <button 
+                    type="button"
+                    onClick={() => setShowGeoModal(true)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                    title="現在地を同期"
+                  >
+                    <svg 
+                      className="w-5 h-5" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
           </div>
           {hasRoomCheckDates && (
@@ -268,7 +314,7 @@ export function RoomPageView(
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                現在地の共有
+                {myCurrentLocation ? '現在地の再同期' : '現在地の共有'}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
                 お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。
@@ -286,7 +332,7 @@ export function RoomPageView(
                   onClick={handleGeoConfirm}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  共有する
+                  {myCurrentLocation ? '再同期' : '共有する'}
                 </button>
               </div>
             </div>
@@ -411,6 +457,32 @@ export function RoomPageView(
           <ChatWidget roomId={chatRoomId} />
         </div>
       </div>
+
+      {/* 現在地詳細ポップアップ */}
+      {showLocationDetail && myCurrentLocation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              現在地情報
+            </h3>
+            <p className="text-sm text-gray-700 mb-6 break-words">
+              {myCurrentLocation.split('@')[0]}
+            </p>
+            <div className="text-xs text-gray-500 mb-4">
+              更新日時: {myCurrentLocation.split('@')[1]}
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLocationDetail(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
