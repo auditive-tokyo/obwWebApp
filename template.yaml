@@ -175,7 +175,6 @@ Resources:
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
-          PROMPT_TEMPLATE: pmpt_6869c81bfcd48196aefab179a363858906185093870d0335
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           VECTOR_SEARCH_FILTER_KEY: room_number
       Layers:
