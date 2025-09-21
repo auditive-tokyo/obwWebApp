@@ -5,10 +5,11 @@ import { generateClient } from 'aws-amplify/api'
 import type { GuestSession } from './roompage/types'
 import { RoomPageView } from './roompage/RoomPageView' 
 import { handleNextAction, handleRegisterAction, verifyOnLoad } from './roompage/handlers/roomPageHandlers'
-import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc } from './roompage/services/apiCalls'
+import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc, deleteGuestLocation } from './roompage/services/apiCalls'
 import { checkFormCompletion } from './roompage/utils/formValidation'
 import { syncGeoAndResolveAddress } from './roompage/services/geolocation'
 import { dbg } from '@/utils/debugLogger'
+import { getMessage } from '@/i18n/messages'
 
 export default function RoomPage() {
   const { roomId = '' } = useParams<{ roomId: string }>()
@@ -272,18 +273,35 @@ export default function RoomPage() {
     if (sessionValid) loadMyGuest()
   }, [sessionValid, loadMyGuest])
 
-  // 位置情報の同期（ワンショット）
-  const handleSyncGeo = useCallback(async () => {
-    try {
-      const gid = localStorage.getItem('guestId')
-      if (!gid) return
-      const { fix, addressText } = await syncGeoAndResolveAddress({ client, roomId, guestId: gid })
-      dbg('[geo] saved', fix, addressText)
-      setAddress(addressText || '')
-    } catch (e) {
-      console.warn('syncGeo failed', e)
-    }
-  }, [client, roomId])
+// 位置情報の同期（ワンショット）
+const handleSyncGeo = useCallback(async () => {
+  try {
+    const gid = localStorage.getItem('guestId')
+    if (!gid) return
+    const { fix, addressText } = await syncGeoAndResolveAddress({ client, roomId, guestId: gid })
+    dbg('[geo] saved', fix, addressText)
+    await loadMyGuest()
+    alert(getMessage("locationSyncSuccess"))
+  } catch (e) {
+    console.warn('syncGeo failed', e)
+    alert(`${getMessage("locationSyncError")}${getMessage("pleaseRetryLater")}`)
+  }
+}, [client, roomId, loadMyGuest])
+
+// 位置情報の削除
+const handleClearLocation = useCallback(async () => {
+  try {
+    const gid = localStorage.getItem('guestId')
+    if (!gid) return
+    await deleteGuestLocation({ client, roomId, guestId: gid })
+    dbg('deleted location')
+    await loadMyGuest()
+    alert(getMessage("locationDeleteSuccess"))
+  } catch (e) {
+    console.warn('deleteGuestLocation failed', e)
+    alert(`${getMessage("locationDeleteError")}${getMessage("pleaseRetryLater")}`)
+  }
+}, [client, roomId, loadMyGuest])
 
   // 認証していない/検証未完了の分岐
   if (!sessionChecked) {
@@ -351,6 +369,7 @@ export default function RoomPage() {
         onAddGuest={handleAddGuestClick}
         myCurrentLocation={myCurrentLocation}
         handleSyncGeo={handleSyncGeo}
+        handleClearLocation={handleClearLocation}
       />
     </>
   )

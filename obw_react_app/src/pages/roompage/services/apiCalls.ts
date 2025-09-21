@@ -130,3 +130,41 @@ export async function saveGuestLocation({
   }
   return client.graphql({ query: mutation, variables: { input } })
 }
+
+export async function deleteGuestLocation({
+  client,
+  roomId,
+  guestId
+}: {
+  client: any
+  roomId: string
+  guestId: string
+}) {
+  dbg('[deleteGuestLocation] 開始:', { roomId, guestId })
+  
+  const mutation = /* GraphQL */ `
+    mutation UpdateGuest($input: UpdateGuestInput!) {
+      updateGuest(input: $input) {
+        roomNumber
+        guestId
+        currentLocation
+      }
+    }
+  `
+  const input = {
+    roomNumber: roomId,
+    guestId,
+    currentLocation: null // 位置情報を削除
+  }
+  
+  dbg('[deleteGuestLocation] 送信データ:', input)
+  
+  try {
+    const result = await client.graphql({ query: mutation, variables: { input } })
+    dbg('[deleteGuestLocation] GraphQL レスポンス:', result)
+    return result
+  } catch (error) {
+    console.error('[deleteGuestLocation] GraphQL エラー:', error)
+    throw error
+  }
+}

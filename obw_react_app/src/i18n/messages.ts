@@ -80,7 +80,22 @@ type MessageKeys =
   | "securityInfo"
   | "chatInstructionAfterApproved"
   | "whyWeAsk"
-  | "securityIntro";
+  | "securityIntro"
+  | "currentLocation"
+  | "syncLocation"
+  | "unsyncLocation"
+  | "locationInfo"
+  | "locationShareTitle"
+  | "locationResyncTitle"
+  | "locationShareMessage"
+  | "resync"
+  | "share"
+  | "updatedAt"
+  | "locationSyncSuccess"
+  | "locationSyncError"
+  | "locationDeleteSuccess"
+  | "locationDeleteError"
+  | "pleaseRetryLater";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -162,6 +177,21 @@ type Messages = {
     chatInstructionAfterApproved: string;
     whyWeAsk: string;
     securityIntro: string;
+    currentLocation: string;
+    syncLocation: string;
+    unsyncLocation: string;
+    locationInfo: string;
+    locationShareTitle: string;
+    locationResyncTitle: string;
+    locationShareMessage: string;
+    resync: string;
+    share: string;
+    updatedAt: string;
+    locationSyncSuccess: string;
+    locationSyncError: string;
+    locationDeleteSuccess: string;
+    locationDeleteError: string;
+    pleaseRetryLater: string;
   }
 };
 
@@ -252,7 +282,22 @@ const messages: Messages = {
     chatInstructionAfterApproved:
       "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
     whyWeAsk: "この情報をお願いする理由",
-    securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。"
+    securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
+    currentLocation: "現在地",
+    syncLocation: "現在地を同期",
+    unsyncLocation: "同期解除",
+    locationInfo: "現在地情報",
+    locationShareTitle: "現在地の共有",
+    locationResyncTitle: "現在地の再同期",
+    locationShareMessage: "お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。",
+    resync: "再同期",
+    share: "共有する",
+    updatedAt: "更新日時",
+    locationSyncSuccess: "位置情報の同期が完了しました。",
+    locationSyncError: "位置情報の同期に失敗しました。",
+    locationDeleteSuccess: "位置情報を削除しました。",
+    locationDeleteError: "位置情報の削除に失敗しました。",
+    pleaseRetryLater: "少し時間をおいてから再度お試しください。"
   },
   en: {
     close: "Close",
@@ -340,7 +385,22 @@ const messages: Messages = {
     chatInstructionAfterApproved:
       "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
     whyWeAsk: "Why we ask for this information",
-    securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details."
+    securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
+    currentLocation: "Current Location",
+    syncLocation: "Sync Location",
+    unsyncLocation: "Unsync",
+    locationInfo: "Location Information",
+    locationShareTitle: "Share Current Location",
+    locationResyncTitle: "Re-sync Current Location",
+    locationShareMessage: "We can notify support of your current location. Your location information will only be used for support purposes.",
+    resync: "Re-sync",
+    share: "Share",
+    updatedAt: "Updated",
+    locationSyncSuccess: "Location sync completed successfully.",
+    locationSyncError: "Location sync failed.",
+    locationDeleteSuccess: "Location information deleted.",
+    locationDeleteError: "Failed to delete location information.",
+    pleaseRetryLater: "Please wait a moment and try again."
   }
 };
 

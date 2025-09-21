@@ -15,6 +15,7 @@ export function RoomPageView(
     forceShowForm?: boolean | null
     overrideIsRepresentativeFamily?: boolean | null
     handleSyncGeo?: () => Promise<void>
+    handleClearLocation?: () => Promise<void>
     myCurrentLocation?: string | null
   }
 ) {
@@ -56,6 +57,7 @@ export function RoomPageView(
     forceShowForm,
     overrideIsRepresentativeFamily,
     handleSyncGeo,
+    handleClearLocation,
     myCurrentLocation,
   } = props
   const selectedSession = selectedGuest
@@ -134,12 +136,6 @@ export function RoomPageView(
     }
   }
 
-  // 同期解除機能（位置情報をクリア）
-  const handleClearLocation = () => {
-    // TODO: 位置情報をDBから削除する処理を実装
-    console.log('位置情報を削除')
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
@@ -159,7 +155,7 @@ export function RoomPageView(
                     onClick={() => setShowLocationDetail(true)}
                     className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
                   >
-                    現在地
+                    {getMessage("currentLocation")}
                   </button>
                   <span className="text-xs text-gray-300">|</span>
                   <button
@@ -167,13 +163,13 @@ export function RoomPageView(
                     onClick={handleClearLocation}
                     className="text-xs text-red-500 hover:text-red-700 hover:underline"
                   >
-                    同期解除
+                    {getMessage("unsyncLocation")}
                   </button>
                   <button 
                     type="button"
                     onClick={() => setShowGeoModal(true)}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                    title="現在地を再同期"
+                    title={getMessage("locationResyncTitle") as string}
                   >
                     <svg 
                       className="w-5 h-5" 
@@ -193,12 +189,12 @@ export function RoomPageView(
               ) : (
                 // 位置情報がない場合: 同期ボタン
                 <>
-                  <span className="text-xs text-gray-500">現在地を同期</span>
+                  <span className="text-xs text-gray-500">{getMessage("syncLocation")}</span>
                   <button 
                     type="button"
                     onClick={() => setShowGeoModal(true)}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                    title="現在地を同期"
+                    title={getMessage("syncLocation") as string}
                   >
                     <svg 
                       className="w-5 h-5" 
@@ -309,15 +305,15 @@ export function RoomPageView(
           )}
         </div>
 
-        {/* 位置情報同期確認モーダル - return文の中に移動 */}
+        {/* 位置情報同期確認モーダル */}
         {showGeoModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {myCurrentLocation ? '現在地の再同期' : '現在地の共有'}
+                {getMessage(myCurrentLocation ? "locationResyncTitle" : "locationShareTitle")}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
-                お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。
+                {getMessage("locationShareMessage")}
               </p>
               <div className="flex gap-3 justify-end">
                 <button
@@ -325,14 +321,14 @@ export function RoomPageView(
                   onClick={() => setShowGeoModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  キャンセル
+                  {getMessage("close")}
                 </button>
                 <button
                   type="button"
                   onClick={handleGeoConfirm}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {myCurrentLocation ? '再同期' : '共有する'}
+                  {getMessage(myCurrentLocation ? "resync" : "share")}
                 </button>
               </div>
             </div>
@@ -463,13 +459,13 @@ export function RoomPageView(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              現在地情報
+              {getMessage("locationInfo")}
             </h3>
             <p className="text-sm text-gray-700 mb-6 break-words">
               {myCurrentLocation.split('@')[0]}
             </p>
             <div className="text-xs text-gray-500 mb-4">
-              更新日時: {myCurrentLocation.split('@')[1]}
+              {getMessage("updatedAt")}: {myCurrentLocation.split('@')[1]}
             </div>
             <div className="flex justify-end">
               <button
@@ -477,7 +473,7 @@ export function RoomPageView(
                 onClick={() => setShowLocationDetail(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                閉じる
+                {getMessage("close")}
               </button>
             </div>
           </div>
