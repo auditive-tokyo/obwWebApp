@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { generateClient } from 'aws-amplify/api'
 import { clearCognitoIdentityCache } from '@/utils/clearCognitoCache'
+import { dbg } from '@/utils/debugLogger'
 
 export default function Auth() {
   const { roomId = '' } = useParams<{ roomId: string }>()
@@ -60,7 +61,7 @@ export default function Auth() {
           variables: { roomNumber: roomId, guestId, token },
         })
         if (import.meta.env.DEV) {
-          console.log('VerifyAccessToken result:', res)
+          dbg('VerifyAccessToken result:', res)
           if ('errors' in res && res.errors?.length) console.error('GraphQL errors:', res.errors)
         }
         if ('data' in res && res.data?.verifyAccessToken?.success) {

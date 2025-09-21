@@ -1,3 +1,5 @@
+import { dbg } from '@/utils/debugLogger';
+
 // 言語を切り替え
 export function setLanguage(lang: string): void {
   document.documentElement.lang = lang;
@@ -18,7 +20,7 @@ export const saveLang = (lang: string) => {
       alert("Failed to save language preference. LocalStorage or Cookies may be disabled.");
     }
   }
-  console.debug("Lang saved:", lang, "Status:", saved ? "Success" : "Failed");
+  dbg("Lang saved:", lang, "Status:", saved ? "Success" : "Failed");
 };
 
 // 言語を読み込む

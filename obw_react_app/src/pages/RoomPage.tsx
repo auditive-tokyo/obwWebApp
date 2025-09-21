@@ -183,7 +183,7 @@ export default function RoomPage() {
   useEffect(() => {
     const g = guestSessions.find(gs => gs.guestId === selectedGuestId)
     if (g) {
-      console.debug('guestSessions updated for selected guest', {
+      dbg('guestSessions updated for selected guest', {
         guestId: g.guestId,
         approvalStatus: g.approvalStatus,
         isFamilyMember: (g as any)?.isFamilyMember,
@@ -235,7 +235,7 @@ export default function RoomPage() {
         lastUpdated: new Date().toISOString(),
         isFamilyMember: isFamily
       }
-      console.debug('created placeholder guest', placeholder)
+      dbg('created placeholder guest', placeholder)
       return [placeholder, ...prev]
     })
     // 入力欄をクリア
