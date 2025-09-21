@@ -340,88 +340,96 @@ Resources:
       FieldName: updateGuest
       DataSourceName: guestcheckintable
       RequestMappingTemplate: |
-        #set($exp = "SET #updatedAt = :updatedAt")
+        #set($setExp = "SET #updatedAt = :updatedAt")
+        #set($removeExp = "")
         #set($names = { "#updatedAt": "updatedAt" })
         #set($values = { ":updatedAt": { "S": "$util.time.nowISO8601()" } })
 
-        ## Strings
+        ## 既存のフィールド処理...
         #if(!$util.isNullOrEmpty($ctx.args.input.bookingId))
-          #set($exp = $exp + ", #bookingId = :bookingId")
+          #set($setExp = $setExp + ", #bookingId = :bookingId")
           $util.qr($names.put("#bookingId","bookingId"))
           $util.qr($values.put(":bookingId", { "S": "$ctx.args.input.bookingId" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
-          #set($exp = $exp + ", #guestName = :guestName")
+          #set($setExp = $setExp + ", #guestName = :guestName")
           $util.qr($names.put("#guestName","guestName"))
           $util.qr($values.put(":guestName", { "S": "$ctx.args.input.guestName" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.email))
-          #set($exp = $exp + ", #email = :email")
+          #set($setExp = $setExp + ", #email = :email")
           $util.qr($names.put("#email","email"))
           $util.qr($values.put(":email", { "S": "$ctx.args.input.email" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.address))
-          #set($exp = $exp + ", #address = :address")
+          #set($setExp = $setExp + ", #address = :address")
           $util.qr($names.put("#address","address"))
           $util.qr($values.put(":address", { "S": "$ctx.args.input.address" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.phone))
-          #set($exp = $exp + ", #phone = :phone")
+          #set($setExp = $setExp + ", #phone = :phone")
           $util.qr($names.put("#phone","phone"))
           $util.qr($values.put(":phone", { "S": "$ctx.args.input.phone" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.occupation))
-          #set($exp = $exp + ", #occupation = :occupation")
+          #set($setExp = $setExp + ", #occupation = :occupation")
           $util.qr($names.put("#occupation","occupation"))
           $util.qr($values.put(":occupation", { "S": "$ctx.args.input.occupation" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.nationality))
-          #set($exp = $exp + ", #nationality = :nationality")
+          #set($setExp = $setExp + ", #nationality = :nationality")
           $util.qr($names.put("#nationality","nationality"))
           $util.qr($values.put(":nationality", { "S": "$ctx.args.input.nationality" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.passportImageUrl))
-          #set($exp = $exp + ", #passportImageUrl = :passportImageUrl")
+          #set($setExp = $setExp + ", #passportImageUrl = :passportImageUrl")
           $util.qr($names.put("#passportImageUrl","passportImageUrl"))
           $util.qr($values.put(":passportImageUrl", { "S": "$ctx.args.input.passportImageUrl" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.checkInDate))
-          #set($exp = $exp + ", #checkInDate = :checkInDate")
+          #set($setExp = $setExp + ", #checkInDate = :checkInDate")
           $util.qr($names.put("#checkInDate","checkInDate"))
           $util.qr($values.put(":checkInDate", { "S": "$ctx.args.input.checkInDate" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.checkOutDate))
-          #set($exp = $exp + ", #checkOutDate = :checkOutDate")
+          #set($setExp = $setExp + ", #checkOutDate = :checkOutDate")
           $util.qr($names.put("#checkOutDate","checkOutDate"))
           $util.qr($values.put(":checkOutDate", { "S": "$ctx.args.input.checkOutDate" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.approvalStatus))
-          #set($exp = $exp + ", #approvalStatus = :approvalStatus")
+          #set($setExp = $setExp + ", #approvalStatus = :approvalStatus")
           $util.qr($names.put("#approvalStatus","approvalStatus"))
           $util.qr($values.put(":approvalStatus", { "S": "$ctx.args.input.approvalStatus" }))
         #end
 
         ## Booleans
         #if(!$util.isNull($ctx.args.input.promoConsent))
-          #set($exp = $exp + ", #promoConsent = :promoConsent")
+          #set($setExp = $setExp + ", #promoConsent = :promoConsent")
           $util.qr($names.put("#promoConsent","promoConsent"))
           $util.qr($values.put(":promoConsent", { "BOOL": $ctx.args.input.promoConsent }))
         #end
 
         #if(!$util.isNull($ctx.args.input.isFamilyMember))
-          #set($exp = $exp + ", #isFamilyMember = :isFamilyMember")
+          #set($setExp = $setExp + ", #isFamilyMember = :isFamilyMember")
           $util.qr($names.put("#isFamilyMember","isFamilyMember"))
           $util.qr($values.put(":isFamilyMember", { "BOOL": $ctx.args.input.isFamilyMember }))
         #end
 
-        #if($ctx.args.input.containsKey("currentLocation"))
-          #set($exp = $exp + ", #currentLocation = :currentLocation")
+        ## currentLocation の処理
+        #if($util.isNull($ctx.args.input.currentLocation))
+          #set($removeExp = "REMOVE #currentLocation")
           $util.qr($names.put("#currentLocation","currentLocation"))
-          #if($util.isNull($ctx.args.input.currentLocation))
-            $util.qr($values.put(":currentLocation", { "NULL": true }))
-          #else
-            $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
-          #end
+        #elseif(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
+          #set($setExp = $setExp + ", #currentLocation = :currentLocation")
+          $util.qr($names.put("#currentLocation","currentLocation"))
+          $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
+        #end
+
+        ## 最終的な UpdateExpression を構築
+        #if($removeExp != "")
+          #set($finalExp = "$setExp $removeExp")
+        #else
+          #set($finalExp = $setExp)
         #end
 
         {
@@ -432,7 +440,7 @@ Resources:
             "guestId": { "S": "$ctx.args.input.guestId" }
           },
           "update": {
-            "expression": "$exp",
+            "expression": "$finalExp",
             "expressionNames": $util.toJson($names),
             "expressionValues": $util.toJson($values)
           }
