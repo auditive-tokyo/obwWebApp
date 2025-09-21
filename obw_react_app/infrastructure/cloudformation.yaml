@@ -120,6 +120,7 @@ Resources:
           pendingVerificationTtl: AWSTimestamp
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
+          currentLocation: String
         }
 
         input CreateGuestInput {
@@ -155,6 +156,7 @@ Resources:
           approvalStatus: String
           promoConsent: Boolean
           isFamilyMember: Boolean
+          currentLocation: String
         }
 
         input RequestAccessInput {
@@ -410,6 +412,12 @@ Resources:
           #set($exp = $exp + ", #isFamilyMember = :isFamilyMember")
           $util.qr($names.put("#isFamilyMember","isFamilyMember"))
           $util.qr($values.put(":isFamilyMember", { "BOOL": $ctx.args.input.isFamilyMember }))
+        #end
+
+        #if(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
+          #set($exp = $exp + ", #currentLocation = :currentLocation")
+          $util.qr($names.put("#currentLocation","currentLocation"))
+          $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
         #end
 
         {
