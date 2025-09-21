@@ -32,6 +32,7 @@ export default function RoomPage() {
   // 「編集に戻る」用の制御フラグ（親で制御）
   const [forceShowForm, setForceShowForm] = useState<boolean | null>(null)
   const [overrideFamilyForEdit, setOverrideFamilyForEdit] = useState<boolean | null>(null)
+  const [myCurrentLocation, setMyCurrentLocation] = useState<string | null>(null)
   const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
   const bookingId =
     typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
@@ -206,6 +207,7 @@ export default function RoomPage() {
     setOccupation(g.occupation || "")
     setNationality(g.nationality || "")
     setPassportImageUrl(g.passportImageUrl || null)
+    setMyCurrentLocation(g.currentLocation || null)
     // 日付は必要に応じて
     setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
     setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
@@ -347,6 +349,7 @@ export default function RoomPage() {
           setSelectedGuestId(id)
         }}
         onAddGuest={handleAddGuestClick}
+        myCurrentLocation={myCurrentLocation}
         handleSyncGeo={handleSyncGeo}
       />
     </>

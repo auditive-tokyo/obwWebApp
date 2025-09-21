@@ -37,6 +37,7 @@ export async function refreshGuestSessions({ client, roomId, setGuestSessions }:
           passportImageUrl
           bookingId
           isFamilyMember
+          currentLocation
         }
       }
     `
@@ -64,6 +65,7 @@ type GuestDetail = {
   checkOutDate?: string
   passportImageUrl?: string | null
   isFamilyMember?: boolean
+  currentLocation?: string
 }
 
 export async function loadMyGuest({ client, roomId }: { client: Client; roomId: string }): Promise<GuestDetail | null> {
@@ -85,6 +87,7 @@ export async function loadMyGuest({ client, roomId }: { client: Client; roomId: 
         checkOutDate
         passportImageUrl
         isFamilyMember
+        currentLocation
       }
     }
   `
@@ -104,29 +107,18 @@ export async function saveGuestLocation({
   client,
   roomId,
   guestId,
-  lat,
-  lng,
-  accuracy,
-  ts,
   currentLocation
 }: {
   client: any
   roomId: string
   guestId: string
-  lat: number
-  lng: number
-  accuracy?: number
-  ts: number
   currentLocation: string
 }) {
   const mutation = /* GraphQL */ `
-    mutation UpdateGuestLocation($input: UpdateGuestLocationInput!) {
-      updateGuestLocation(input: $input) {
+    mutation UpdateGuest($input: UpdateGuestInput!) {
+      updateGuest(input: $input) {
         roomNumber
         guestId
-        lastLatitude
-        lastLongitude
-        lastLocationTs
         currentLocation
       }
     }
@@ -134,11 +126,7 @@ export async function saveGuestLocation({
   const input = {
     roomNumber: roomId,
     guestId,
-    lastLatitude: lat,
-    lastLongitude: lng,
-    lastLocationTs: ts,
-    accuracy,
     currentLocation
   }
-  return client.graphql({ query: mutation, variables: { input }, authMode: 'userPool' })
+  return client.graphql({ query: mutation, variables: { input } })
 }

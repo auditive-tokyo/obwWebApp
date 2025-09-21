@@ -26,6 +26,7 @@ export interface GuestSession {
   lastUpdated?: string
   createdAt?: string
   updatedAt?: string
+  currentLocation?: string
 }
 
 /**

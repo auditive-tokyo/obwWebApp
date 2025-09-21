@@ -86,10 +86,6 @@ export async function syncGeoAndResolveAddress(params: {
       client,
       roomId,
       guestId,
-      lat: fix.lat,
-      lng: fix.lng,
-      accuracy: fix.accuracy,
-      ts: fix.ts,
       currentLocation: currentLocationText
     })
   } catch (e) {

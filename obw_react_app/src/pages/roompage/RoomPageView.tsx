@@ -15,6 +15,7 @@ export function RoomPageView(
     forceShowForm?: boolean | null
     overrideIsRepresentativeFamily?: boolean | null
     handleSyncGeo?: () => Promise<void>
+    myCurrentLocation?: string | null
   }
 ) {
   const {
@@ -55,6 +56,7 @@ export function RoomPageView(
     forceShowForm,
     overrideIsRepresentativeFamily,
     handleSyncGeo,
+    myCurrentLocation,
   } = props
   const selectedSession = selectedGuest
 
@@ -141,7 +143,13 @@ export function RoomPageView(
             </h1>
             {/* 同期ボタン（右上）とメッセージ */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 hidden sm:inline">現在地を同期</span>
+              {/* 自分（ログイン中ユーザー）の currentLocation を常に表示 */}
+              <span className="text-xs text-gray-500">
+                {myCurrentLocation 
+                  ? `現在地: ${myCurrentLocation.split('@')[0]}` 
+                  : "現在地を同期"
+                }
+              </span>
               <button 
                 type="button"
                 onClick={() => setShowGeoModal(true)} // モーダルを開く
