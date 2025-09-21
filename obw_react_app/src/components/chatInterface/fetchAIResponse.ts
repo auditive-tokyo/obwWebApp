@@ -3,7 +3,8 @@ import { parse } from 'best-effort-json-parser';
 
 export async function fetchAIResponseStream(
   message: string,
-  filter_keys: string[] = [],
+  roomId: string,        // filter_keys を roomId に変更
+  approved: boolean,     // approved パラメータを追加
   onDelta: (
     text: string | { assistant_response_text: string; reference_files?: string[]; images?: string[] },
     isDone?: boolean
@@ -14,7 +15,12 @@ export async function fetchAIResponseStream(
 
   const url = import.meta.env.VITE_CHAT_LAMBDA_URL;
   const previous_response_id = loadResponseId();
-  const payload = { message, previous_response_id, filter_keys };
+  const payload = { 
+    message, 
+    previous_response_id, 
+    roomId,        // roomId を送信
+    approved       // approved フラグを送信
+  };
 
   const response = await fetch(url, {
     method: "POST",

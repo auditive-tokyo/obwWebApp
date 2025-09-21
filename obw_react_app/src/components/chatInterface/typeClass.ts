@@ -21,4 +21,5 @@ export type Message = {
  */
 export type RoomProps = {
   roomId: string;
+  approved: boolean;
 };

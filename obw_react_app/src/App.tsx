@@ -39,7 +39,7 @@ function App() {
           <Route path="*" element={<ErrorPage />} />
         </Routes>
         {/* ルートがRoomPage以外のときだけグローバル用ChatWidgetを表示 */}
-        {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" />}
+        {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" approved={false} />}
       </div>
     </>
   )

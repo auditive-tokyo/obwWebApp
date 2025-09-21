@@ -66,7 +66,6 @@ export function RoomPageView(
   const hasApprovedGuest =
     Array.isArray(guestSessions) &&
     guestSessions.some(g => (g?.approvalStatus || '').toLowerCase() === 'approved')
-  const chatRoomId = hasApprovedGuest ? (roomId || '') : ''
 
   // クリック選択時の表示判定
   const shouldShowBasicInfoForSession = (g: any) =>
@@ -450,7 +449,10 @@ export function RoomPageView(
 
         {/* チャット */}
         <div className="mt-8">
-          <ChatWidget roomId={chatRoomId} />
+          <ChatWidget 
+            roomId={roomId || ''} 
+            approved={hasApprovedGuest} 
+          />
         </div>
       </div>
 
