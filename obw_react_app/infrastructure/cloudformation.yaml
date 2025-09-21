@@ -414,10 +414,14 @@ Resources:
           $util.qr($values.put(":isFamilyMember", { "BOOL": $ctx.args.input.isFamilyMember }))
         #end
 
-        #if(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
+        #if($ctx.args.input.containsKey("currentLocation"))
           #set($exp = $exp + ", #currentLocation = :currentLocation")
           $util.qr($names.put("#currentLocation","currentLocation"))
-          $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
+          #if($util.isNull($ctx.args.input.currentLocation))
+            $util.qr($values.put(":currentLocation", { "NULL": true }))
+          #else
+            $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
+          #end
         #end
 
         {
