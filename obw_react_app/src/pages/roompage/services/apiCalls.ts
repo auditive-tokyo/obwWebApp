@@ -99,3 +99,46 @@ export async function loadMyGuest({ client, roomId }: { client: Client; roomId: 
     return null
   }
 }
+
+export async function saveGuestLocation({
+  client,
+  roomId,
+  guestId,
+  lat,
+  lng,
+  accuracy,
+  ts,
+  currentLocation
+}: {
+  client: any
+  roomId: string
+  guestId: string
+  lat: number
+  lng: number
+  accuracy?: number
+  ts: number
+  currentLocation: string
+}) {
+  const mutation = /* GraphQL */ `
+    mutation UpdateGuestLocation($input: UpdateGuestLocationInput!) {
+      updateGuestLocation(input: $input) {
+        roomNumber
+        guestId
+        lastLatitude
+        lastLongitude
+        lastLocationTs
+        currentLocation
+      }
+    }
+  `
+  const input = {
+    roomNumber: roomId,
+    guestId,
+    lastLatitude: lat,
+    lastLongitude: lng,
+    lastLocationTs: ts,
+    accuracy,
+    currentLocation
+  }
+  return client.graphql({ query: mutation, variables: { input }, authMode: 'userPool' })
+}

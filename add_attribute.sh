@@ -3,7 +3,8 @@
 # 既存のファイルにattributeを追加するスクリプト
 
 # 対象のFile ID (必要に応じて変更)
-TARGET_FILE_ID="file-9H6zwiqT18d2g552vBr8ZX"
+TARGET_FILE_ID="file-Ks3YvFLDnzpTvFWnqFREha"
+ROOM_NUMBER="common"
 
 # .envファイルが存在するか確認し、存在すれば読み込む
 ENV_FILE=".env"
@@ -32,10 +33,6 @@ curl -X POST "https://api.openai.com/v1/vector_stores/${TEST_VECTOR_STORE_ID}/fi
   -H "Authorization: Bearer ${OPENAI_API_KEY}" \
   -H "Content-Type: application/json" \
   -H "OpenAI-Beta: assistants=v2" \
-  -d '{
-        "attributes": {
-            "room_number": "common"
-        }
-      }'
+  -d "{\"attributes\":{\"room_number\":\"${ROOM_NUMBER}\"}}"
 
-echo -e "\nCommand execution finished."
+echo "Attributes updated successfully."

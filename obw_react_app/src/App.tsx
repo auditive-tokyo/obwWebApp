@@ -8,7 +8,12 @@ import Auth from './auth/Auth'
 import AdminAuth from './auth/AdminAuth'
 import AdminLogout from './auth/AdminLogout'
 
-const allowedRooms = ['201', '304']
+// 1F〜8F 各フロア 01〜04号室を許可
+const allowedRooms: string[] = Array.from({ length: 8 }, (_, floorIdx) =>
+  Array.from({ length: 4 }, (_, roomIdx) =>
+    `${floorIdx + 1}${String(roomIdx + 1).padStart(2, '0')}`
+  )
+).flat();
 
 function App() {
   const location = useLocation();

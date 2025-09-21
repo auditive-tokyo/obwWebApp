@@ -1,4 +1,5 @@
-import ChatWidget from '../../components/ChatWidget'
+import { useState } from 'react'
+import ChatWidget from '@/components/ChatWidget'
 import type { RoomPageViewProps } from './types'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
@@ -13,6 +14,7 @@ export function RoomPageView(
     roomCheckOutDate?: Date | null
     forceShowForm?: boolean | null
     overrideIsRepresentativeFamily?: boolean | null
+    handleSyncGeo?: () => Promise<void>
   }
 ) {
   const {
@@ -52,6 +54,7 @@ export function RoomPageView(
     roomCheckOutDate,
     forceShowForm,
     overrideIsRepresentativeFamily,
+    handleSyncGeo,
   } = props
   const selectedSession = selectedGuest
 
@@ -116,14 +119,51 @@ export function RoomPageView(
   dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
   const BasicInfoFormAny = BasicInfoForm as any
 
+  // 位置情報同期モーダルの状態
+  const [showGeoModal, setShowGeoModal] = useState(false)
+
+  // 位置情報同期の確認後実行
+  const handleGeoConfirm = async () => {
+    setShowGeoModal(false)
+    if (handleSyncGeo) {
+      await handleSyncGeo()
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* ヘッダーカード（ROOM + Room Status + 申請状況リスト） */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            ROOM {roomId}
-          </h1>
+          <div className="flex justify-between items-start mb-2">
+            <h1 className="text-2xl font-bold text-gray-800">
+              ROOM {roomId}
+            </h1>
+            {/* 同期ボタン（右上）とメッセージ */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 hidden sm:inline">現在地を同期</span>
+              <button 
+                type="button"
+                onClick={() => setShowGeoModal(true)} // モーダルを開く
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                title="現在地を同期"
+              >
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
               {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
@@ -214,6 +254,36 @@ export function RoomPageView(
             </div>
           )}
         </div>
+
+        {/* 位置情報同期確認モーダル - return文の中に移動 */}
+        {showGeoModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                現在地の共有
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowGeoModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGeoConfirm}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  共有する
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 家族質問モーダル */}
         {showFamilyQuestion && (
