@@ -192,7 +192,7 @@ Resources:
 
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
-          updateGuest(input: UpdateGuestInput!): Guest @aws_iam
+          updateGuest(input: UpdateGuestInput!): Guest @aws_cognito_user_pools @aws_iam
           requestAccess(input: RequestAccessInput!): RequestAccessResult
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
