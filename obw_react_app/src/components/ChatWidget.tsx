@@ -1,9 +1,29 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import ChatInterface from './ChatInterface';
 import { RoomProps } from './chatInterface/typeClass';
+import { Message } from './chatInterface/typeClass';
+import { getTimestamp } from './chatInterface/utils';
+
+const WELCOME_MESSAGES = {
+  ja: "ようこそ！Osaka Bay Wheel WebAppへ。",
+  en: "Welcome to Osaka Bay Wheel WebApp."
+}
 
 const ChatWidget = ({ roomId, approved, currentLocation }: RoomProps) => {
   const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // 初期化時にウェルカムメッセージを設定
+    const lang = document.documentElement.lang as 'ja' | 'en';
+    return [
+      {
+        id: 0,
+        text: WELCOME_MESSAGES[lang] || WELCOME_MESSAGES.en,
+        personal: false,
+        timestamp: getTimestamp()
+      }
+    ];
+  });
+  const nextId = useRef({ current: 1 }); // オブジェクトでラップ
 
   return (
     <>
@@ -25,7 +45,14 @@ const ChatWidget = ({ roomId, approved, currentLocation }: RoomProps) => {
             overflow: 'hidden',
           }}
         >
-          <ChatInterface roomId={roomId} approved={approved} currentLocation={currentLocation} />
+          <ChatInterface 
+            roomId={roomId} 
+            approved={approved} 
+            currentLocation={currentLocation}
+            messages={messages}
+            setMessages={setMessages}
+            nextId={nextId}
+          />
         </div>
       )}
     </>
