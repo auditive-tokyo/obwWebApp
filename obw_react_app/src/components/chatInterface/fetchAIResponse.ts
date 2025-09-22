@@ -3,8 +3,9 @@ import { parse } from 'best-effort-json-parser';
 
 export async function fetchAIResponseStream(
   message: string,
-  roomId: string,        // filter_keys を roomId に変更
-  approved: boolean,     // approved パラメータを追加
+  roomId: string,
+  approved: boolean,
+  currentLocation: string | undefined,
   onDelta: (
     text: string | { assistant_response_text: string; reference_files?: string[]; images?: string[] },
     isDone?: boolean
@@ -18,8 +19,9 @@ export async function fetchAIResponseStream(
   const payload = { 
     message, 
     previous_response_id, 
-    roomId,        // roomId を送信
-    approved       // approved フラグを送信
+    roomId,
+    approved,
+    currentLocation
   };
 
   const response = await fetch(url, {

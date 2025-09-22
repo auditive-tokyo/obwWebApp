@@ -452,6 +452,7 @@ export function RoomPageView(
           <ChatWidget 
             roomId={roomId || ''} 
             approved={hasApprovedGuest} 
+            currentLocation={myCurrentLocation || undefined}
           />
         </div>
       </div>

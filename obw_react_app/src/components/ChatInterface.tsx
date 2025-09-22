@@ -11,7 +11,7 @@ const WELCOME_MESSAGES = {
   en: "Welcome to Osaka Bay Wheel WebApp."
 }
 
-const ChatInterface: React.FC<RoomProps> = ({ roomId, approved }) => {
+const ChatInterface: React.FC<RoomProps> = ({ roomId, approved, currentLocation }) => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false);
@@ -86,6 +86,7 @@ const ChatInterface: React.FC<RoomProps> = ({ roomId, approved }) => {
       input,
       roomId,
       approved,
+      currentLocation,
       handleStreamDelta
     );
   }
