@@ -79,6 +79,7 @@ type MessageKeys =
   | "securityInfoShort"
   | "securityInfo"
   | "chatInstructionAfterApproved"
+  | "chatInstructionBeforeCheckIn"
   | "whyWeAsk"
   | "securityIntro"
   | "currentLocation"
@@ -175,6 +176,7 @@ type Messages = {
     securityInfoShort: string;
     securityInfo: string[];
     chatInstructionAfterApproved: string;
+    chatInstructionBeforeCheckIn: string;
     whyWeAsk: string;
     securityIntro: string;
     currentLocation: string;
@@ -281,6 +283,8 @@ const messages: Messages = {
     ],
     chatInstructionAfterApproved:
       "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
+    chatInstructionBeforeCheckIn:
+      "認証されました。チェックイン日以降に部屋の鍵の暗証番号などの情報にアクセスできる様になります。その他の質問はお気軽に右下のチャットボットに質問してください。",
     whyWeAsk: "この情報をお願いする理由",
     securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
     currentLocation: "現在地",
@@ -384,6 +388,8 @@ const messages: Messages = {
     ],
     chatInstructionAfterApproved:
       "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
+    chatInstructionBeforeCheckIn:
+      "You have been authenticated. Information such as the room door code will be accessible from your check-in date onwards. Please feel free to ask the chatbot at the bottom right for other questions.",
     whyWeAsk: "Why we ask for this information",
     securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
     currentLocation: "Current Location",
