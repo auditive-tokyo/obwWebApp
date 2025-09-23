@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import ChatWidget from '@/components/ChatWidget'
 import type { RoomPageViewProps } from './types'
 import { PassportUpload } from './components/PassportUpload'
@@ -66,6 +66,24 @@ export function RoomPageView(
   const hasApprovedGuest =
     Array.isArray(guestSessions) &&
     guestSessions.some(g => (g?.approvalStatus || '').toLowerCase() === 'approved')
+
+  // チェックイン日の0時以降かどうかを判定（日本時間）
+  const isAfterCheckInTime = useMemo(() => {
+    if (!roomCheckInDate) return false; // チェックイン日が設定されていない場合は常にfalse
+    
+    // 現在の日本時間を取得
+    const now = new Date();
+    const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+    
+    // チェックイン日の0時（日本時間）を作成
+    const checkInStart = new Date(roomCheckInDate);
+    checkInStart.setHours(0, 0, 0, 0); // 0時0分0秒に設定
+    
+    return japanTime >= checkInStart;
+  }, [roomCheckInDate]);
+
+  // 承認状態の最終判定: 承認済みゲストがいて、かつチェックイン日の0時以降
+  const isApproved = hasApprovedGuest && isAfterCheckInTime;
 
   // クリック選択時の表示判定
   const shouldShowBasicInfoForSession = (g: any) =>
@@ -451,7 +469,7 @@ export function RoomPageView(
         <div className="mt-8">
           <ChatWidget 
             roomId={roomId || ''} 
-            approved={hasApprovedGuest} 
+            approved={isApproved}
             currentLocation={myCurrentLocation || undefined}
           />
         </div>
