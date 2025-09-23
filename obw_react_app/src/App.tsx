@@ -8,10 +8,10 @@ import Auth from './auth/Auth'
 import AdminAuth from './auth/AdminAuth'
 import AdminLogout from './auth/AdminLogout'
 
-// 1F〜8F 各フロア 01〜04号室を許可
-const allowedRooms: string[] = Array.from({ length: 8 }, (_, floorIdx) =>
+// 2F〜8F 各フロア 01〜04号室を許可
+const allowedRooms: string[] = Array.from({ length: 7 }, (_, floorIdx) =>
   Array.from({ length: 4 }, (_, roomIdx) =>
-    `${floorIdx + 1}${String(roomIdx + 1).padStart(2, '0')}`
+    `${floorIdx + 2}${String(roomIdx + 1).padStart(2, '0')}`
   )
 ).flat();
 

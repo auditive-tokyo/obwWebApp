@@ -22,11 +22,24 @@ export default function AdminPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
 
-  // ユニークな部屋番号のプルダウン候補（201がなければ補完）
+  // 部屋番号のプルダウン（デフォルト201）TODO: URLから受け取った値をデフォルトに変更する
   const roomOptions = useMemo(() => {
     const set = new Set<string>(all.map(g => g.roomNumber).filter(Boolean))
-    if (!set.has('201')) set.add('201')
-    return Array.from(set).sort()
+    
+    // 2階〜8階の全部屋を追加（データがなくても選択可能にする）
+    for (let floor = 2; floor <= 8; floor++) {
+      for (let room = 1; room <= 4; room++) {
+        const roomNumber = `${floor}${String(room).padStart(2, '0')}`;
+        set.add(roomNumber);
+      }
+    }
+    
+    // 数値として正しくソート
+    return Array.from(set).sort((a, b) => {
+      const numA = parseInt(a, 10);
+      const numB = parseInt(b, 10);
+      return numA - numB;
+    });
   }, [all])
 
   const statusOptions: ApprovalStatus[] = [
