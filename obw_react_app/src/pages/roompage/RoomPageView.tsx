@@ -1,4 +1,5 @@
-import ChatWidget from '../../components/ChatWidget'
+import { useState, useMemo } from 'react'
+import ChatWidget from '@/components/ChatWidget'
 import type { RoomPageViewProps } from './types'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
@@ -11,6 +12,11 @@ export function RoomPageView(
     hasRoomCheckDates?: boolean
     roomCheckInDate?: Date | null
     roomCheckOutDate?: Date | null
+    forceShowForm?: boolean | null
+    overrideIsRepresentativeFamily?: boolean | null
+    handleSyncGeo?: () => Promise<void>
+    handleClearLocation?: () => Promise<void>
+    myCurrentLocation?: string | null
   }
 ) {
   const {
@@ -48,8 +54,36 @@ export function RoomPageView(
     hasRoomCheckDates,
     roomCheckInDate,
     roomCheckOutDate,
+    forceShowForm,
+    overrideIsRepresentativeFamily,
+    handleSyncGeo,
+    handleClearLocation,
+    myCurrentLocation,
   } = props
   const selectedSession = selectedGuest
+
+  // 鍵の4桁コード文書へのアクセス許可: guestSessions の中に approved が1人でもいればOK
+  const hasApprovedGuest =
+    Array.isArray(guestSessions) &&
+    guestSessions.some(g => (g?.approvalStatus || '').toLowerCase() === 'approved')
+
+  // チェックイン日の0時以降かどうかを判定（日本時間）
+  const isAfterCheckInTime = useMemo(() => {
+    if (!roomCheckInDate) return false; // チェックイン日が設定されていない場合は常にfalse
+    
+    // 現在の日本時間を取得
+    const now = new Date();
+    const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+    
+    // チェックイン日の0時（日本時間）を作成
+    const checkInStart = new Date(roomCheckInDate);
+    checkInStart.setHours(0, 0, 0, 0); // 0時0分0秒に設定
+    
+    return japanTime >= checkInStart;
+  }, [roomCheckInDate]);
+
+  // 承認状態の最終判定: 承認済みゲストがいて、かつチェックイン日の0時以降
+  const isApproved = hasApprovedGuest && isAfterCheckInTime;
 
   // クリック選択時の表示判定
   const shouldShowBasicInfoForSession = (g: any) =>
@@ -89,10 +123,12 @@ export function RoomPageView(
 
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
-    !!selectedSession && shouldShowBasicInfoForSession(selectedSession)
+    forceShowForm === true
+      ? true
+      : (!!selectedSession && shouldShowBasicInfoForSession(selectedSession))
 
   const showUpload =
-    !!selectedSession && shouldShowUploadForSession(selectedSession)
+    !!selectedSession && !showForm && shouldShowUploadForSession(selectedSession)
 
   const showStatus =
     selectedSession &&
@@ -104,14 +140,97 @@ export function RoomPageView(
   dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
   const BasicInfoFormAny = BasicInfoForm as any
 
+  // 位置情報同期モーダルの状態
+  const [showGeoModal, setShowGeoModal] = useState(false)
+  // 現在地詳細ポップアップの状態
+  const [showLocationDetail, setShowLocationDetail] = useState(false)
+
+  // 位置情報同期の確認後実行
+  const handleGeoConfirm = async () => {
+    setShowGeoModal(false)
+    if (handleSyncGeo) {
+      await handleSyncGeo()
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* ヘッダーカード（ROOM + Room Status + 申請状況リスト） */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            ROOM {roomId}
-          </h1>
+          <div className="flex justify-between items-start mb-2">
+            <h1 className="text-2xl font-bold text-gray-800">
+              ROOM {roomId}
+            </h1>
+            {/* 同期ボタン（右上）とメッセージ */}
+            <div className="flex items-center gap-2">
+              {myCurrentLocation ? (
+                // 位置情報がある場合: 現在地ボタンと同期解除ボタン + クルクル
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationDetail(true)}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {getMessage("currentLocation")}
+                  </button>
+                  <span className="text-xs text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={handleClearLocation}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    {getMessage("unsyncLocation")}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShowGeoModal(true)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                    title={getMessage("locationResyncTitle") as string}
+                  >
+                    <svg 
+                      className="w-5 h-5" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                // 位置情報がない場合: 同期ボタン
+                <>
+                  <span className="text-xs text-gray-500">{getMessage("syncLocation")}</span>
+                  <button 
+                    type="button"
+                    onClick={() => setShowGeoModal(true)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                    title={getMessage("syncLocation") as string}
+                  >
+                    <svg 
+                      className="w-5 h-5" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
               {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
@@ -203,6 +322,36 @@ export function RoomPageView(
           )}
         </div>
 
+        {/* 位置情報同期確認モーダル */}
+        {showGeoModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                {getMessage(myCurrentLocation ? "locationResyncTitle" : "locationShareTitle")}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {getMessage("locationShareMessage")}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowGeoModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  {getMessage("close")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGeoConfirm}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {getMessage(myCurrentLocation ? "resync" : "share")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 家族質問モーダル */}
         {showFamilyQuestion && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -233,14 +382,38 @@ export function RoomPageView(
           </div>
         )}
 
-        {/* セキュリティ・法的情報カード */}
-        <SecurityInfoCards />
+        {/* セキュリティ・法的情報カード（approvedが1人でもいれば非表示） */}
+        {!hasApprovedGuest && <SecurityInfoCards />}
 
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
-          <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
-           {getMessage("selectGuestOrAddNew")}
-          </div>
+          hasApprovedGuest ? (
+            isAfterCheckInTime ? (
+              // 承認済み + チェックイン日以降
+              <div className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6">
+                <div className="flex items-center gap-3">
+                  <img src="/icons8-bot-64.png" alt="" className="w-8 h-8 shrink-0" />
+                  <p className="text-lg font-semibold text-teal-900">
+                    {getMessage("chatInstructionAfterApproved")}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // 承認済み + チェックイン前
+              <div className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6">
+                <div className="flex items-center gap-3">
+                  <img src="/icons8-bot-64.png" alt="" className="w-8 h-8 shrink-0" />
+                  <p className="text-lg font-semibold text-teal-900">
+                    {getMessage("chatInstructionBeforeCheckIn")}
+                  </p>
+                </div>
+              </div>
+            )
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
+              {getMessage("selectGuestOrAddNew")}
+            </div>
+          )
         )}
 
         {/* 基本情報入力フォーム（新規 or waitingForBasicInfo の人を選択時） */}
@@ -265,14 +438,16 @@ export function RoomPageView(
             setCheckOutDate={setCheckOutDate}
             promoConsent={promoConsent}
             setPromoConsent={setPromoConsent}
-            isRepresentativeFamily={isRepresentativeFamily}
+            isRepresentativeFamily={
+              overrideIsRepresentativeFamily ?? isRepresentativeFamily
+            }
             hasRoomCheckDates={hasRoomCheckDates}
             isInfoComplete={isInfoComplete}
             onNext={handleNext}
           />
         )}
 
-        {/* パスポートアップロード画面 */}
+        {/* IDアップロード画面 */}
         {showUpload && (
           <div className="mt-4">
             <PassportUpload
@@ -280,7 +455,7 @@ export function RoomPageView(
               guestName={selectedSession?.guestName ?? name}
               guestId={selectedSession?.guestId ?? ""}
               client={client}
-              onBack={selectedSession ? () => onSelectGuest(null) : handleBack}
+              onBack={handleBack}
               showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
             />
           </div>
@@ -305,9 +480,39 @@ export function RoomPageView(
 
         {/* チャット */}
         <div className="mt-8">
-          <ChatWidget roomId={roomId || ""} />
+          <ChatWidget 
+            roomId={roomId || ''} 
+            approved={isApproved}
+            currentLocation={myCurrentLocation || undefined}
+          />
         </div>
       </div>
+
+      {/* 現在地詳細ポップアップ */}
+      {showLocationDetail && myCurrentLocation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {getMessage("locationInfo")}
+            </h3>
+            <p className="text-sm text-gray-700 mb-6 break-words">
+              {myCurrentLocation.split('@')[0]}
+            </p>
+            <div className="text-xs text-gray-500 mb-4">
+              {getMessage("updatedAt")}: {myCurrentLocation.split('@')[1]}
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLocationDetail(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                {getMessage("close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

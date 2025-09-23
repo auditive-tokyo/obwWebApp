@@ -5,8 +5,15 @@ import ErrorPage from './pages/ErrorPage'
 import Header from './header/Header'
 import ChatWidget from './components/ChatWidget'
 import Auth from './auth/Auth'
+import AdminAuth from './auth/AdminAuth'
+import AdminLogout from './auth/AdminLogout'
 
-const allowedRooms = ['201', '304']
+// 2F〜8F 各フロア 01〜04号室を許可
+const allowedRooms: string[] = Array.from({ length: 7 }, (_, floorIdx) =>
+  Array.from({ length: 4 }, (_, roomIdx) =>
+    `${floorIdx + 2}${String(roomIdx + 1).padStart(2, '0')}`
+  )
+).flat();
 
 function App() {
   const location = useLocation();
@@ -21,6 +28,10 @@ function App() {
         <Routes>
           <Route path="/" element={<MainPage />} />
           <Route path="/room/:roomId" element={<Auth />} />
+          {/* Admin routes protected by Cognito Hosted UI */}
+          <Route path="/admin" element={<AdminAuth />} />
+          <Route path="/admin/callback" element={<AdminAuth />} />
+          <Route path="/admin/logout" element={<AdminLogout />} />
           <Route
             path=":roomId"
             element={isValidRoom ? <RoomPage /> : <ErrorPage />}
@@ -28,7 +39,7 @@ function App() {
           <Route path="*" element={<ErrorPage />} />
         </Routes>
         {/* ルートがRoomPage以外のときだけグローバル用ChatWidgetを表示 */}
-        {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" />}
+        {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" approved={false} />}
       </div>
     </>
   )

@@ -39,6 +39,7 @@ export const handleNextAction = async (params: HandleNextParams) => {
     setMessage,
     guestId,
     selectedGuest,
+    isFamilyMember,
   } = params
 
   setMessage(getMessage("registeringBasicInfo") as string)
@@ -87,6 +88,9 @@ export const handleNextAction = async (params: HandleNextParams) => {
     approvalStatus: getNextApprovalStatus(selectedGuest?.approvalStatus, 'updateBasicInfo'),
     bookingId,
   }
+  if (typeof isFamilyMember === 'boolean') {
+    baseInput.isFamilyMember = isFamilyMember
+  }
 
   // update のときだけ guestId を含める
   const input = isUpdate ? { ...baseInput, guestId } : { ...baseInput }
@@ -109,8 +113,8 @@ export const handleNextAction = async (params: HandleNextParams) => {
 }
 
 /**
- * パスポート画像登録処理
- * - アップロードされたパスポート画像URLをGraphQL経由でDBに登録
+ * ID画像登録処理
+ * - アップロードされたID画像URLをGraphQL経由でDBに登録
  * - ローカルセッションのステータスを更新
  * - ステータスや画面メッセージを更新
  */

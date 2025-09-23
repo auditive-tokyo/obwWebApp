@@ -5,7 +5,7 @@ on:
   #   workflows: ["Deploy Lambda Functions"]
   #   types: [completed]
   push:
-    branches: [main, feature/magic-link-access] # 本番では main ブランチを使用
+    branches: [main, feature/*] # 本番では main ブランチを使用
     paths:
       - 'obw_react_app/infrastructure/cloudformation.yaml'
       - '.github/workflows/infra-appsync.yml'
@@ -37,9 +37,9 @@ jobs:
         run: |
           set -e
           COUNT=$(aws cloudformation list-exports \
-            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn'])" \
+            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn' || Name=='Obw-AdminApproveGuestFunctionArn'])" \
             --output text || echo 0)
-          if [ "$COUNT" -ge 3 ]; then FLAG=true; else FLAG=false; fi
+          if [ "$COUNT" -ge 4 ]; then FLAG=true; else FLAG=false; fi
           echo "EnableLambdaIntegration=${FLAG}"
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \

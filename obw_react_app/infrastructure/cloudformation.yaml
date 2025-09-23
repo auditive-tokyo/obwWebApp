@@ -4,6 +4,18 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
+  AdminCognitoDomainPrefix:
+    Type: String
+    Description: Cognito Hosted UI domain prefix (must be globally unique)
+    Default: osakabaywheel-admin
+  AdminHostedUICallbackURLs:
+    Type: CommaDelimitedList
+    Description: Hosted UI callback URLs
+    Default: "https://app.osakabaywheel.com/admin/callback"
+  AdminHostedUILogoutURLs:
+    Type: CommaDelimitedList
+    Description: Hosted UI logout URLs
+    Default: "https://app.osakabaywheel.com/admin/logout"
 
 Conditions:
   DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
@@ -14,6 +26,11 @@ Resources:
     Properties:
       Name: GuestCheckinAPI
       AuthenticationType: AWS_IAM
+      AdditionalAuthenticationProviders:
+        - AuthenticationType: AMAZON_COGNITO_USER_POOLS
+          UserPoolConfig:
+            UserPoolId: !Ref AdminUserPool
+            AwsRegion: !Ref AWS::Region
 
   GuestTable:
     Type: AWS::DynamoDB::Table
@@ -82,7 +99,7 @@ Resources:
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
       Definition: |
-        type Guest {
+        type Guest @aws_cognito_user_pools @aws_iam {
           roomNumber: String!
           guestId: String!
           bookingId: String
@@ -97,11 +114,13 @@ Resources:
           checkOutDate: AWSDate
           approvalStatus: String!
           promoConsent: Boolean
+          isFamilyMember: Boolean
           sessionTokenExpiresAt: AWSTimestamp
           sessionTokenHash: String
           pendingVerificationTtl: AWSTimestamp
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
+          currentLocation: String
         }
 
         input CreateGuestInput {
@@ -118,6 +137,7 @@ Resources:
           checkInDate: AWSDate!
           checkOutDate: AWSDate!
           promoConsent: Boolean!
+          isFamilyMember: Boolean
         }
 
         input UpdateGuestInput {
@@ -135,6 +155,8 @@ Resources:
           checkOutDate: AWSDate
           approvalStatus: String
           promoConsent: Boolean
+          isFamilyMember: Boolean
+          currentLocation: String
         }
 
         input RequestAccessInput {
@@ -143,6 +165,7 @@ Resources:
           email: String!
           phone: String!
           contactChannel: String!
+          lang: String
         }
 
         input GetPresignedUrlInput {
@@ -161,7 +184,7 @@ Resources:
           guest: Guest
         }
 
-        type PresignedUrlResult {
+        type PresignedUrlResult @aws_cognito_user_pools @aws_iam {
           putUrl: String!
           getUrl: String!
           baseUrl: String!
@@ -169,16 +192,17 @@ Resources:
 
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
-          updateGuest(input: UpdateGuestInput!): Guest
+          updateGuest(input: UpdateGuestInput!): Guest @aws_cognito_user_pools @aws_iam
           requestAccess(input: RequestAccessInput!): RequestAccessResult
-          verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult
-          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult
+          verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
+          getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
+          adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
         }
 
         type Query {
           getGuest(roomNumber: String!, guestId: String!): Guest
           listGuestsByRoom(roomNumber: String!): [Guest]
-          listGuests: [Guest]
+          listGuests: [Guest] @aws_cognito_user_pools
           listGuestsByBooking(bookingId: String!): [Guest]
         }
 
@@ -217,6 +241,7 @@ Resources:
                   - !ImportValue Obw-RequestAccessFunctionArn
                   - !ImportValue Obw-VerifyAccessTokenFunctionArn
                   - !ImportValue Obw-GetPresignedUrlFunctionArn
+                  - !ImportValue Obw-AdminApproveGuestFunctionArn
 
   RequestAccessLambdaDataSource:
     Condition: DoLambdaIntegration
@@ -239,6 +264,17 @@ Resources:
       ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
       LambdaConfig:
         LambdaFunctionArn: !ImportValue Obw-VerifyAccessTokenFunctionArn
+
+  AdminApproveGuestLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: adminApproveGuestLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !ImportValue Obw-AdminApproveGuestFunctionArn
 
   AppSyncDynamoDBRole:
     Type: AWS::IAM::Role
@@ -286,7 +322,8 @@ Resources:
             "approvalStatus": $util.dynamodb.toDynamoDBJson("pendingVerification"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
-            "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent)
+            "promoConsent": $util.dynamodb.toDynamoDBJson($ctx.args.input.promoConsent),
+            "isFamilyMember": $util.dynamodb.toDynamoDBJson($util.defaultIfNull($ctx.args.input.isFamilyMember, false))
           }
         }
       ResponseMappingTemplate: |
@@ -303,72 +340,96 @@ Resources:
       FieldName: updateGuest
       DataSourceName: guestcheckintable
       RequestMappingTemplate: |
-        #set($exp = "SET #updatedAt = :updatedAt")
+        #set($setExp = "SET #updatedAt = :updatedAt")
+        #set($removeExp = "")
         #set($names = { "#updatedAt": "updatedAt" })
         #set($values = { ":updatedAt": { "S": "$util.time.nowISO8601()" } })
 
-        ## Strings
+        ## 既存のフィールド処理...
         #if(!$util.isNullOrEmpty($ctx.args.input.bookingId))
-          #set($exp = $exp + ", #bookingId = :bookingId")
+          #set($setExp = $setExp + ", #bookingId = :bookingId")
           $util.qr($names.put("#bookingId","bookingId"))
           $util.qr($values.put(":bookingId", { "S": "$ctx.args.input.bookingId" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.guestName))
-          #set($exp = $exp + ", #guestName = :guestName")
+          #set($setExp = $setExp + ", #guestName = :guestName")
           $util.qr($names.put("#guestName","guestName"))
           $util.qr($values.put(":guestName", { "S": "$ctx.args.input.guestName" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.email))
-          #set($exp = $exp + ", #email = :email")
+          #set($setExp = $setExp + ", #email = :email")
           $util.qr($names.put("#email","email"))
           $util.qr($values.put(":email", { "S": "$ctx.args.input.email" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.address))
-          #set($exp = $exp + ", #address = :address")
+          #set($setExp = $setExp + ", #address = :address")
           $util.qr($names.put("#address","address"))
           $util.qr($values.put(":address", { "S": "$ctx.args.input.address" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.phone))
-          #set($exp = $exp + ", #phone = :phone")
+          #set($setExp = $setExp + ", #phone = :phone")
           $util.qr($names.put("#phone","phone"))
           $util.qr($values.put(":phone", { "S": "$ctx.args.input.phone" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.occupation))
-          #set($exp = $exp + ", #occupation = :occupation")
+          #set($setExp = $setExp + ", #occupation = :occupation")
           $util.qr($names.put("#occupation","occupation"))
           $util.qr($values.put(":occupation", { "S": "$ctx.args.input.occupation" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.nationality))
-          #set($exp = $exp + ", #nationality = :nationality")
+          #set($setExp = $setExp + ", #nationality = :nationality")
           $util.qr($names.put("#nationality","nationality"))
           $util.qr($values.put(":nationality", { "S": "$ctx.args.input.nationality" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.passportImageUrl))
-          #set($exp = $exp + ", #passportImageUrl = :passportImageUrl")
+          #set($setExp = $setExp + ", #passportImageUrl = :passportImageUrl")
           $util.qr($names.put("#passportImageUrl","passportImageUrl"))
           $util.qr($values.put(":passportImageUrl", { "S": "$ctx.args.input.passportImageUrl" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.checkInDate))
-          #set($exp = $exp + ", #checkInDate = :checkInDate")
+          #set($setExp = $setExp + ", #checkInDate = :checkInDate")
           $util.qr($names.put("#checkInDate","checkInDate"))
           $util.qr($values.put(":checkInDate", { "S": "$ctx.args.input.checkInDate" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.checkOutDate))
-          #set($exp = $exp + ", #checkOutDate = :checkOutDate")
+          #set($setExp = $setExp + ", #checkOutDate = :checkOutDate")
           $util.qr($names.put("#checkOutDate","checkOutDate"))
           $util.qr($values.put(":checkOutDate", { "S": "$ctx.args.input.checkOutDate" }))
         #end
         #if(!$util.isNullOrEmpty($ctx.args.input.approvalStatus))
-          #set($exp = $exp + ", #approvalStatus = :approvalStatus")
+          #set($setExp = $setExp + ", #approvalStatus = :approvalStatus")
           $util.qr($names.put("#approvalStatus","approvalStatus"))
           $util.qr($values.put(":approvalStatus", { "S": "$ctx.args.input.approvalStatus" }))
         #end
 
         ## Booleans
         #if(!$util.isNull($ctx.args.input.promoConsent))
-          #set($exp = $exp + ", #promoConsent = :promoConsent")
+          #set($setExp = $setExp + ", #promoConsent = :promoConsent")
           $util.qr($names.put("#promoConsent","promoConsent"))
           $util.qr($values.put(":promoConsent", { "BOOL": $ctx.args.input.promoConsent }))
+        #end
+
+        #if(!$util.isNull($ctx.args.input.isFamilyMember))
+          #set($setExp = $setExp + ", #isFamilyMember = :isFamilyMember")
+          $util.qr($names.put("#isFamilyMember","isFamilyMember"))
+          $util.qr($values.put(":isFamilyMember", { "BOOL": $ctx.args.input.isFamilyMember }))
+        #end
+
+        ## currentLocation の処理
+        #if($util.isNull($ctx.args.input.currentLocation))
+          #set($removeExp = "REMOVE #currentLocation")
+          $util.qr($names.put("#currentLocation","currentLocation"))
+        #elseif(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
+          #set($setExp = $setExp + ", #currentLocation = :currentLocation")
+          $util.qr($names.put("#currentLocation","currentLocation"))
+          $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
+        #end
+
+        ## 最終的な UpdateExpression を構築
+        #if($removeExp != "")
+          #set($finalExp = "$setExp $removeExp")
+        #else
+          #set($finalExp = $setExp)
         #end
 
         {
@@ -379,7 +440,7 @@ Resources:
             "guestId": { "S": "$ctx.args.input.guestId" }
           },
           "update": {
-            "expression": "$exp",
+            "expression": "$finalExp",
             "expressionNames": $util.toJson($names),
             "expressionValues": $util.toJson($values)
           }
@@ -480,6 +541,9 @@ Resources:
     Type: AWS::Cognito::IdentityPool
     Properties:
       AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders:
+        - ProviderName: !Sub cognito-idp.${AWS::Region}.amazonaws.com/${AdminUserPool}
+          ClientId: !Ref AdminUserPoolClient
 
   UnauthRole:
     Type: AWS::IAM::Role
@@ -504,7 +568,30 @@ Resources:
               - Effect: Allow
                 Action:
                   - appsync:GraphQL
-                Resource: "*"
+                Resource:
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/getGuest
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/listGuestsByBooking
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/verifyAccessToken
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/getPresignedUrl
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/updateGuest
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/requestAccess
+
+  AuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies: []
 
   IdentityPoolRoleAttachment:
     Type: AWS::Cognito::IdentityPoolRoleAttachment
@@ -512,6 +599,52 @@ Resources:
       IdentityPoolId: !Ref IdentityPool
       Roles:
         unauthenticated: !GetAtt UnauthRole.Arn
+        authenticated: !GetAtt AuthRole.Arn
+
+  # Admin Cognito resources
+  AdminUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: obw-admin-userpool
+      MfaConfiguration: 'OFF'
+      DeletionProtection: ACTIVE
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 11
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      UsernameConfiguration:
+        CaseSensitive: false
+
+  AdminUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref AdminUserPool
+      ClientName: obw-admin-app-client
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs: !Ref AdminHostedUICallbackURLs
+      LogoutURLs: !Ref AdminHostedUILogoutURLs
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+
+  AdminUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref AdminCognitoDomainPrefix
+      UserPoolId: !Ref AdminUserPool
 
   RequestAccessResolver:
     Condition: DoLambdaIntegration
@@ -568,6 +701,26 @@ Resources:
       ResponseMappingTemplate: |
         $util.toJson($context.result)
 
+  AdminApproveGuestResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - AdminApproveGuestLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: adminApproveGuest
+      DataSourceName: !GetAtt AdminApproveGuestLambdaDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
+
 Outputs:
   ApiEndpoint:
     Description: "AppSync API Endpoint"
@@ -578,6 +731,21 @@ Outputs:
   CognitoIdentityPoolId:
     Description: "Cognito Identity Pool ID"
     Value: !Ref IdentityPool
+  AdminUserPoolId:
+    Description: "Admin Cognito User Pool ID"
+    Value: !Ref AdminUserPool
+  AdminUserPoolClientId:
+    Description: "Admin Cognito User Pool Client ID"
+    Value: !Ref AdminUserPoolClient
+  AdminUserPoolDomainPrefix:
+    Description: "Admin Cognito Hosted UI domain prefix"
+    Value: !Ref AdminCognitoDomainPrefix
+  AdminHostedUICallbackURL:
+    Description: "First Hosted UI callback URL"
+    Value: !Select [0, !Ref AdminHostedUICallbackURLs]
+  AdminHostedUILogoutURL:
+    Description: "First Hosted UI logout URL"
+    Value: !Select [0, !Ref AdminHostedUILogoutURLs]
   GuestTableName:
     Description: "DynamoDB guest table name"
     Value: !Ref GuestTable

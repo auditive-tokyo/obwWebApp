@@ -14,7 +14,6 @@ Globals:
 Parameters:
   OpenAiApiKey:
     Type: String
-    Description: "OpenAI API Key"
     NoEcho: true
   OpenAiVectorStoreId:
     Type: String
@@ -41,6 +40,16 @@ Parameters:
   GuestTableName:
     Type: String
     Description: "DynamoDB guest table name (from AppSync stack)"
+  TelegramBotTokenParam:
+    Type: String
+    NoEcho: true
+  TelegramChatIdParam:
+    Type: String
+    NoEcho: true
+  SendGridApiKey:
+    Type: String
+    Description: "SendGrid API Key"
+    NoEcho: true
 
 Resources:
   # TwilioのLambda用レイヤー
@@ -166,7 +175,6 @@ Resources:
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
-          PROMPT_TEMPLATE: pmpt_6869c81bfcd48196aefab179a363858906185093870d0335
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           VECTOR_SEARCH_FILTER_KEY: room_number
       Layers:
@@ -201,15 +209,11 @@ Resources:
         Variables:
           TABLE_NAME: !Ref GuestTableName
           MAX_TOKEN_LIFETIME_HOURS: "1"
+          SENDGRID_API_KEY: !Ref SendGridApiKey
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GuestTableName
         - Statement:
-            - Effect: Allow
-              Action:
-                - ses:SendEmail
-                - ses:SendRawEmail
-              Resource: "*"
             - Effect: Allow
               Action:
                 - sns:Publish
@@ -240,16 +244,16 @@ Resources:
       FunctionName: obw-notify-admin-on-pending
       CodeUri: lambda_functions/notify_admin/
       Handler: lambda_handler_notify_admin.handler
+      Runtime: python3.13
       MemorySize: 256
       Environment:
         Variables:
-          ADMIN_TOPIC_ARN: !Ref AdminNotificationsTopic          # 既存のSNSトピックを参照 or パラメータ化
-          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"  # 任意の管理画面URL
+          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
+          TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaDynamoDBExecutionRole
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt AdminNotificationsTopic.TopicName
       Events:
         FromGuestTableStream:
           Type: DynamoDB
@@ -272,10 +276,23 @@ Resources:
                       }
                     }
 
-  AdminNotificationsTopic:
-    Type: AWS::SNS::Topic
+  AdminApproveGuestFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      TopicName: obw-admin-guest-approval
+      FunctionName: admin-approve-guest-function
+      CodeUri: lambda_functions/admin_approve_guest/
+      Handler: lambda_handler_admin_approve_guest.lambda_handler
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref GuestTableName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GuestTableName
+        - DynamoDBWritePolicy:
+            TableName: !Ref GuestTableName
 
 Outputs:
   ImmediateResponseFunctionArn:
@@ -305,3 +322,8 @@ Outputs:
     Value: !GetAtt GetPresignedUrlFunction.Arn
     Export:
       Name: Obw-GetPresignedUrlFunctionArn
+  AdminApproveGuestFunctionArn:
+    Description: "ARN for admin-approve-guest Lambda"
+    Value: !GetAtt AdminApproveGuestFunction.Arn
+    Export:
+      Name: Obw-AdminApproveGuestFunctionArn

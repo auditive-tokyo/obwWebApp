@@ -1,3 +1,5 @@
+import { dbg } from '@/utils/debugLogger'
+
 /**
  * 現在時刻（HH:mm形式）を返す
  */
@@ -38,7 +40,7 @@ export const saveResponseId = (responseId: string) => {
       }
     }
   }
-  console.debug("Response ID saved:", responseId, "Status:", saved ? "Success" : "Failed");
+  dbg("Response ID saved:", responseId, "Status:", saved ? "Success" : "Failed");
 };
 
 /**

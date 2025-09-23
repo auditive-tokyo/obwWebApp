@@ -3,20 +3,26 @@ import { parse } from 'best-effort-json-parser';
 
 export async function fetchAIResponseStream(
   message: string,
-  filter_keys: string[] = [],
+  roomId: string,
+  approved: boolean,
+  currentLocation: string | undefined,
   onDelta: (
-    text: string | { assistant_response_text: string; reference_files: string[] },
+    text: string | { assistant_response_text: string; reference_files?: string[]; images?: string[] },
     isDone?: boolean
   ) => void
 ): Promise<void> {
   let streamedText = "";
+  let gotFinal = false;
 
   const url = import.meta.env.VITE_CHAT_LAMBDA_URL;
   const previous_response_id = loadResponseId();
-  const payload = { message, previous_response_id, filter_keys };
-
-  console.debug("Sending request to:", url);
-  console.debug("Payload:", payload);
+  const payload = { 
+    message, 
+    previous_response_id, 
+    roomId,
+    approved,
+    currentLocation
+  };
 
   const response = await fetch(url, {
     method: "POST",
@@ -46,23 +52,31 @@ export async function fetchAIResponseStream(
       if (!line.trim()) continue;
       try {
         const obj = JSON.parse(line);
-        if (obj.type === "response.output_text.delta" && obj.delta) {
+
+        if (obj.type === "response.output_text.delta" && obj.delta && !gotFinal) {
           streamedText += obj.delta;
-          const parsed = parse(streamedText);
-          // console.debug("Parsed JSON:", parsed);
-          onDelta(parsed, false);
+          onDelta(parse(streamedText), false);
         }
-        else if (obj.type === "response.output_text.done" && obj.text) {
-          try {
-            const result = JSON.parse(obj.text);
-            // オブジェクトとして渡す
-            onDelta({
-              assistant_response_text: result.assistant_response_text,
-              reference_files: result.reference_files ?? []
-            }, true);
-          } catch (e) {
-            console.error("JSON parse error (done):", e, obj.text);
-          }
+        else if (!gotFinal &&
+                 obj.type === "response.content_part.done" &&
+                 obj.part?.type === "output_text" &&
+                 obj.part?.text) {
+          const result = parse(obj.part.text) as any;
+          onDelta({
+            assistant_response_text: typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.part.text,
+            reference_files: Array.isArray(result?.reference_files) ? result.reference_files : [],
+            images: Array.isArray(result?.images) ? result.images : [],
+          }, true);
+          gotFinal = true;
+        }
+        else if (!gotFinal && obj.type === "response.output_text.done" && obj.text) {
+          const result = parse(obj.text) as any;
+          onDelta({
+            assistant_response_text: typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.text,
+            reference_files: Array.isArray(result?.reference_files) ? result.reference_files : [],
+            images: Array.isArray(result?.images) ? result.images : [],
+          }, true);
+          gotFinal = true;
         }
         else if (obj.responseId) {
           saveResponseId(obj.responseId);

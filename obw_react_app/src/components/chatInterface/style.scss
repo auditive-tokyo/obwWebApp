@@ -35,7 +35,7 @@ Chat
   display: flex;
   justify-content: space-between;
   flex-direction: column;
-  overflow: hidden;
+  // overflow: hidden;
 }
 
 
@@ -113,7 +113,23 @@ Messages
     position: relative;
     text-shadow: 0 1px 1px rgba(0, 0, 0, .2);
     max-width: 70%;
-    
+
+    // 長いURL/単語の折り返し対策（本文全体）
+    overflow-wrap: anywhere;   // モダン
+    word-break: break-word;    // 互換
+
+    // テキスト要素にも適用
+    span, p, li, code {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    // リンクはさらに強制的に折り返し
+    a {
+      overflow-wrap: anywhere;
+      word-break: break-all;   // 連続英数字でも改行
+    }
+
     .reference-files {
       font-size: 11px;
       color: lightblue;
@@ -174,8 +190,9 @@ Messages
     
     &.message-personal {
       float: right;
-      text-align: right;
+      text-align: left;
       margin-right: 10px;
+      margin-left: 10px;
       background: linear-gradient(120deg, #3a8dde, #00c6fb);
       border-radius: 10px 10px 0 10px;
       
@@ -227,6 +244,8 @@ Messages
       }
     }
     
+    .ai-images { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .ai-inline-image { max-width: 100%; height: auto; border-radius: 8px; display: block; }
   }
 }
 

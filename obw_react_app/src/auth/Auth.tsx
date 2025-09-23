@@ -2,15 +2,40 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { generateClient } from 'aws-amplify/api'
 import { clearCognitoIdentityCache } from '@/utils/clearCognitoCache'
+import { dbg } from '@/utils/debugLogger'
 
 export default function Auth() {
   const { roomId = '' } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
-  const client = generateClient()
+  const client = generateClient({ authMode: 'iam' })
   const [message, setMessage] = useState('Verifying...')
 
   useEffect(() => {
     async function run() {
+      // Purge any Cognito User Pool tokens from localStorage to avoid interfering with guest IAM flow
+      // This removes keys like:
+      //   CognitoIdentityServiceProvider.<CLIENT_ID>.LastAuthUser
+      //   CognitoIdentityServiceProvider.<CLIENT_ID>.<username>.{accessToken,idToken,refreshToken,clockDrift}
+      try {
+        const clientId = import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID as string | undefined
+        if (clientId) {
+          const baseKey = `CognitoIdentityServiceProvider.${clientId}`
+          const prefix = `${baseKey}.`
+          const toRemove: string[] = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i)
+            if (!k) continue
+            if (k === `${baseKey}.LastAuthUser` || k.startsWith(prefix)) {
+              toRemove.push(k)
+            }
+          }
+          toRemove.forEach(k => localStorage.removeItem(k))
+        }
+        // Hosted UI flags (defensive)
+        localStorage.removeItem('amplify-signin-with-hostedUI')
+        localStorage.removeItem('amplify-redirected-from-hosted-ui')
+      } catch {}
+
       const url = new URL(window.location.href)
       const guestId = url.searchParams.get('guestId')
       const token = url.searchParams.get('token')
@@ -34,10 +59,9 @@ export default function Auth() {
         const res = await client.graphql<VerifyAccessTokenPayload>({
           query,
           variables: { roomNumber: roomId, guestId, token },
-          authMode: 'iam',
         })
         if (import.meta.env.DEV) {
-          console.log('VerifyAccessToken result:', res)
+          dbg('VerifyAccessToken result:', res)
           if ('errors' in res && res.errors?.length) console.error('GraphQL errors:', res.errors)
         }
         if ('data' in res && res.data?.verifyAccessToken?.success) {
@@ -53,6 +77,7 @@ export default function Auth() {
           localStorage.removeItem('guestId')
           localStorage.removeItem('token')
           localStorage.removeItem('bookingId')
+          localStorage.removeItem('responseId')
           clearCognitoIdentityCache()
            setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
          }
@@ -62,6 +87,7 @@ export default function Auth() {
         localStorage.removeItem('guestId')
         localStorage.removeItem('token')
         localStorage.removeItem('bookingId')
+        localStorage.removeItem('responseId')
         clearCognitoIdentityCache()
         setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1200)
       }

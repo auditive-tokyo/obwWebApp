@@ -1,17 +1,38 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import ChatInterface from './ChatInterface';
 import { RoomProps } from './chatInterface/typeClass';
+import { Message } from './chatInterface/typeClass';
+import { getTimestamp } from './chatInterface/utils';
 
-const ChatWidget = ({ roomId }: RoomProps) => {
+const WELCOME_MESSAGES = {
+  ja: "ようこそ！Osaka Bay Wheel WebAppへ。",
+  en: "Welcome to Osaka Bay Wheel WebApp."
+}
+
+const ChatWidget = ({ roomId, approved, currentLocation }: RoomProps) => {
   const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // 初期化時にウェルカムメッセージを設定
+    const lang = document.documentElement.lang as 'ja' | 'en';
+    return [
+      {
+        id: 0,
+        text: WELCOME_MESSAGES[lang] || WELCOME_MESSAGES.en,
+        personal: false,
+        timestamp: getTimestamp()
+      }
+    ];
+  });
+  const nextId = useRef({ current: 1 }); // オブジェクトでラップ
 
   return (
     <>
       <button
-        className="fixed right-6 bottom-6 z-60 bg-blue-600 text-white rounded-full px-4 py-2 shadow-lg"
+        className="fixed right-6 bottom-6 z-60 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 text-black rounded-full px-4 py-1 shadow-lg inline-flex items-center gap-2 border border-teal-200"
         onClick={() => setOpen(prev => !prev)}
       >
-        Ask AI
+        <span className="leading-none">Ask anything to OBW AI Bot!</span>
+        <img src="/icons8-bot-64.png" alt="Bot" className="w-8 h-8" />
       </button>
       {open && (
         <div
@@ -24,7 +45,14 @@ const ChatWidget = ({ roomId }: RoomProps) => {
             overflow: 'hidden',
           }}
         >
-          <ChatInterface roomId={roomId} />
+          <ChatInterface 
+            roomId={roomId} 
+            approved={approved} 
+            currentLocation={currentLocation}
+            messages={messages}
+            setMessages={setMessages}
+            nextId={nextId}
+          />
         </div>
       )}
     </>

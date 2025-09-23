@@ -77,7 +77,26 @@ type MessageKeys =
   | "lawInfoShort"
   | "lawInfo"
   | "securityInfoShort"
-  | "securityInfo";
+  | "securityInfo"
+  | "chatInstructionAfterApproved"
+  | "chatInstructionBeforeCheckIn"
+  | "whyWeAsk"
+  | "securityIntro"
+  | "currentLocation"
+  | "syncLocation"
+  | "unsyncLocation"
+  | "locationInfo"
+  | "locationShareTitle"
+  | "locationResyncTitle"
+  | "locationShareMessage"
+  | "resync"
+  | "share"
+  | "updatedAt"
+  | "locationSyncSuccess"
+  | "locationSyncError"
+  | "locationDeleteSuccess"
+  | "locationDeleteError"
+  | "pleaseRetryLater";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -156,6 +175,25 @@ type Messages = {
     lawInfo: string[];
     securityInfoShort: string;
     securityInfo: string[];
+    chatInstructionAfterApproved: string;
+    chatInstructionBeforeCheckIn: string;
+    whyWeAsk: string;
+    securityIntro: string;
+    currentLocation: string;
+    syncLocation: string;
+    unsyncLocation: string;
+    locationInfo: string;
+    locationShareTitle: string;
+    locationResyncTitle: string;
+    locationShareMessage: string;
+    resync: string;
+    share: string;
+    updatedAt: string;
+    locationSyncSuccess: string;
+    locationSyncError: string;
+    locationDeleteSuccess: string;
+    locationDeleteError: string;
+    pleaseRetryLater: string;
   }
 };
 
@@ -173,19 +211,19 @@ const messages: Messages = {
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
-    basicInfoSaved: "基本情報を登録しました。パスポート写真をアップロードしてください。",
-    uploadingPassportImage: "パスポート画像を更新中...",
-    uploadSuccess: "パスポート画像のアップロードが完了しました！",
-    uploadError: "パスポート画像のアップロードに失敗しました。もう一度お試しください。",
+    basicInfoSaved: "基本情報を登録しました。ID写真をアップロードしてください。",
+    uploadingPassportImage: "ID画像を更新中...",
+    uploadSuccess: "ID画像のアップロードが完了しました！",
+    uploadError: "ID画像のアップロードに失敗しました。もう一度お試しください。",
     enterBasicInfo: "基本情報を入力してください",
-    enterPassportImage: "パスポート画像をアップロードしてください",
+    enterPassportImage: "ID画像をアップロードしてください",
     statusPending: "現在承認待ちです。",
     statusApproved: "承認されました。",
     statusRejected: "承認されませんでした。",
     noRegistrationYet: "現在、この部屋の登録はありません。",
     selectGuestOrAddNew: "お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。",
     completeBasicInfoFirst: "新しいゲストを追加する前に基本情報の登録を完了してください。",
-    familyRegistrationMessage: "代表者のご家族として登録します。お名前のみ入力してパスポート写真アップロードへお進みください。",
+    familyRegistrationMessage: "代表者のご家族として登録します。お名前のみ入力してID写真アップロードへお進みください。",
     familyQuestionTitle: "代表者のご家族ですか？",
     familyQuestionDescription: "代表者のご家族の場合は、お名前のみの入力で登録できます。",
     no: "いいえ",
@@ -229,12 +267,12 @@ const messages: Messages = {
     checkInDate: "チェックイン日",
     checkOutDate: "チェックアウト日",
     editBasicInfo: "基本情報を編集",
-    proceedToPassportImageUpload: "パスポート画像アップロードへ進む",
-    aboutPassport: "パスポート情報について",
+    proceedToPassportImageUpload: "ID画像アップロードへ進む",
+    aboutPassport: "身分証明書について",
     aboutSecurity: "セキュリティについて",
-    lawInfoShort: "旅館業法により、宿泊者の身元確認・記録保持が義務付けられています。外国人宿泊者はパスポート詳細の複写・保管が必要です。",
+    lawInfoShort: "旅館業法により、宿泊者の身元確認・記録保持が義務付けられています。身分証画像の複写・保管が必要です。",
     lawInfo: [
-      "旅館業法により、宿泊事業者は宿泊者の身元確認および記録保持が法的に義務付けられています。外国人宿泊者の場合、パスポート詳細の複写と一定期間の保管が必要となります。",
+      "旅館業法により、宿泊事業者は宿泊者の身元確認および記録保持が法的に義務付けられています。身分証画像詳細の複写と一定期間の保管が必要となります。",
       "この情報は必要に応じて政府機関から要請される場合があるため、法令遵守のためファイルに保管させていただきます。ご理解とご協力をお願いいたします。"
     ],
     securityInfoShort: "個人情報はAWS KMSで保護、通信はSSL暗号化、国際基準に準拠しています。",
@@ -242,7 +280,28 @@ const messages: Messages = {
       "お客様の個人情報はAWS KMS（暗号化サービス）により高度に保護されています。",
       "通信は全てSSL暗号化により安全に送信されます。",
       "データの保管・管理は国際的なセキュリティ基準に準拠しています。"
-    ]
+    ],
+    chatInstructionAfterApproved:
+      "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
+    chatInstructionBeforeCheckIn:
+      "認証されました。チェックイン日以降に部屋の鍵の暗証番号などの情報にアクセスできる様になります。その他の質問はお気軽に右下のチャットボットに質問してください。",
+    whyWeAsk: "この情報をお願いする理由",
+    securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
+    currentLocation: "現在地",
+    syncLocation: "現在地を同期",
+    unsyncLocation: "同期解除",
+    locationInfo: "現在地情報",
+    locationShareTitle: "現在地の共有",
+    locationResyncTitle: "現在地の再同期",
+    locationShareMessage: "お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。",
+    resync: "再同期",
+    share: "共有する",
+    updatedAt: "更新日時",
+    locationSyncSuccess: "位置情報の同期が完了しました。",
+    locationSyncError: "位置情報の同期に失敗しました。",
+    locationDeleteSuccess: "位置情報を削除しました。",
+    locationDeleteError: "位置情報の削除に失敗しました。",
+    pleaseRetryLater: "少し時間をおいてから再度お試しください。"
   },
   en: {
     close: "Close",
@@ -257,19 +316,19 @@ const messages: Messages = {
     welcome: "Welcome to Osaka Bay Wheel WebApp.",
     registeringBasicInfo: "Registering basic information...",
     basicInfoError: "Failed to register basic information.",
-    basicInfoSaved: "Basic information saved. Please upload your passport image.",
-    uploadingPassportImage: "Updating passport image...",
-    uploadSuccess: "Passport image upload completed!",
-    uploadError: "Passport image upload failed. Please try again.",
+    basicInfoSaved: "Basic information saved. Please upload your ID image.",
+    uploadingPassportImage: "Updating ID image...",
+    uploadSuccess: "ID image upload completed!",
+    uploadError: "ID image upload failed. Please try again.",
     enterBasicInfo: "Please enter your basic information.",
-    enterPassportImage: "Please upload your passport image.",
+    enterPassportImage: "Please upload your ID image.",
     statusPending: "Currently pending approval.",
     statusApproved: "Approved.",
     statusRejected: "Rejected.",
     noRegistrationYet: "There are currently no registrations for this room.",
     selectGuestOrAddNew: "Please enter your information. Select a person from the list above or press 'Add Guest'.",
     completeBasicInfoFirst: "Please complete the basic information registration before adding a new guest.",
-    familyRegistrationMessage: "Registering as a family member of the representative. Please enter only your name and proceed to passport image upload.",
+    familyRegistrationMessage: "Registering as a family member of the representative. Please enter only your name and proceed to ID image upload.",
     familyQuestionTitle: "Are you a family member of the representative?",
     familyQuestionDescription: "Family members of the representative can register with only their name.",
     no: "No",
@@ -313,12 +372,12 @@ const messages: Messages = {
     checkInDate: "Check-in Date",
     checkOutDate: "Check-out Date",
     editBasicInfo: "Edit Information",
-    proceedToPassportImageUpload: "Proceed to Passport Image Upload",
-    aboutPassport: "About Passport Information",
+    proceedToPassportImageUpload: "Proceed to ID Image Upload",
+    aboutPassport: "About ID Documents",
     aboutSecurity: "About Security",
-    lawInfoShort: "According to the Hotel Business Law, accommodation providers are legally required to verify and record the identity of guests. For foreign guests, a copy of the passport details must be taken and stored for a certain period.",
+    lawInfoShort: "According to the Hotel Business Act, accommodation providers must verify guest identity and keep records. An image copy of the ID document must be taken and retained for a certain period.",
     lawInfo: [
-      "According to the Hotel Business Law, accommodation providers are legally required to verify and record the identity of guests. For foreign guests, a copy of the passport details must be taken and stored for a certain period.",
+      "According to the Hotel Business Act, accommodation providers are legally required to verify guest identity and keep records. An image of the ID document must be copied and stored for a certain period.",
       "This information may be requested by government agencies as needed, so we will keep it on file for legal compliance. We appreciate your understanding and cooperation."
     ],
     securityInfoShort: "Personal information is protected by AWS KMS, communication is SSL encrypted, and complies with international standards.",
@@ -326,7 +385,28 @@ const messages: Messages = {
       "Your personal information is highly protected by AWS KMS (encryption service).",
       "All communications are securely transmitted via SSL encryption.",
       "Data storage and management comply with international security standards."
-    ]
+    ],
+    chatInstructionAfterApproved:
+      "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
+    chatInstructionBeforeCheckIn:
+      "You have been authenticated. Information such as the room door code will be accessible from your check-in date onwards. Please feel free to ask the chatbot at the bottom right for other questions.",
+    whyWeAsk: "Why we ask for this information",
+    securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
+    currentLocation: "Current Location",
+    syncLocation: "Sync Location",
+    unsyncLocation: "Unsync",
+    locationInfo: "Location Information",
+    locationShareTitle: "Share Current Location",
+    locationResyncTitle: "Re-sync Current Location",
+    locationShareMessage: "We can notify support of your current location. Your location information will only be used for support purposes.",
+    resync: "Re-sync",
+    share: "Share",
+    updatedAt: "Updated",
+    locationSyncSuccess: "Location sync completed successfully.",
+    locationSyncError: "Location sync failed.",
+    locationDeleteSuccess: "Location information deleted.",
+    locationDeleteError: "Failed to delete location information.",
+    pleaseRetryLater: "Please wait a moment and try again."
   }
 };
 

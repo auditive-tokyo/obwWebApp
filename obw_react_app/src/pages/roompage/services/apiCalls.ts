@@ -36,6 +36,8 @@ export async function refreshGuestSessions({ client, roomId, setGuestSessions }:
           checkOutDate
           passportImageUrl
           bookingId
+          isFamilyMember
+          currentLocation
         }
       }
     `
@@ -62,6 +64,8 @@ type GuestDetail = {
   checkInDate?: string
   checkOutDate?: string
   passportImageUrl?: string | null
+  isFamilyMember?: boolean
+  currentLocation?: string
 }
 
 export async function loadMyGuest({ client, roomId }: { client: Client; roomId: string }): Promise<GuestDetail | null> {
@@ -82,6 +86,8 @@ export async function loadMyGuest({ client, roomId }: { client: Client; roomId: 
         checkInDate
         checkOutDate
         passportImageUrl
+        isFamilyMember
+        currentLocation
       }
     }
   `
@@ -94,5 +100,71 @@ export async function loadMyGuest({ client, roomId }: { client: Client; roomId: 
   } catch (e) {
     console.error('loadMyGuest failed:', e)
     return null
+  }
+}
+
+export async function saveGuestLocation({
+  client,
+  roomId,
+  guestId,
+  currentLocation
+}: {
+  client: any
+  roomId: string
+  guestId: string
+  currentLocation: string
+}) {
+  const mutation = /* GraphQL */ `
+    mutation UpdateGuest($input: UpdateGuestInput!) {
+      updateGuest(input: $input) {
+        roomNumber
+        guestId
+        currentLocation
+      }
+    }
+  `
+  const input = {
+    roomNumber: roomId,
+    guestId,
+    currentLocation
+  }
+  return client.graphql({ query: mutation, variables: { input } })
+}
+
+export async function deleteGuestLocation({
+  client,
+  roomId,
+  guestId
+}: {
+  client: any
+  roomId: string
+  guestId: string
+}) {
+  dbg('[deleteGuestLocation] 開始:', { roomId, guestId })
+  
+  const mutation = /* GraphQL */ `
+    mutation UpdateGuest($input: UpdateGuestInput!) {
+      updateGuest(input: $input) {
+        roomNumber
+        guestId
+        currentLocation
+      }
+    }
+  `
+  const input = {
+    roomNumber: roomId,
+    guestId,
+    currentLocation: null // 位置情報を削除
+  }
+  
+  dbg('[deleteGuestLocation] 送信データ:', input)
+  
+  try {
+    const result = await client.graphql({ query: mutation, variables: { input } })
+    dbg('[deleteGuestLocation] GraphQL レスポンス:', result)
+    return result
+  } catch (error) {
+    console.error('[deleteGuestLocation] GraphQL エラー:', error)
+    throw error
   }
 }

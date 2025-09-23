@@ -12,6 +12,7 @@ export type Message = {
   personal: boolean;
   loading?: boolean;
   timestamp?: string;
+  images?: string[];
 };
 
 /**
@@ -20,4 +21,6 @@ export type Message = {
  */
 export type RoomProps = {
   roomId: string;
+  approved: boolean;
+  currentLocation?: string;
 };
