@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+  PromptTemplate:
+    Type: String
+    Description: "ID of the prompt template to use in OpenAI API."
+    Default: ""
+  OpenAiVectorStoreId:
+    Type: String
+    Description: "ID of the OpenAI Vector Store for file search."
+    Default: ""
+    NoEcho: true
+  VectorSearchFilterKey:
+    Type: String
+    Description: "Metadata key to use for filtering in vector search."
+    Default: ""
+
+Resources:
+  LayerForServerlessEmbedAi:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ./layer/
+      CompatibleRuntimes:
+        - nodejs22.x
+    Metadata:
+      BuildMethod: nodejs22.x
+      BuildArchitecture: x86_64
+
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./dist/lambda_function/
+      Handler: chat_handler.handler
+      Runtime: nodejs22.x
+      Timeout: 15
+      MemorySize: 512
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+          PROMPT_TEMPLATE: !Ref PromptTemplate
+          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+          VECTOR_SEARCH_FILTER_KEY: !Ref VectorSearchFilterKey
+      Layers:
+        - !Ref LayerForServerlessEmbedAi
+
+  ChatFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt ChatFunction.Arn
+      AuthType: NONE
+      InvokeMode: RESPONSE_STREAM
+      Cors:
+        AllowOrigins:
+          - http://localhost:5173
+        AllowHeaders:
+          - content-type
+        AllowMethods:
+          - POST
+        AllowCredentials: false
+
+Outputs:
+  LambdaUrl:
+    Description: "Lambda Function URL endpoint"
+    Value: !Ref ChatFunctionUrl
