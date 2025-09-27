@@ -63,7 +63,7 @@ def handler(event, context):
                 "Admin Pageより確認してください:",
                 f"滞在日: {check_in or '-'} ~ {check_out or '-'}",
                 "",
-                f"{ADMIN_BASE_URL}",
+                f"{ADMIN_BASE_URL}/{room_number}",
             ]
             message_text = "\n".join(lines)
 

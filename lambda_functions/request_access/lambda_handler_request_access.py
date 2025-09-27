@@ -88,12 +88,12 @@ def build_email_body(lang: str, link: str) -> str:
 def build_sms(lang: str, link: str) -> str:
     if lang == 'ja':
         return (
-            f"リンク: {link} 家族/同行者以外共有禁止。"
-            "基本情報未入力で24h後無効。入力後は同リンクで再アクセス可"
+            f"【Osaka Bay Wheel】ご宿泊ありがとうございます。"
+            f"こちらのリンクより安全に本人確認書類をアップロードいただけます: {link}"
         )
     return (
-        f"Link: {link} Do not share outside companions. "
-        "If basic info not submitted in 24h it expires. After submit reuse link."
+        f"[Osaka Bay Wheel] Thank you for staying with us. "
+        f"Please securely upload your ID via this link: {link}"
     )
 
 def lambda_handler(event, context):
@@ -139,22 +139,25 @@ def lambda_handler(event, context):
         }
     )
 
-    link = f"{APP_BASE_URL}/room/{room_number}?guestId={guest_id}&token={token}"
-
-    # Send Magic Link
-    if contact_channel == "email":
-        try:
-            text_body = build_email_body(lang, link)
-            subject = "Osaka Bay Wheel ゲストアクセス" if lang == 'ja' else "Osaka Bay Wheel Guest Access"
-            send_via_sendgrid(
-                to_email=email,
-                subject=subject,
-                text_body=text_body
-            )
-        except Exception as e:
-            return {"success": False, "error": f"Email send failed: {e}"}
-    elif contact_channel == "sms":
+    # SMS用とEmail用でURLを分ける
+    if contact_channel == "sms":
+        link = f"{APP_BASE_URL}/room/{room_number}?guestId={guest_id}&token={token}&source=sms"
+        # SMSメッセージを大幅にシンプル化
         sms_body = build_sms(lang, link)
         sns.publish(PhoneNumber=phone, Message=sms_body)
+    else:
+        link = f"{APP_BASE_URL}/room/{room_number}?guestId={guest_id}&token={token}"
+        # Send Magic Link
+        if contact_channel == "email":
+            try:
+                text_body = build_email_body(lang, link)
+                subject = "Osaka Bay Wheel ゲストアクセス" if lang == 'ja' else "Osaka Bay Wheel Guest Access"
+                send_via_sendgrid(
+                    to_email=email,
+                    subject=subject,
+                    text_body=text_body
+                )
+            except Exception as e:
+                return {"success": False, "error": f"Email send failed: {e}"}
 
     return {"success": True, "guestId": guest_id}
