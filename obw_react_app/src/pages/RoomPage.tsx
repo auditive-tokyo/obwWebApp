@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom' // useLocationを追加
 import AccessForm from '@/components/AccessForm'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { generateClient } from 'aws-amplify/api'
@@ -10,9 +10,15 @@ import { checkFormCompletion } from './roompage/utils/formValidation'
 import { syncGeoAndResolveAddress } from './roompage/services/geolocation'
 import { dbg } from '@/utils/debugLogger'
 import { getMessage } from '@/i18n/messages'
+import SmsWelcomeModal from './roompage/components/SmsWelcomeModal'
 
 export default function RoomPage() {
   const { roomId = '' } = useParams<{ roomId: string }>()
+  const location = useLocation()
+
+  // SMS Welcome Modal 用の state
+  const [showSmsWelcome, setShowSmsWelcome] = useState(false)
+
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [address, setAddress] = useState("")
@@ -40,9 +46,14 @@ export default function RoomPage() {
 
   const client = useMemo(() => generateClient(), [])
 
+  // SMS検出のuseEffect（最初に配置）
+  useEffect(() => {
+    if (location.state?.smsAccess) {
+      setShowSmsWelcome(true)
+    }
+  }, [location.state])
+
   // セッション状態に応じて responseId をクリアする
-  // - token が存在しない（すでに他で削除済み / 初回未取得）場合は即削除
-  // - token はあるが検証完了(sessionChecked)して無効(sessionValid=false)な場合も削除
   useEffect(() => {
     const tok = localStorage.getItem('token')
     if (!tok) {
@@ -303,12 +314,16 @@ const handleClearLocation = useCallback(async () => {
   }
 }, [client, roomId, loadMyGuest])
 
+  // 全てのHooks定義が終わってから条件分岐
+
   // 認証していない/検証未完了の分岐
   if (!sessionChecked) {
     return <div style={{ padding: 16 }}>Loading...</div>
   }
+  
   const gid = typeof window !== 'undefined' ? localStorage.getItem('guestId') : null
   const tok = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  
   if (!gid || !tok) {
     return (
       <div style={{ padding: 16 }}>
@@ -317,7 +332,7 @@ const handleClearLocation = useCallback(async () => {
     )
   }
 
-  // ここから先は認証済みUI（既存の登録/アップロード画面など）
+  // メインレンダリング
   return (
     <>
       <RoomPageView
@@ -371,6 +386,14 @@ const handleClearLocation = useCallback(async () => {
         handleSyncGeo={handleSyncGeo}
         handleClearLocation={handleClearLocation}
       />
+
+      {/* SMS Welcome Modal */}
+      {showSmsWelcome && (
+        <SmsWelcomeModal 
+          onClose={() => setShowSmsWelcome(false)}
+          originalUrl={location.state?.originalUrl || window.location.href}
+        />
+      )}
     </>
   )
 }

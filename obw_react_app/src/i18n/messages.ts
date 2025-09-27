@@ -94,7 +94,15 @@ type MessageKeys =
   | "locationSyncError"
   | "locationDeleteSuccess"
   | "locationDeleteError"
-  | "pleaseRetryLater";
+  | "pleaseRetryLater"
+  | "welcomeToGuestPage"
+  | "smsLinkKeepSafe"
+  | "smsShareWarning"
+  | "smsMultiDeviceInfo"
+  | "smsExpiryWarning"
+  | "smsSessionRestore"
+  | "understood"
+  | "attention";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -190,6 +198,14 @@ type Messages = {
     locationDeleteSuccess: string;
     locationDeleteError: string;
     pleaseRetryLater: string;
+    welcomeToGuestPage: string;
+    smsLinkKeepSafe: string;
+    smsShareWarning: string;
+    smsMultiDeviceInfo: string;
+    smsExpiryWarning: string;
+    smsSessionRestore: string;
+    understood: string;
+    attention: string;
   }
 };
 
@@ -295,7 +311,15 @@ const messages: Messages = {
     locationSyncError: "位置情報の同期に失敗しました。",
     locationDeleteSuccess: "位置情報を削除しました。",
     locationDeleteError: "位置情報の削除に失敗しました。",
-    pleaseRetryLater: "少し時間をおいてから再度お試しください。"
+    pleaseRetryLater: "少し時間をおいてから再度お試しください。",
+    welcomeToGuestPage: "大阪ベイホイール ゲストページへようこそ",
+    smsLinkKeepSafe: "このリンクは大切に保管してください。",
+    smsShareWarning: "同じ部屋に宿泊するご家族・ご友人以外には共有しないでください。",
+    smsMultiDeviceInfo: "複数のデバイスやブラウザからアクセスする場合も、このリンクを開くことでセッションを復元できます。",
+    smsExpiryWarning: "基本情報の入力が完了しないまま24時間経過するとこのリンクは無効になります。",
+    smsSessionRestore: "基本情報送信後は、同じリンクで再アクセスしてセッションを復元できます。",
+    understood: "了解しました",
+    attention: "注意",
   },
   en: {
     close: "Close",
@@ -398,7 +422,15 @@ const messages: Messages = {
     locationSyncError: "Location sync failed.",
     locationDeleteSuccess: "Location information deleted.",
     locationDeleteError: "Failed to delete location information.",
-    pleaseRetryLater: "Please wait a moment and try again."
+    pleaseRetryLater: "Please wait a moment and try again.",
+    welcomeToGuestPage: "Welcome to Osaka Bay Wheel Guest Page",
+    smsLinkKeepSafe: "Please keep this link secure.",
+    smsShareWarning: "Do NOT share it with anyone except family or companions staying in the same room.",
+    smsMultiDeviceInfo: "If you use multiple devices or browsers, opening this link restores your session.",
+    smsExpiryWarning: "If you do NOT complete the basic information within 24 hours, this link becomes invalid.",
+    smsSessionRestore: "After submitting the basic information you can still revisit using the same link to restore your session.",
+    understood: "Understood",
+    attention: "Note",
   }
 };
 

@@ -39,10 +39,11 @@ export default function Auth() {
       const url = new URL(window.location.href)
       const guestId = url.searchParams.get('guestId')
       const token = url.searchParams.get('token')
+      const source = url.searchParams.get('source')
 
       if (!roomId || !guestId || !token) {
         setMessage('Missing params. Redirecting...')
-        navigate(`/${roomId || ''}`, { replace: true })
+        navigate(`/${roomId || ''}`, { replace: true }) // ❌ パラメータ不足時 - SMS渡さない
         return
       }
 
@@ -69,18 +70,26 @@ export default function Auth() {
           localStorage.setItem('guestId', g?.guestId || guestId)
           localStorage.setItem('token', token)
           if (g?.bookingId) localStorage.setItem('bookingId', g.bookingId)
-           setMessage('Verified. Redirecting...')
-           navigate(`/${roomId}`, { replace: true })
-         } else {
-           const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
+          
+          setMessage('Verified. Redirecting...')
+          navigate(`/${roomId}`, { 
+            replace: true,
+            state: { 
+              smsAccess: source === 'sms',
+              originalUrl: `${window.location.origin}/room/${roomId}?guestId=${guestId}&token=${token}`
+            }
+          })
+        } else {
+          const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
           setMessage(`Verification failed${firstErr}`)
           localStorage.removeItem('guestId')
           localStorage.removeItem('token')
           localStorage.removeItem('bookingId')
           localStorage.removeItem('responseId')
           clearCognitoIdentityCache()
-           setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
-         }
+          // ❌ 認証失敗時 - SMS渡さない（どうせエラー画面）
+          setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
+        }
       } catch (e: any) {
         if (import.meta.env.DEV) console.error('VerifyAccessToken exception:', e)
         setMessage(`Verification error: ${e?.message || 'unknown'}`)
@@ -89,6 +98,7 @@ export default function Auth() {
         localStorage.removeItem('bookingId')
         localStorage.removeItem('responseId')
         clearCognitoIdentityCache()
+        // ❌ エラー時 - SMS渡さない（どうせエラー画面）
         setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1200)
       }
     }
