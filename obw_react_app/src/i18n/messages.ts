@@ -5,7 +5,6 @@ export type SupportedLang =
 type MessageKeys =
   | "close"
   | "preview"
-  | "edit"
   | "uploading"
   | "upload"
   | "unfilled"
@@ -50,7 +49,6 @@ type MessageKeys =
   | "emailConsent"
   | "promoConsent"
   | "address"
-  | "addressNotSet"
   | "addressLine1"
   | "addressLine1Placeholder"
   | "addressLine2"
@@ -102,7 +100,6 @@ type Messages = {
   [lang in SupportedLang]: {
     close: string;
     preview: string;
-    edit: string;
     uploading: string;
     upload: string;
     unfilled: string;
@@ -147,7 +144,6 @@ type Messages = {
     emailConsent: string;
     promoConsent: string;
     address: string;
-    addressNotSet: string;
     addressLine1: string;
     addressLine1Placeholder: string;
     addressLine2: string;
@@ -201,7 +197,6 @@ const messages: Messages = {
   ja: {
     close: "閉じる",
     preview: "この写真をアップロードしようとしています",
-    edit: "入力・編集",
     uploading: "アップロード中...",
     upload: "アップロード",
     unfilled: "(未入力)",
@@ -246,7 +241,6 @@ const messages: Messages = {
     emailConsent: "最新情報をメールで受け取る",
     promoConsent: "プロモーションや特別割引、近隣イベント情報などをお送りします。\n受取りをご希望されない場合はチェックは外したままにして下さい。",
     address: "住所",
-    addressNotSet: "住所が設定されていません",
     addressLine1: "住所1",
     addressLine1Placeholder: "住所1（番地・丁目・号など）",
     addressLine2: "住所2",
@@ -306,7 +300,6 @@ const messages: Messages = {
   en: {
     close: "Close",
     preview: "This photo is about to be uploaded",
-    edit: "Input / Edit",
     uploading: "Uploading...",
     upload: "Upload",
     unfilled: "(Unfilled)",
@@ -352,7 +345,6 @@ const messages: Messages = {
     emailConsent: "Receive updates via email",
     promoConsent: "We will send you promotions, special discounts, and local event information. \nIf you do not wish to receive these, please leave the checkbox unchecked.",
     address: "Address",
-    addressNotSet: "Address is not set",
     addressLine1: "Address Line 1",
     addressLine1Placeholder: "Address Line 1 (Street, Block, etc.)",
     addressLine2: "Address Line 2",
