@@ -49,6 +49,8 @@ Resources:
           AttributeType: S
         - AttributeName: checkOutDate         # GSI用
           AttributeType: S
+        - AttributeName: approvalStatus       # GSI用
+          AttributeType: S
       KeySchema:
         - AttributeName: roomNumber
           KeyType: HASH
@@ -84,6 +86,15 @@ Resources:
             - AttributeName: roomNumber
               KeyType: HASH
             - AttributeName: checkOutDate
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # 承認状態 × チェックイン日順（管理画面用）  
+        - IndexName: ApprovalStatusCheckInIndex
+          KeySchema:
+            - AttributeName: approvalStatus
+              KeyType: HASH
+            - AttributeName: checkInDate
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
@@ -204,6 +215,7 @@ Resources:
           listGuestsByRoom(roomNumber: String!): [Guest]
           listGuests: [Guest] @aws_cognito_user_pools
           listGuestsByBooking(bookingId: String!): [Guest]
+          listGuestsByApprovalStatus(approvalStatus: String!): [Guest] @aws_cognito_user_pools
         }
 
   GuestTableDataSource:
@@ -533,6 +545,32 @@ Resources:
               ":b": $util.dynamodb.toDynamoDBJson($ctx.args.bookingId)
             }
           }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
+
+  ListGuestsByApprovalStatusResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - GuestTableDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: listGuestsByApprovalStatus
+      DataSourceName: guestcheckintable
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "ApprovalStatusCheckInIndex",
+          "query": {
+            "expression": "approvalStatus = :status",
+            "expressionValues": {
+              ":status": $util.dynamodb.toDynamoDBJson($ctx.args.approvalStatus)
+            }
+          },
+          "scanIndexForward": true
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result.items)
