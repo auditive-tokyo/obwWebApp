@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react'
 import CountrySelect from './CountrySelect'
 import StructuredAddressInput from './StructuredAddressInput'
 import { BasicCheckInOutDate } from './BasicCheckInOutDate'
@@ -56,20 +55,6 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
     isRepresentativeFamily = false,
     hasRoomCheckDates = false,
   } = props
-
-  const [addrOpen, setAddrOpen] = useState(false)
-
-  const addrSummary = useMemo(() => {
-    if (!address) return ''
-    try {
-      const a = JSON.parse(address)
-      return [a.addressLine2, a.addressLine1, a.city, a.state, a.country, a.zipcode]
-        .filter(Boolean)
-        .join(', ')
-    } catch {
-      return address
-    }
-  }, [address])
 
   const phoneError =
     phone && !isValidPhoneNumber(phone)
@@ -167,23 +152,10 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {getMessage("address")}<span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-gray-600 truncate">{addrSummary || getMessage("addressNotSet")}</div>
-                <button
-                  type="button"
-                  className="text-sm text-blue-600"
-                  onClick={() => setAddrOpen(v => !v)}
-                >
-                  {addrOpen ? getMessage("close") : getMessage("edit")}
-                </button>
-              </div>
-              {addrOpen && (
-                <StructuredAddressInput
-                  value={address}
-                  onChange={setAddress}
-                  onValidityChange={(valid) => { if (!valid) { setAddrOpen(true) } }}
-                />
-              )}
+              <StructuredAddressInput
+                value={address}
+                onChange={setAddress}
+              />
             </div>
 
             {/* 電話番号 */}
