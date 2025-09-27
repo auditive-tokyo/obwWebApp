@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import type { Guest, ApprovalStatus } from './adminpage/types/types';
 import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
@@ -14,7 +14,14 @@ export default function AdminPage() {
   const [all, setAll] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [roomFilter, setRoomFilter] = useState('201')
+  
+  // URL解析でroomIdを取得（フィルターなし = 空文字）
+  const [roomFilter, setRoomFilter] = useState(() => {
+    const path = window.location.pathname;
+    const match = path.match(/\/admin\/(\d+)$/);
+    return match ? match[1] : ''; // 空文字 = フィルターなし
+  });
+  
   const [statusFilter, setStatusFilter] = useState('pending')
   const [detail, setDetail] = useState<Guest | null>(null)
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)
@@ -22,7 +29,7 @@ export default function AdminPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
 
-  // 部屋番号のプルダウン（デフォルト201）TODO: URLから受け取った値をデフォルトに変更する
+  // 部屋番号のプルダウン（シンプルに実際の部屋番号のみ）
   const roomOptions = useMemo(() => {
     const set = new Set<string>(all.map(g => g.roomNumber).filter(Boolean))
     
@@ -42,19 +49,21 @@ export default function AdminPage() {
     });
   }, [all])
 
-  const statusOptions: ApprovalStatus[] = [
+  const statusOptions: (ApprovalStatus | '')[] = [
+    '',  // フィルターなし を追加
     'pending',
-    'waitingForBasicInfo',
+    'waitingForBasicInfo', 
     'waitingForPassportImage',
     'approved',
     'rejected'
   ];
+  // フィルタリングロジック（空文字 = フィルターなし）
   const filteredGuests = useMemo(() => {
     const sf = (statusFilter || '').toLowerCase()
     const base = all.filter(g => {
       const st = (g.approvalStatus || '').trim().toLowerCase()
       const statusOk = !sf || st === sf
-      const roomOk = !roomFilter || g.roomNumber === roomFilter
+      const roomOk = !roomFilter || g.roomNumber === roomFilter  // 空文字なら全部OK
       return statusOk && roomOk
     })
 
@@ -63,21 +72,37 @@ export default function AdminPage() {
       const aId = a.bookingId || ''
       const bId = b.bookingId || ''
       if (aId === bId) {
-        // 同じ予約ID内での並び（氏名 → guestId フォールバック）
         const nameCmp = (a.guestName || '').localeCompare(b.guestName || '')
         if (nameCmp !== 0) return nameCmp
         return (a.guestId || '').localeCompare(b.guestId || '')
       }
-      // 予約IDありを先に
       if (aId && !bId) return -1
       if (!aId && bId) return 1
       return aId.localeCompare(bId)
     })
   }, [all, roomFilter, statusFilter])
 
+  // データ読み込み関数を作成
+  const loadData = useCallback(async () => {
+    await fetchGuests({ 
+      client, 
+      setAll, 
+      setLoading, 
+      setError,
+      roomFilter: roomFilter || undefined,  // 空文字をundefinedに変換
+      statusFilter: statusFilter || undefined
+    });
+  }, [roomFilter, statusFilter, client]);
+
+  // 初回読み込み
   useEffect(() => {
-    fetchGuests({ client, setAll, setLoading, setError });
-  }, [client]);
+    loadData();
+  }, [loadData]);
+
+  // フィルター変更時にも自動更新
+  useEffect(() => {
+    loadData();
+  }, [roomFilter, statusFilter]); // これを追加
 
   // ESCで閉じる
   useEffect(() => {
@@ -139,29 +164,42 @@ export default function AdminPage() {
 
       <div style={{ marginBottom: 12 }}>
         <button
-          onClick={() => fetchGuests({ client, setAll, setLoading, setError })}
+          onClick={loadData}
           disabled={loading}
         >
           {loading ? '更新中…' : '更新'}
         </button>
+        
+        {/* 部屋フィルター */}
         <select
           style={{ marginLeft: 12 }}
           value={roomFilter}
           onChange={(e) => setRoomFilter(e.target.value)}
         >
+          <option value="">フィルターなし</option>
           {roomOptions.map(r => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
+        
+        {/* ステータスフィルター - フィルターなしを追加 */}
         <select
           style={{ marginLeft: 12 }}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          {statusOptions.map(s => (
+          <option value="">フィルターなし</option>
+          {statusOptions.slice(1).map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+      </div>
+
+      {/* 現在の状態表示を詳細に */}
+      <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
+        表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}
+        <br />
+        Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}
       </div>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
