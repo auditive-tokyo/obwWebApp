@@ -69,7 +69,6 @@ async def openai_vector_search_with_file_search_tool(
                 }
             ],
             "tool_choice": "required",
-            "temperature": 0.0,
             "text": {
                 "format": {
                     "type": "json_schema",
