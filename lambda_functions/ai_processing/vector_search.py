@@ -68,8 +68,12 @@ async def openai_vector_search_with_file_search_tool(
                     }
                 }
             ],
+            "reasoning": {
+                "effort": "low"
+            },
             "tool_choice": "required",
             "text": {
+                "verbosity": "low",
                 "format": {
                     "type": "json_schema",
                     "name": "AssistantResponseWithOperatorFlag",

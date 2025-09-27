@@ -67,6 +67,9 @@ async def classify_message_urgency_with_openai_tool_calling(
                 {"role": "user", "content": user_message}
             ],
             tools=tools,
+            reasoning={
+                "effort": "minimal"
+            },
             tool_choice={
                 "type": "function",
                 "name": "categorize_user_request"
