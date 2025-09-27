@@ -10,13 +10,22 @@ import { DetailsModal } from './adminpage/components/detailsModal';
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
 
-export default function AdminPage() {
+// Props interface を追加
+interface AdminPageProps {
+  roomId?: string;
+}
+
+export default function AdminPage({ roomId }: AdminPageProps) {
   const [all, setAll] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // URL解析でroomIdを取得（フィルターなし = 空文字）
+  // URL解析でroomIdを取得（propsを優先、フォールバックでURL解析）
   const [roomFilter, setRoomFilter] = useState(() => {
+    // 1. Propsで渡された値を優先
+    if (roomId) return roomId;
+    
+    // 2. フォールバック: URL解析（既存ロジック）
     const path = window.location.pathname;
     const match = path.match(/\/admin\/(\d+)$/);
     return match ? match[1] : ''; // 空文字 = フィルターなし
@@ -57,6 +66,7 @@ export default function AdminPage() {
     'approved',
     'rejected'
   ];
+
   // フィルタリングロジック（空文字 = フィルターなし）
   const filteredGuests = useMemo(() => {
     const sf = (statusFilter || '').toLowerCase()
@@ -67,18 +77,18 @@ export default function AdminPage() {
       return statusOk && roomOk
     })
 
-    // 予約IDでグループ化ソート
+    // チェックイン日優先ソート（修正箇所）
     return [...base].sort((a, b) => {
-      const aId = a.bookingId || ''
-      const bId = b.bookingId || ''
-      if (aId === bId) {
-        const nameCmp = (a.guestName || '').localeCompare(b.guestName || '')
-        if (nameCmp !== 0) return nameCmp
-        return (a.guestId || '').localeCompare(b.guestId || '')
-      }
-      if (aId && !bId) return -1
-      if (!aId && bId) return 1
-      return aId.localeCompare(bId)
+      // チェックイン日を最優先に
+      const aDate = a.checkInDate || '';
+      const bDate = b.checkInDate || '';
+      if (aDate !== bDate) return aDate.localeCompare(bDate);
+      
+      // 同じチェックイン日なら予約ID → 氏名順
+      const aId = a.bookingId || '';
+      const bId = b.bookingId || '';
+      if (aId !== bId) return aId.localeCompare(bId);
+      return (a.guestName || '').localeCompare(b.guestName || '');
     })
   }, [all, roomFilter, statusFilter])
 
@@ -199,7 +209,7 @@ export default function AdminPage() {
       <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
         表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}
         <br />
-        Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}
+        Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}
       </div>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}

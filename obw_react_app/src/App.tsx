@@ -21,6 +21,11 @@ function App() {
   const roomId = match?.params?.roomId;
   const isValidRoom = roomId && allowedRooms.includes(roomId);
 
+  // Admin用のroomId検証
+  const adminMatch = matchPath("/admin/:roomId", location.pathname);
+  const adminRoomId = adminMatch?.params?.roomId;
+  const isValidAdminRoom = adminRoomId && allowedRooms.includes(adminRoomId);
+
   return (
     <>
       <div style={{ position: 'relative', zIndex: 1 }}>
@@ -30,6 +35,10 @@ function App() {
           <Route path="/room/:roomId" element={<Auth />} />
           {/* Admin routes protected by Cognito Hosted UI */}
           <Route path="/admin" element={<AdminAuth />} />
+          <Route 
+            path="/admin/:roomId" 
+            element={isValidAdminRoom ? <AdminAuth /> : <ErrorPage />} 
+          />
           <Route path="/admin/callback" element={<AdminAuth />} />
           <Route path="/admin/logout" element={<AdminLogout />} />
           <Route

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'  // useParams を追加
 // Amplify Auth (v6 modular). Assumes Amplify is configured elsewhere in the app.
 import { getCurrentUser, signInWithRedirect } from 'aws-amplify/auth'
 import AdminPage from '../pages/AdminPage'
@@ -8,6 +8,7 @@ import { dbg } from '@/utils/debugLogger'
 export default function AdminAuth() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { roomId } = useParams()  // URLパラメータから部屋番号を取得
   const [message, setMessage] = useState('Checking authentication...')
   const [ready, setReady] = useState(false)
 
@@ -30,6 +31,7 @@ export default function AdminAuth() {
   useEffect(() => {
     async function ensureAuthenticated() {
       dbg('path:', location.pathname, 'search:', location.search)
+      dbg('roomId from URL params:', roomId)  // デバッグ用
 
       // /admin配下に来たら先にゲスト情報を掃除
       clearGuestStorage()
@@ -64,8 +66,11 @@ export default function AdminAuth() {
 
           setReady(true)
           setMessage('')
-          dbg('navigate -> /admin')
-          navigate('/admin', { replace: true })
+          
+          // コールバック後は元のURL構造を保持してリダイレクト
+          const targetPath = roomId ? `/admin/${roomId}` : '/admin'
+          dbg('navigate -> ', targetPath)
+          navigate(targetPath, { replace: true })  // 修正: roomIdを保持
           return
         }
 
@@ -86,8 +91,8 @@ export default function AdminAuth() {
     }
 
     ensureAuthenticated()
-  }, [location.pathname, location.search, navigate])
+  }, [location.pathname, location.search, navigate, roomId])  // roomId を依存配列に追加
 
   if (!ready) return <p>{message}</p>
-  return <AdminPage />
+  return <AdminPage roomId={roomId} />  // AdminPageに部屋番号を渡す
 }
