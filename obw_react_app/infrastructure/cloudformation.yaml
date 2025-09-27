@@ -212,8 +212,7 @@ Resources:
 
         type Query {
           getGuest(roomNumber: String!, guestId: String!): Guest
-          listGuestsByRoom(roomNumber: String!): [Guest]
-          listGuests: [Guest] @aws_cognito_user_pools
+          listGuestsByRoom(roomNumber: String!): [Guest] @aws_cognito_user_pools
           listGuestsByBooking(bookingId: String!): [Guest]
           listGuestsByApprovalStatus(approvalStatus: String!): [Guest] @aws_cognito_user_pools
         }
@@ -481,24 +480,6 @@ Resources:
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)
-
-  ListGuestsResolver:
-    Type: AWS::AppSync::Resolver
-    DependsOn:
-      - AppSyncSchema
-      - GuestTableDataSource
-    Properties:
-      ApiId: !GetAtt AppSyncApi.ApiId
-      TypeName: Query
-      FieldName: listGuests
-      DataSourceName: guestcheckintable
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Scan"
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result.items)
 
   ListGuestsByRoomResolver:
     Type: AWS::AppSync::Resolver
