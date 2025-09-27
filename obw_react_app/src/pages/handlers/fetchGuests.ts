@@ -18,6 +18,7 @@ const queryByRoom = `
       occupation
       nationality
       passportImageUrl
+      currentLocation
     }
   }
 `;
@@ -38,6 +39,7 @@ const queryByStatus = `
       occupation
       nationality
       passportImageUrl
+      currentLocation
     }
   }
 `;

@@ -19,4 +19,5 @@ export type Guest = {
   occupation?: string;
   nationality?: string;
   passportImageUrl?: string;
+  currentLocation?: string;
 };

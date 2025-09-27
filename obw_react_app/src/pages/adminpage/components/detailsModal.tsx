@@ -56,7 +56,7 @@ export function DetailsModal({
         <dl style={{ display: 'grid', gridTemplateColumns: '8em 1fr', rowGap: 6, columnGap: 12 }}>
           <dt>Room</dt><dd>{detail.roomNumber}</dd>
           <dt>氏名</dt><dd>{detail.guestName}</dd>
-            <dt>Guest ID</dt><dd>{detail.guestId}</dd>
+          <dt>Guest ID</dt><dd>{detail.guestId}</dd>
           <dt>予約ID</dt><dd>{detail.bookingId || '-'}</dd>
           <dt>承認</dt><dd>{detail.approvalStatus || '-'}</dd>
           <dt>チェックイン</dt><dd>{detail.checkInDate || '-'}</dd>
@@ -66,6 +66,7 @@ export function DetailsModal({
           <dt>住所</dt><dd>{formatAddress(detail.address) || '-'}</dd>
           <dt>職業</dt><dd>{detail.occupation || '-'}</dd>
           <dt>国籍</dt><dd>{detail.nationality || '-'}</dd>
+          <dt>位置情報</dt><dd>{detail.currentLocation || '-'}</dd>
           <dt>ID画像</dt>
           <dd>
             {!detail.passportImageUrl && '-'}
