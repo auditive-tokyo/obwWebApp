@@ -176,7 +176,6 @@ Resources:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
-          VECTOR_SEARCH_FILTER_KEY: room_number
       Layers:
         - !Ref LayerForResponseAPI
 
