@@ -48,8 +48,15 @@ export default function RoomPage() {
 
   // SMS検出のuseEffect（最初に配置）
   useEffect(() => {
+    console.log('🔍 [PRODUCTION] RoomPage location.state:', location.state)
+    console.log('🔍 [PRODUCTION] Current URL:', window.location.href)
+    console.log('🔍 [PRODUCTION] location object:', location)
+    
     if (location.state?.smsAccess) {
+      console.log('✅ [PRODUCTION] SMS Modal should show')
       setShowSmsWelcome(true)
+    } else {
+      console.log('❌ [PRODUCTION] No smsAccess in state')
     }
   }, [location.state])
 

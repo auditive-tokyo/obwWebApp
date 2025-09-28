@@ -5,12 +5,15 @@ import { clearCognitoIdentityCache } from '@/utils/clearCognitoCache'
 import { dbg } from '@/utils/debugLogger'
 
 export default function Auth() {
+  console.log('🎯 [PRODUCTION] Auth component mounted!')
   const { roomId = '' } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const client = generateClient({ authMode: 'iam' })
   const [message, setMessage] = useState('Verifying...')
 
   useEffect(() => {
+    console.log('🎯 [PRODUCTION] Auth useEffect started!')
+
     async function run() {
       // Purge any Cognito User Pool tokens from localStorage to avoid interfering with guest IAM flow
       // This removes keys like:
@@ -65,19 +68,24 @@ export default function Auth() {
           dbg('VerifyAccessToken result:', res)
           if ('errors' in res && res.errors?.length) console.error('GraphQL errors:', res.errors)
         }
+        console.log('🎯 [PRODUCTION] Auth run function called with:', { roomId, guestId, token, source })
+        // 認証成功時
         if ('data' in res && res.data?.verifyAccessToken?.success) {
           const g = res.data.verifyAccessToken.guest
           localStorage.setItem('guestId', g?.guestId || guestId)
           localStorage.setItem('token', token)
           if (g?.bookingId) localStorage.setItem('bookingId', g.bookingId)
           
-          setMessage('Verified. Redirecting...')
+          const navigateState = { 
+            smsAccess: source === 'sms',
+            originalUrl: `${window.location.origin}/room/${roomId}?guestId=${guestId}&token=${token}`
+          }
+          
+          console.log('✅ [PRODUCTION] About to navigate with state:', navigateState)
+          
           navigate(`/${roomId}`, { 
             replace: true,
-            state: { 
-              smsAccess: source === 'sms',
-              originalUrl: `${window.location.origin}/room/${roomId}?guestId=${guestId}&token=${token}`
-            }
+            state: navigateState
           })
         } else {
           const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
