@@ -7,7 +7,7 @@ export async function fetchAIResponseStream(
   approved: boolean,
   currentLocation: string | undefined,
   onDelta: (
-    text: string | { assistant_response_text: string; reference_files?: string[]; images?: string[] },
+    text: string | { assistant_response_text: string; reference_sources?: string[]; images?: string[] },
     isDone?: boolean
   ) => void
 ): Promise<void> {
@@ -64,7 +64,7 @@ export async function fetchAIResponseStream(
           const result = parse(obj.part.text) as any;
           onDelta({
             assistant_response_text: typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.part.text,
-            reference_files: Array.isArray(result?.reference_files) ? result.reference_files : [],
+            reference_sources: Array.isArray(result?.reference_sources) ? result.reference_sources : [],
             images: Array.isArray(result?.images) ? result.images : [],
           }, true);
           gotFinal = true;
@@ -73,7 +73,7 @@ export async function fetchAIResponseStream(
           const result = parse(obj.text) as any;
           onDelta({
             assistant_response_text: typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.text,
-            reference_files: Array.isArray(result?.reference_files) ? result.reference_files : [],
+            reference_sources: Array.isArray(result?.reference_sources) ? result.reference_sources : [],
             images: Array.isArray(result?.images) ? result.images : [],
           }, true);
           gotFinal = true;
