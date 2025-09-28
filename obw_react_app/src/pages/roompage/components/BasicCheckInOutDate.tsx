@@ -10,6 +10,27 @@ type Props = {
   setCheckOutDate: (date: Date | null) => void
 }
 
+// JST正午の日付を作成するヘルパー関数
+const createJSTDate = (date: Date | null): Date | null => {
+  if (!date) return null
+  // 選択された日付をJST正午に設定（タイムゾーン問題を回避）
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+  return new Date(year, month, day, 12, 0, 0, 0) // ローカルタイムの正午
+}
+
+// JST表示用のヘルパー関数
+const formatJSTDate = (date: Date | null): string => {
+  if (!date) return '未選択'
+  return date.toLocaleDateString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric'
+  })
+}
+
 export function BasicCheckInOutDate({
   checkInDate,
   setCheckInDate,
@@ -17,6 +38,13 @@ export function BasicCheckInOutDate({
   setCheckOutDate
 }: Props) {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false)
+
+  const handleDateChange = (dates: [Date | null, Date | null]) => {
+    const [start, end] = dates
+    // JST正午に統一して設定
+    setCheckInDate(createJSTDate(start))
+    setCheckOutDate(createJSTDate(end))
+  }
 
   return (
     <div>
@@ -28,7 +56,7 @@ export function BasicCheckInOutDate({
         onClick={() => setCalendarModalOpen(true)}
       >
         {checkInDate && checkOutDate
-          ? `${checkInDate.toLocaleDateString()} 〜 ${checkOutDate.toLocaleDateString()}`
+          ? `${formatJSTDate(checkInDate)} 〜 ${formatJSTDate(checkOutDate)}`
           : getMessage("selectCheckInOutDate")}
       </button>
 
@@ -37,11 +65,7 @@ export function BasicCheckInOutDate({
           <div className="bg-white rounded-lg p-6 mx-auto shadow-2xl flex flex-col items-center" style={{ width: 'fit-content', minWidth: '320px' }}>
             <DatePicker
               selected={checkInDate}
-              onChange={(dates) => {
-                const [start, end] = dates as [Date | null, Date | null]
-                setCheckInDate(start)
-                setCheckOutDate(end)
-              }}
+              onChange={handleDateChange}
               startDate={checkInDate}
               endDate={checkOutDate}
               selectsRange
@@ -49,10 +73,10 @@ export function BasicCheckInOutDate({
             />
             <div className="flex space-x-4 mt-2 text-sm text-gray-700">
               <div>
-                {getMessage("checkInDate")}: {checkInDate ? checkInDate.toLocaleDateString() : '未選択'}
+                {getMessage("checkInDate")}: {formatJSTDate(checkInDate)}
               </div>
               <div>
-                {getMessage("checkOutDate")}: {checkOutDate ? checkOutDate.toLocaleDateString() : '未選択'}
+                {getMessage("checkOutDate")}: {formatJSTDate(checkOutDate)}
               </div>
             </div>
             <div className="mt-6 text-right">
