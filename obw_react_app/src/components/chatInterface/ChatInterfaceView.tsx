@@ -84,11 +84,11 @@ const ChatInterfaceView: React.FC<Props> = ({
                           __html: processText(msg.text.assistant_response_text)
                         }}
                       />
-                      {msg.text.reference_files && msg.text.reference_files.length > 0 && (
+                      {msg.text.reference_sources && msg.text.reference_sources.length > 0 && (
                         <div className="reference-files">
                           <strong>Reference(s):</strong>
                           <ul>
-                            {msg.text.reference_files.map((file, idx) => (
+                            {msg.text.reference_sources.map((file, idx) => (
                               <li key={idx}>{file}</li>
                             ))}
                           </ul>

@@ -52,7 +52,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     // AIストリーム受信時の更新（final時に images をトップレベルへ正規化）
     const handleStreamDelta = (
-      payload: string | { assistant_response_text: string; reference_files?: string[]; images?: string[] },
+      payload: string | { assistant_response_text: string; reference_sources?: string[]; images?: string[] },
       isDone: boolean = false
     ) => {
       setMessages(curr =>
