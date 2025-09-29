@@ -19,6 +19,12 @@ export function SmsWelcomeModal({ onClose, originalUrl }: Props) {
     }
   }
 
+  const handleClose = () => {
+    // history state をクリア（リロード対策）
+    window.history.replaceState({}, '', window.location.pathname + window.location.search)
+    onClose()
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md mx-4 max-h-[80vh] overflow-y-auto relative">
@@ -77,7 +83,7 @@ export function SmsWelcomeModal({ onClose, originalUrl }: Props) {
           <p>{getMessage("smsSessionRestore")}</p>
         </div>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="mt-6 w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
         >
           {getMessage("understood")}
