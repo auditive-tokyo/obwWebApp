@@ -5,11 +5,12 @@ import type { GuestSession } from '../types'
 type Params = {
   client: Client
   roomId: string
-  setGuestSessions: React.Dispatch<React.SetStateAction<GuestSession[]>>
+  setGuestSessions?: (sessions: any[]) => void
 }
 
 export async function refreshGuestSessions({ client, roomId, setGuestSessions }: Params) {
   if (!roomId) { dbg('refreshGuestSessions: no roomId'); return }
+  if (!setGuestSessions) { dbg('refreshGuestSessions: no setGuestSessions'); return }
 
   const bookingId = typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
   if (!bookingId) {
@@ -165,6 +166,89 @@ export async function deleteGuestLocation({
     return result
   } catch (error) {
     console.error('[deleteGuestLocation] GraphQL エラー:', error)
+    throw error
+  }
+}
+
+// 部屋の全ゲストのチェックイン・チェックアウト日を更新
+export async function updateRoomCheckDates({
+  client,
+  bookingId,
+  checkInDate,
+  checkOutDate
+}: {
+  client: Client
+  bookingId: string
+  checkInDate: string
+  checkOutDate: string
+}) {
+  dbg('[updateRoomCheckDates] 開始:', { bookingId, checkInDate, checkOutDate })
+  
+  try {
+    // 1. まず対象のゲスト一覧を取得
+    const query = `
+      query ListGuestsByBooking($bookingId: String!) {
+        listGuestsByBooking(bookingId: $bookingId) {
+          roomNumber
+          guestId
+          guestName
+        }
+      }
+    `
+    
+    const guestsResult = await client.graphql({ 
+      query, 
+      variables: { bookingId },
+      authMode: 'iam'
+    } as any)
+    
+    const guests = ('data' in guestsResult ? (guestsResult as any).data?.listGuestsByBooking : []) || []
+    dbg('[updateRoomCheckDates] 対象ゲスト:', guests.length)
+    
+    if (guests.length === 0) {
+      throw new Error('対象のゲストが見つかりません')
+    }
+    
+    // 2. 各ゲストの日付を更新
+    const updateMutation = `
+      mutation UpdateGuest($input: UpdateGuestInput!) {
+        updateGuest(input: $input) {
+          roomNumber
+          guestId
+          checkInDate
+          checkOutDate
+        }
+      }
+    `
+    
+    const updatePromises = guests.map(async (guest: any) => {
+      const input = {
+        roomNumber: guest.roomNumber,
+        guestId: guest.guestId,
+        checkInDate,
+        checkOutDate
+      }
+      
+      return client.graphql({
+        query: updateMutation,
+        variables: { input },
+        authMode: 'iam'
+      } as any)
+    })
+    
+    // 3. 全て並行実行
+    const results = await Promise.all(updatePromises)
+    
+    dbg('[updateRoomCheckDates] 更新完了:', results.length)
+    
+    return {
+      success: true,
+      message: `${results.length}人のゲストの日付を更新しました`,
+      updatedCount: results.length
+    }
+    
+  } catch (error) {
+    console.error('[updateRoomCheckDates] エラー:', error)
     throw error
   }
 }

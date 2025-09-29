@@ -102,7 +102,14 @@ type MessageKeys =
   | "smsExpiryWarning"
   | "smsSessionRestore"
   | "understood"
-  | "attention";
+  | "attention"
+  | "editRoomDates"
+  | "roomDateChangeWarning"
+  | "cancel"
+  | "save"
+  | "bookingNotFound"
+  | "dateUpdateFailed"
+  | "editLockedAfterApproval";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -206,6 +213,13 @@ type Messages = {
     smsSessionRestore: string;
     understood: string;
     attention: string;
+    editRoomDates: string;
+    roomDateChangeWarning: string;
+    cancel: string;
+    save: string;
+    bookingNotFound: string;
+    dateUpdateFailed: string;
+    editLockedAfterApproval: string;
   }
 };
 
@@ -320,6 +334,13 @@ const messages: Messages = {
     smsSessionRestore: "基本情報送信後は、同じリンクで再アクセスしてセッションを復元できます。",
     understood: "了解しました",
     attention: "注意",
+    editRoomDates: "部屋の日程を編集",
+    roomDateChangeWarning: "この変更は部屋に滞在する全員のチェックイン・チェックアウト日に影響します。",
+    cancel: "キャンセル",
+    save: "保存",
+    bookingNotFound: "予約情報が見つかりません",
+    dateUpdateFailed: "日付の更新に失敗しました。再度お試しください。",
+    editLockedAfterApproval: "承認後は変更不可",
   },
   en: {
     close: "Close",
@@ -431,6 +452,13 @@ const messages: Messages = {
     smsSessionRestore: "After submitting the basic information you can still revisit using the same link to restore your session.",
     understood: "Understood",
     attention: "Note",
+    editRoomDates: "Edit Room Dates",
+    roomDateChangeWarning: "This change will affect the check-in and check-out dates for all guests in this room.",
+    cancel: "Cancel",
+    save: "Save",
+    bookingNotFound: "Booking information not found",
+    dateUpdateFailed: "Failed to update dates. Please try again.",
+    editLockedAfterApproval: "Locked after approval",
   }
 };
 

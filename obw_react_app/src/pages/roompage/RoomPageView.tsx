@@ -4,6 +4,8 @@ import type { RoomPageViewProps } from './types'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
+import { BasicCheckInOutDate } from './components/BasicCheckInOutDate'
+import { updateRoomCheckDates, refreshGuestSessions } from './services/apiCalls'
 import { getMessage } from '@/i18n/messages'
 import { dbg } from '@/utils/debugLogger'
 
@@ -17,6 +19,7 @@ export function RoomPageView(
     handleSyncGeo?: () => Promise<void>
     handleClearLocation?: () => Promise<void>
     myCurrentLocation?: string | null
+    setGuestSessions?: (sessions: any[]) => void
   }
 ) {
   const {
@@ -59,6 +62,7 @@ export function RoomPageView(
     handleSyncGeo,
     handleClearLocation,
     myCurrentLocation,
+    setGuestSessions,
   } = props
   const selectedSession = selectedGuest
 
@@ -144,12 +148,60 @@ export function RoomPageView(
   const [showGeoModal, setShowGeoModal] = useState(false)
   // 現在地詳細ポップアップの状態
   const [showLocationDetail, setShowLocationDetail] = useState(false)
+  // 日付編集モーダルの状態
+  const [showDateEditor, setShowDateEditor] = useState(false)
+  // 一時的なチェックイン・チェックアウト日
+  const [tempCheckInDate, setTempCheckInDate] = useState<Date | null>(null)
+  const [tempCheckOutDate, setTempCheckOutDate] = useState<Date | null>(null)
 
   // 位置情報同期の確認後実行
   const handleGeoConfirm = async () => {
     setShowGeoModal(false)
     if (handleSyncGeo) {
       await handleSyncGeo()
+    }
+  }
+
+  // 日付の保存処理
+  const handleRoomDateSave = async () => {
+    if (!tempCheckInDate || !tempCheckOutDate) return
+    
+    const bookingId = localStorage.getItem('bookingId')
+    if (!bookingId) {
+      alert(getMessage("bookingNotFound"))
+      return
+    }
+    
+    try {
+      // JST形式で日付文字列を作成
+      const checkInDateString = tempCheckInDate.toISOString().split('T')[0]
+      const checkOutDateString = tempCheckOutDate.toISOString().split('T')[0]
+      
+      // API呼び出し
+      const result = await updateRoomCheckDates({
+        client,
+        bookingId,
+        checkInDate: checkInDateString,
+        checkOutDate: checkOutDateString
+      })
+      
+      dbg("✅ Room dates updated successfully:", result)
+      
+      // 既存のsetterを直接使用（propsから）
+      setCheckInDate(tempCheckInDate)      // 既存のprop
+      setCheckOutDate(tempCheckOutDate)    // 既存のprop
+    
+      // ゲストセッション情報を再読み込み
+      await refreshGuestSessions({ client, roomId, setGuestSessions })
+      
+      // モーダルを閉じる
+      setShowDateEditor(false)
+      setTempCheckInDate(null)
+      setTempCheckOutDate(null)
+      
+    } catch (error) {
+      console.error("❌ Failed to update room dates:", error)
+      alert(getMessage("dateUpdateFailed"))
     }
   }
 
@@ -233,7 +285,29 @@ export function RoomPageView(
           </div>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
-              {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+              {hasApprovedGuest ? (
+                // 承認済み：編集不可
+                <div className="flex items-center gap-1">
+                  <span>
+                    {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+                  </span>
+                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-xs text-gray-500">({getMessage("editLockedAfterApproval")})</span>
+                </div>
+              ) : (
+                // 未承認：編集可能
+                <button 
+                  onClick={() => setShowDateEditor(true)}
+                  className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                >
+                  {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
           
@@ -508,6 +582,50 @@ export function RoomPageView(
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 {getMessage("close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 日付編集モーダル */}
+      {showDateEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {getMessage("editRoomDates")}
+            </h3>
+            <div className="mb-4">
+              <BasicCheckInOutDate
+                checkInDate={tempCheckInDate}
+                setCheckInDate={setTempCheckInDate}
+                checkOutDate={tempCheckOutDate}
+                setCheckOutDate={setTempCheckOutDate}
+              />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+              <p className="text-sm text-yellow-800">
+                ⚠️ {getMessage("roomDateChangeWarning")}
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDateEditor(false)
+                  setTempCheckInDate(null)
+                  setTempCheckOutDate(null)
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                {getMessage("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleRoomDateSave}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                {getMessage("save")}
               </button>
             </div>
           </div>

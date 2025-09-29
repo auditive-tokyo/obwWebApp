@@ -385,6 +385,7 @@ const handleClearLocation = useCallback(async () => {
         myCurrentLocation={myCurrentLocation}
         handleSyncGeo={handleSyncGeo}
         handleClearLocation={handleClearLocation}
+        setGuestSessions={setGuestSessions}
       />
 
       {/* SMS Welcome Modal */}
