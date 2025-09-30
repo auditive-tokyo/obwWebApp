@@ -427,10 +427,7 @@ Resources:
         #end
 
         ## currentLocation の処理
-        #if($util.isNull($ctx.args.input.currentLocation))
-          #set($removeExp = "REMOVE #currentLocation")
-          $util.qr($names.put("#currentLocation","currentLocation"))
-        #elseif(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
+        #if(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
           #set($setExp = $setExp + ", #currentLocation = :currentLocation")
           $util.qr($names.put("#currentLocation","currentLocation"))
           $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
