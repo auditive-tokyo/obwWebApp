@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { convertToWebp } from '../utils/convertToWebp'
+import { convertToJpeg } from '../utils/convertToJpeg'
 import { getMessage } from '@/i18n/messages'
 
 export type PassportUploadProps = {
@@ -49,7 +49,7 @@ export function PassportUpload({
     setError("")
     try {
       // 1. 画像をwebpに変換
-      const webpBlob = await convertToWebp(file)
+      const webpBlob = await convertToJpeg(file)
       
       // 2. ファイル名をguestNameベースに変更
       const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
