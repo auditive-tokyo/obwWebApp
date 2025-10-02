@@ -24,7 +24,7 @@ def lambda_handler(event, context):
         Params={
             'Bucket': bucket,
             'Key': s3_key,
-            'ContentType': 'image/webp'
+            'ContentType': 'image/jpeg'
         },
         ExpiresIn=3600,
         HttpMethod='PUT'
