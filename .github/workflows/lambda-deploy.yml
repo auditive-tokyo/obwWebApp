@@ -3,13 +3,16 @@ name: Deploy Lambda Functions
 on:
   push:
     branches: [main, feature/*]
-    paths:
-      - 'lambda_functions/**'
+      - 'lambda_functions/admin_approve_guest/**'
+      - 'lambda_functions/ai_processing/**'
+      - 'lambda_functions/get_presigned_url/**'
+      - 'lambda_functions/immediate-response/**'
+      - 'lambda_functions/notify_admin/**'
+      - 'lambda_functions/request_access/**'
+      - 'lambda_functions/verify_access/**'
       - 'layers/**'
       - '.github/workflows/lambda-deploy.yml'
       - 'template.yaml'
-    paths-ignore:
-      - 'lambda_functions/daily_records_cleanup/**'
   workflow_dispatch:
 
 jobs:
