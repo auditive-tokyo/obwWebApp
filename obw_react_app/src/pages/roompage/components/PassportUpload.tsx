@@ -48,12 +48,12 @@ export function PassportUpload({
     setUploading(true)
     setError("")
     try {
-      // 1. 画像をwebpに変換
-      const webpBlob = await convertToJpeg(file)
+      // 1. 画像をjpegに変換
+      const jpegBlob = await convertToJpeg(file)
       
       // 2. ファイル名をguestNameベースに変更
       const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
-      const webpFileName = `${sanitizedGuestName}_passport.webp`
+      const jpegFileName = `${sanitizedGuestName}_passport.jpeg`
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
@@ -71,7 +71,7 @@ export function PassportUpload({
         query: presignedQuery,
         variables: {
           input: {
-            filename: webpFileName,
+            filename: jpegFileName,
             roomId: roomId,
             timestamp: timestamp
           }
@@ -81,11 +81,11 @@ export function PassportUpload({
 
       const { putUrl, baseUrl } = presignedResult.data.getPresignedUrl
 
-      // 4. webp画像をS3にアップロード
+      // 4. jpeg画像をS3にアップロード
       await fetch(putUrl, {
         method: 'PUT',
-        body: webpBlob,
-        headers: { 'Content-Type': 'image/webp' }
+        body: jpegBlob,
+        headers: { 'Content-Type': 'image/jpeg' }
       })
 
       // 5. DynamoDBにpassportImageUrlを登録
