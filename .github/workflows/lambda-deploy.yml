@@ -2,12 +2,14 @@ name: Deploy Lambda Functions
 
 on:
   push:
-    branches: [main, feature/*] # 本番では main ブランチを使用
+    branches: [main, feature/*]
     paths:
       - 'lambda_functions/**'
       - 'layers/**'
       - '.github/workflows/lambda-deploy.yml'
       - 'template.yaml'
+    paths-ignore:
+      - 'lambda_functions/daily_records_cleanup/**'
   workflow_dispatch:
 
 jobs:
