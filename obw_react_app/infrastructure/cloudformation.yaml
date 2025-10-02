@@ -41,16 +41,18 @@ Resources:
           AttributeType: S
         - AttributeName: guestId
           AttributeType: S
-        - AttributeName: sessionTokenHash     # GSI用
+        - AttributeName: sessionTokenHash      # GSI用
           AttributeType: S
-        - AttributeName: bookingId            # GSI用
+        - AttributeName: bookingId             # GSI用
           AttributeType: S
-        - AttributeName: checkInDate          # GSI用
+        - AttributeName: checkInDate           # GSI用
           AttributeType: S
-        - AttributeName: checkOutDate         # GSI用
+        - AttributeName: checkOutDate          # GSI用
           AttributeType: S
-        - AttributeName: approvalStatus       # GSI用
+        - AttributeName: approvalStatus        # GSI用
           AttributeType: S
+        - AttributeName: sessionTokenExpiresAt # GSI用
+          AttributeType: N
       KeySchema:
         - AttributeName: roomNumber
           KeyType: HASH
@@ -95,6 +97,15 @@ Resources:
             - AttributeName: approvalStatus
               KeyType: HASH
             - AttributeName: checkInDate
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # 承認状態 × 有効期限順（自動クリーンアップ用）
+        - IndexName: ApprovalStatusExpiresIndex
+          KeySchema:
+            - AttributeName: approvalStatus
+              KeyType: HASH
+            - AttributeName: sessionTokenExpiresAt
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
