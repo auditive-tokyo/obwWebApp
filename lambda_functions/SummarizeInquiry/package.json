@@ -1,12 +1,12 @@
 {
-  "name": "serverless-embed-ai",
+  "name": "summarize-inquiry",
   "version": "1.0.0",
-  "description": "Serverless AI Embedding Lambda Function",
-  "main": "dist/lambda_function/chat_handler.js",
+  "description": "Lambda function for summarizing user inquiries when human operator is needed",
+  "main": "dist/handler.js",
   "scripts": {
     "clean": "rimraf dist",
-    "lint": "eslint lambda_function/**/*.ts",
-    "format": "prettier --write lambda_function/**/*.ts",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
     "build": "npm run clean && tsc",
     "package": "npm run build && cp package.json package-lock.json ./dist/ && cd ./dist && npm ci --omit=dev && zip -r ../deployment.zip .",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -22,8 +22,6 @@
     "typescript-eslint": "^8.0.0-alpha.40"
   },
   "dependencies": {
-    "@aws-sdk/client-lambda": "^3.901.0",
-    "esbuild": "^0.25.10",
-    "openai": "^5.12.2"
+    "@aws-sdk/client-lambda": "^3.0.0"
   }
 }

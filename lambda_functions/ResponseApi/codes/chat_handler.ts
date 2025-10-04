@@ -1,8 +1,12 @@
 import { generateStreamResponse } from './stream_response';
 import { LambdaFunctionURLEvent, Context } from 'aws-lambda';
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 
 const DEBUG = false; // TODO: デバッグモードは環境変数にするか？めんどいよね〜
 const MODEL = "gpt-5-mini";
+const TELEGRAM_LAMBDA_FUNCTION_NAME = process.env.TELEGRAM_LAMBDA_FUNCTION_NAME || 'notify_admin';
+
+const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
 
 interface RequestBody {
     message?: string;
@@ -67,6 +71,25 @@ export const handler = awslambda.streamifyResponse(
                     // AI の最終レスポンスをログ出力
                     console.info("🤖 AI最終レスポンス:", chunk.part.text);
                     
+                    // needs_human_operatorの確認と別Lambda呼び出し
+                    try {
+                        const aiResponse = JSON.parse(chunk.part.text);
+                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator) {
+                            console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
+                            // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
+                            invokeTelegramLambda({
+                                roomId: roomId || 'unknown',
+                                userMessage,
+                                inquirySummary: aiResponse.inquiry_summary_for_operator,
+                                currentLocation
+                            }).catch(error => {
+                                console.error("Telegram Lambda呼び出しエラー:", error);
+                            });
+                        }
+                    } catch (parseError) {
+                        console.warn("AI レスポンスのJSON解析に失敗:", parseError);
+                    }
+                    
                     // 既存フロントが扱える形式（response.output_text.done）に正規化
                     responseStream.write("\n" + JSON.stringify({
                       type: "response.output_text.done",
@@ -77,6 +100,25 @@ export const handler = awslambda.streamifyResponse(
                     
                     // AI の最終レスポンスをログ出力
                     console.info("🤖 AI最終レスポンス:", chunk.text);
+                    
+                    // needs_human_operatorの確認と別Lambda呼び出し（こちらのパターンも対応）
+                    try {
+                        const aiResponse = JSON.parse(chunk.text);
+                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator) {
+                            console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
+                            // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
+                            invokeTelegramLambda({
+                                roomId: roomId || 'unknown',
+                                userMessage,
+                                inquirySummary: aiResponse.inquiry_summary_for_operator,
+                                currentLocation
+                            }).catch(error => {
+                                console.error("Telegram Lambda呼び出しエラー:", error);
+                            });
+                        }
+                    } catch (parseError) {
+                        console.warn("AI レスポンスのJSON解析に失敗:", parseError);
+                    }
                     
                     responseStream.write("\n" + JSON.stringify(chunk) + "\n");
                 }
@@ -92,3 +134,30 @@ export const handler = awslambda.streamifyResponse(
         }
     }
 );
+
+/**
+ * Telegram送信用Lambdaを非同期で呼び出し
+ */
+async function invokeTelegramLambda(params: {
+    roomId: string;
+    userMessage: string;
+    inquirySummary: string;
+    currentLocation?: string;
+}): Promise<void> {
+    const payload = {
+        roomId: params.roomId,
+        userMessage: params.userMessage,
+        inquirySummary: params.inquirySummary,
+        currentLocation: params.currentLocation,
+        timestamp: new Date().toISOString()
+    };
+
+    const command = new InvokeCommand({
+        FunctionName: TELEGRAM_LAMBDA_FUNCTION_NAME,
+        InvocationType: 'Event', // 非同期呼び出し
+        Payload: JSON.stringify(payload)
+    });
+
+    await lambdaClient.send(command);
+    console.info("✅ Telegram Lambda呼び出し完了:", TELEGRAM_LAMBDA_FUNCTION_NAME);
+}

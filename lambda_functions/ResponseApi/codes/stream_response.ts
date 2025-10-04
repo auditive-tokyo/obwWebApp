@@ -87,9 +87,17 @@ export async function* generateStreamResponse({
                                 type: "array",
                                 items: { type: "string" },
                                 description: "An array of absolute HTTPS image URLs relevant to the answer for display in the chat UI. If none are relevant, return an empty array []. Limit to at most 15."
+                            },
+                            needs_human_operator: {
+                                type: "boolean",
+                                description: "Whether this inquiry requires human operator assistance. Set to true for complex issues, complaints, emergencies, or situations that cannot be resolved through AI assistance alone."
+                            },
+                            inquiry_summary_for_operator: {
+                                type: "string",
+                                description: "A concise summary of the guest's inquiry for the human operator, formatted for Telegram messaging. Include key details like the issue type, guest's current situation, and any urgent actions needed. Return empty string \"\" if needs_human_operator is false."
                             }
                         },
-                        required: ["assistant_response_text", "reference_sources", "images"],
+                        required: ["assistant_response_text", "reference_sources", "images", "needs_human_operator", "inquiry_summary_for_operator"],
                         additionalProperties: false
                     }
                 }

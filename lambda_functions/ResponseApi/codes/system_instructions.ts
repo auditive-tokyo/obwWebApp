@@ -10,8 +10,25 @@ const JSON_OUTPUT_INSTRUCTION = `
 {
   "assistant_response_text": "回答本文（引用マーカーや参照番号を除くクリーンなテキスト）",
   "reference_sources": ["参照したファイル名やURL（なければ空配列）"],
-  "images": ["関連画像のHTTPS URL（なければ空配列、最大15個）"]
+  "images": ["関連画像のHTTPS URL（なければ空配列、最大15個）"],
+  "needs_human_operator": false/true,
+  "inquiry_summary_for_operator": "オペレーター向け問い合わせサマリー（needs_human_operatorがfalseの場合は空文字列）"
 }
+
+**オペレーター判断ルール**:
+- 以下の場合はneeds_human_operatorをtrueにする：
+  - 複雑な苦情やトラブル
+  - 緊急事態（火災、けが、盗難など）
+  - 施設の故障や設備不具合
+  - チェックイン/チェックアウトの深刻な問題
+  - AIでは解決困難な複雑な要望
+- inquiry_summary_for_operatorには、問題の種類、状況、緊急度を簡潔にまとめる
+`;
+
+const POLICY_INSTRUCTION = `
+ポリシー
+- ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
+- hallucination（事実に反する内容の生成）厳禁。
 `;
 
 /**
@@ -27,11 +44,7 @@ ${TOOL_USAGE_INSTRUCTION}
 
 ${JSON_OUTPUT_INSTRUCTION}
 
-ポリシー
-- ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
-- hallucination（事実に反する内容の生成）厳禁。
-- 情報源を明記する（「施設資料によると...」「最新の情報では...」）
-- 検索結果が見つからない場合は、その旨を明確に伝える。`;
+${POLICY_INSTRUCTION}`;
 }
 
 /**
@@ -71,11 +84,7 @@ ${TOOL_USAGE_INSTRUCTION}
 
 ${JSON_OUTPUT_INSTRUCTION}
 
-ポリシー
-- ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
-- hallucination（事実に反する内容の生成）厳禁。
-- 情報源を明記する（「施設資料によると...」「最新の情報では...」）
-- 検索結果が見つからない場合は、その旨を明確に伝える。`;
+${POLICY_INSTRUCTION}`;
 }
 
 /**
@@ -97,12 +106,7 @@ ${TOOL_USAGE_INSTRUCTION}
 
 ${JSON_OUTPUT_INSTRUCTION}
 
-ポリシー
-- ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
-- お客様の現在位置を考慮した、実用的な情報を提供する。
-- hallucination（事実に反する内容の生成）厳禁。
-- 情報源を明記する（「施設資料によると...」「最新の情報では...」「現在位置から...」）
-- 検索結果が見つからない場合は、その旨を明確に伝える。`;
+${POLICY_INSTRUCTION}
 }
 
 /**
@@ -120,12 +124,7 @@ ${TOOL_USAGE_INSTRUCTION}
 
 ${JSON_OUTPUT_INSTRUCTION}
 
-ポリシー
-- ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
-- お客様の現在位置を考慮した、実用的な情報を提供する。
-- hallucination（事実に反する内容の生成）厳禁。
-- 情報源を明記する（「施設資料によると...」「最新の情報では...」「現在位置から...」）
-- 検索結果が見つからない場合は、その旨を明確に伝える。`;
+${POLICY_INSTRUCTION}
 }
 
 /**
@@ -144,11 +143,7 @@ ${TOOL_USAGE_INSTRUCTION}
 
 ${JSON_OUTPUT_INSTRUCTION}
 
-ポリシー
-- ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
-- hallucination（事実に反する内容の生成）厳禁。
-- 情報源を明記する（「施設資料によると...」「最新の情報では...」）
-- 検索結果が見つからない場合は、その旨を明確に伝える。`;
+${POLICY_INSTRUCTION}`;
     }
 
     // 4パターンの分岐

@@ -4,7 +4,8 @@ on:
   push:
     branches: [main, feature/*]
     paths:
-      - 'lambda_functions/ResponseApi/codes/**'
+      - 'lambda_functions/ResponseApi/**'
+      - 'lambda_functions/SummarizeInquiry/**'
       - '.github/workflows/responseapi-deploy.yml'
       - 'template-responseapi-function.yaml'
   workflow_dispatch:
@@ -38,6 +39,8 @@ jobs:
         env:
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
+          TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
@@ -48,4 +51,6 @@ jobs:
             --parameter-overrides \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
+              TelegramBotToken="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
+              TelegramChatId="$TELEGRAM_CHAT_ID_FROM_SECRET" \
             --no-fail-on-empty-changeset

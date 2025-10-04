@@ -10,6 +10,14 @@ Parameters:
     Type: String
     Description: "OpenAI Vector Store ID"
     NoEcho: true
+  TelegramBotToken:
+    Type: String
+    Description: "Telegram Bot Token for notifications"
+    NoEcho: true
+  TelegramChatId:
+    Type: String
+    Description: "Telegram Chat ID for notifications"
+    NoEcho: true
 
 Resources:
   LayerForResponseAPI:
@@ -40,6 +48,14 @@ Resources:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+          TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt TelegramNotifierFunction.Arn
       Layers:
         - !Ref LayerForResponseAPI
     Metadata:
@@ -70,7 +86,52 @@ Resources:
         AllowCredentials: false
         MaxAge: 300
 
+  TelegramNotifierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: obw-telegram-notifier-function
+      CodeUri: lambda_functions/SummarizeInquiry/
+      Handler: handler.handler
+      Runtime: nodejs22.x
+      Timeout: 30
+      MemorySize: 256
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+          TELEGRAM_CHAT_ID: !Ref TelegramChatId
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/handler.ts
+        Target: es2023
+        Minify: false
+        Sourcemap: true
+
+  # ResponseAPI FunctionからTelegram Notifier Functionを呼び出す権限
+  TelegramNotifierInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TelegramNotifierFunction
+      Action: lambda:InvokeFunction
+      Principal: lambda.amazonaws.com
+      SourceArn: !GetAtt ResponseApiFunction.Arn
+
 Outputs:
   ChatFunctionUrl:
     Description: "Function URL for ResponseApiFunction"
     Value: !GetAtt ChatFunctionUrl.FunctionUrl
+  TelegramNotifierFunctionArn:
+    Description: "ARN of the Telegram Notifier Function"
+    Value: !GetAtt TelegramNotifierFunction.Arn
