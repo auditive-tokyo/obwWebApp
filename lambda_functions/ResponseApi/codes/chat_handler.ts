@@ -49,6 +49,9 @@ export const handler = awslambda.streamifyResponse(
             console.info("👤 ユーザーメッセージ:", userMessage);
             console.info("📍 位置情報:", currentLocation || 'なし');
 
+            // Telegram Lambda呼び出しの重複を防ぐフラグ
+            let telegramNotificationSent = false;
+
             for await (const chunk of generateStreamResponse({
                 userMessage,
                 model: MODEL,
@@ -71,11 +74,12 @@ export const handler = awslambda.streamifyResponse(
                     // AI の最終レスポンスをログ出力
                     console.info("🤖 AI最終レスポンス:", chunk.part.text);
                     
-                    // needs_human_operatorの確認と別Lambda呼び出し
+                    // needs_human_operatorの確認と別Lambda呼び出し（重複防止フラグ付き）
                     try {
                         const aiResponse = JSON.parse(chunk.part.text);
-                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator) {
+                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator && !telegramNotificationSent) {
                             console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
+                            telegramNotificationSent = true; // 重複防止フラグ
                             // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
                             invokeTelegramLambda({
                                 roomId: roomId || 'unknown',
@@ -101,11 +105,12 @@ export const handler = awslambda.streamifyResponse(
                     // AI の最終レスポンスをログ出力
                     console.info("🤖 AI最終レスポンス:", chunk.text);
                     
-                    // needs_human_operatorの確認と別Lambda呼び出し（こちらのパターンも対応）
+                    // needs_human_operatorの確認と別Lambda呼び出し（重複防止フラグ付き）
                     try {
                         const aiResponse = JSON.parse(chunk.text);
-                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator) {
+                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator && !telegramNotificationSent) {
                             console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
+                            telegramNotificationSent = true; // 重複防止フラグ
                             // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
                             invokeTelegramLambda({
                                 roomId: roomId || 'unknown',
