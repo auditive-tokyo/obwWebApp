@@ -16,13 +16,9 @@ const JSON_OUTPUT_INSTRUCTION = `
 }
 
 **オペレーター判断ルール**:
-- 以下の場合はneeds_human_operatorをtrueにする：
-  - 複雑な苦情やトラブル
-  - 緊急事態（火災、けが、盗難など）
-  - 施設の故障や設備不具合
-  - チェックイン/チェックアウトの深刻な問題
-  - AIでは解決困難な複雑な要望
-- inquiry_summary_for_operatorには、問題の種類、状況、緊急度を簡潔にまとめる
+- 複雑な問題や解決困難な場合は、まず最善を尽くして回答し、その上で「オペレーターにお繋ぎしますか？」と確認する
+- needs_human_operatorをtrueにするのは、ユーザーが「オペレーターに連絡してもらえますか？」の質問に「はい」と答えた場合のみ：
+- inquiry_summary_for_operatorには、ユーザーが同意した場合のみ、問題の種類、状況、緊急度を簡潔にまとめる
 `;
 
 const POLICY_INSTRUCTION = `

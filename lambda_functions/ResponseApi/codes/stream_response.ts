@@ -90,7 +90,7 @@ export async function* generateStreamResponse({
                             },
                             needs_human_operator: {
                                 type: "boolean",
-                                description: "Whether this inquiry requires human operator assistance. Set to true for complex issues, complaints, emergencies, or situations that cannot be resolved through AI assistance alone."
+                                description: "Set to true ONLY when the user explicitly requests human operator assistance or answers 'yes' to the question 'Would you like me to contact a human operator?'. Do NOT set to true automatically based on the complexity of the issue."
                             },
                             inquiry_summary_for_operator: {
                                 type: "string",
