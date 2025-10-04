@@ -119,7 +119,7 @@ Resources:
   RequestAccessFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: request-access-function
+      FunctionName: obw-request-access-function
       Handler: lambda_handler_request_access.lambda_handler
       Runtime: python3.13
       Timeout: 30
@@ -128,7 +128,6 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref GuestTableName
-          MAX_TOKEN_LIFETIME_HOURS: "1"
           SENDGRID_API_KEY: !Ref SendGridApiKey
       Policies:
         - DynamoDBCrudPolicy:
@@ -142,7 +141,7 @@ Resources:
   VerifyAccessTokenFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: verify-access-token-function
+      FunctionName: obw-verify-access-token-function
       Handler: lambda_handler_verify_access.lambda_handler
       Runtime: python3.13
       Timeout: 30
@@ -199,7 +198,7 @@ Resources:
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: admin-approve-guest-function
+      FunctionName: obw-admin-approve-guest-function
       CodeUri: lambda_functions/admin_approve_guest/
       Handler: lambda_handler_admin_approve_guest.lambda_handler
       Runtime: python3.13
