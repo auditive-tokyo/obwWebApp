@@ -68,6 +68,7 @@ Resources:
         AllowMethods:
           - POST
         AllowCredentials: false
+        MaxAge: 300
 
 Outputs:
   ChatFunctionUrl:
