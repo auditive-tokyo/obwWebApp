@@ -1,14 +1,14 @@
-name: Deploy Lambda Functions
+name: Deploy Twilio Functions
 
 on:
   push:
     branches: [main, feature/*]
-  paths:
-    - 'lambda_functions/ai_processing/**'
-    - 'lambda_functions/immediate-response/**'
-    - 'layers/twilio_functions_layer/**'
-    - '.github/workflows/twilio-functions.yml'
-    - 'template-twilio-functions.yaml'
+    paths:
+      - 'lambda_functions/ai_processing/**'
+      - 'lambda_functions/immediate-response/**'
+      - 'layers/twilio_functions_layer/**'
+      - '.github/workflows/twilio-functions.yml'
+      - 'template-twilio-functions.yaml'
   workflow_dispatch:
 
 jobs:
