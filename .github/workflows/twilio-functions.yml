@@ -1,0 +1,157 @@
+name: Deploy Lambda Functions
+
+on:
+  push:
+    branches: [main, feature/*]
+  paths:
+    - 'lambda_functions/ai_processing/**'
+    - 'lambda_functions/immediate-response/**'
+    - 'layers/twilio_functions_layer/**'
+    - '.github/workflows/twilio-functions.yml'
+    - 'template-twilio-functions.yaml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: obw-appsync-stack
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install AWS SAM CLI
+        run: pip install aws-sam-cli
+
+      - name: SAM Build
+        run: sam build --use-container --template-file template-twilio-functions.yaml
+
+      - name: SAM Deploy
+        env:
+          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
+          TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name obw-twilio-functions \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --parameter-overrides \
+              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
+              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
+              TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
+              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
+            --no-fail-on-empty-changeset
+
+      - name: Get Immediate Response Function URL from Alias
+        id: get_function_url
+        run: |
+          # エイリアス "live" 経由の Function URL を取得します
+          FUNCTION_URL=$(aws lambda get-function-url-config --function-name obw-immediate-response-function:live --query 'FunctionUrl' --output text)
+          echo "Function URL is: ${FUNCTION_URL}"
+          echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
+      
+      - name: Update CloudFormation Stack with Function URL 
+        env:
+          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
+          TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
+        run: |
+          echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
+
+          # sam deploy を再度実行して、Function URL をパラメータとして渡す
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name obw-twilio-functions \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              ImmediateResponseFunctionUrlParam="${{ steps.get_function_url.outputs.function_url }}" \
+              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
+              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
+              TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
+              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET"
+
+          aws cloudformation wait stack-update-complete --stack-name obw-twilio-functions
+
+      - name: Clean up old Lambda versions
+        run: |
+          # ImmediateResponseFunction の古いバージョンをクリーンアップ
+          IMMEDIATE_RESPONSE_FUNCTION_NAME="obw-immediate-response-function"
+          echo "Cleaning up old versions for $IMMEDIATE_RESPONSE_FUNCTION_NAME"
+          ALIASED_VERSION_IR=$(aws lambda get-alias --function-name "$IMMEDIATE_RESPONSE_FUNCTION_NAME" --name live --query 'FunctionVersion' --output text 2>/dev/null)
+
+          if [ -z "$ALIASED_VERSION_IR" ]; then
+            echo "Could not get 'live' alias version for $IMMEDIATE_RESPONSE_FUNCTION_NAME. Skipping cleanup."
+          else
+            echo "Version for 'live' alias of $IMMEDIATE_RESPONSE_FUNCTION_NAME: $ALIASED_VERSION_IR"
+            # $LATEST ではない、かつエイリアスされていないバージョンをリストアップして削除
+            aws lambda list-versions-by-function --function-name "$IMMEDIATE_RESPONSE_FUNCTION_NAME" --query "Versions[?Version!='\$LATEST'].Version" --output json | jq -r '.[]' | while read VERSION_TO_CHECK; do
+              if [ "$VERSION_TO_CHECK" != "$ALIASED_VERSION_IR" ]; then
+                echo "Deleting old version: $VERSION_TO_CHECK for $IMMEDIATE_RESPONSE_FUNCTION_NAME"
+                aws lambda delete-function --function-name "$IMMEDIATE_RESPONSE_FUNCTION_NAME" --qualifier "$VERSION_TO_CHECK" || echo "Warning: Failed to delete version $VERSION_TO_CHECK for $IMMEDIATE_RESPONSE_FUNCTION_NAME. It might have been already deleted or is in use by another alias."
+              else
+                echo "Keeping 'live' aliased version: $VERSION_TO_CHECK for $IMMEDIATE_RESPONSE_FUNCTION_NAME"
+              fi
+            done
+          fi
+
+          # Lambda レイヤーの古いバージョンをクリーンアップ
+          # CloudFormationスタックからレイヤー情報を取得
+          echo "Getting Lambda Layer information from CloudFormation stack"
+          LAYER_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name obw-twilio-functions --query "StackResources[?ResourceType=='AWS::Lambda::LayerVersion'].PhysicalResourceId" --output text)
+
+          for LAYER_ARN in $LAYER_RESOURCES; do
+            # ARNからレイヤー名を抽出
+            LAYER_NAME=$(echo $LAYER_ARN | cut -d: -f7)
+            echo "Found layer: $LAYER_NAME"
+            
+            # レイヤーの全バージョンを取得
+            LAYER_VERSIONS=$(aws lambda list-layer-versions --layer-name "$LAYER_NAME" --query 'LayerVersions[*].Version' --output json)
+            echo "All layer versions: $LAYER_VERSIONS"
+
+            # 最新バージョンを取得（バージョン番号が最も大きいもの）
+            LATEST_LAYER_VERSION=$(echo $LAYER_VERSIONS | jq 'max')
+            echo "Latest layer version: $LATEST_LAYER_VERSION"
+
+            # 最新バージョン以外を削除
+            if [ ! -z "$LATEST_LAYER_VERSION" ] && [ "$LATEST_LAYER_VERSION" != "null" ]; then
+              echo $LAYER_VERSIONS | jq '.[]' | while read VERSION_TO_CHECK; do
+                if [ "$VERSION_TO_CHECK" != "$LATEST_LAYER_VERSION" ]; then
+                  echo "Deleting old layer version: $VERSION_TO_CHECK for $LAYER_NAME"
+                  aws lambda delete-layer-version --layer-name "$LAYER_NAME" --version-number "$VERSION_TO_CHECK" || echo "Warning: Failed to delete layer version $VERSION_TO_CHECK for $LAYER_NAME."
+                else
+                  echo "Keeping latest version: $VERSION_TO_CHECK for $LAYER_NAME"
+                fi
+              done
+            else
+              echo "Could not determine latest version for layer $LAYER_NAME. Skipping cleanup."
+            fi
+          done
+
+          # レイヤーが見つからない場合は警告表示
+          if [ -z "$LAYER_RESOURCES" ]; then
+            echo "Warning: No Lambda Layers found in CloudFormation stack. Please check your CloudFormation template and deployment."
+          fi

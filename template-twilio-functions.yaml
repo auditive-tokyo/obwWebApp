@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Twilio Lambda functions for obwWebApp
+
+Parameters:
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+  OpenAiVectorStoreId:
+    Type: String
+    Description: "OpenAI Vector Store ID"
+    NoEcho: true
+  TwilioAccountSid:
+    Type: String
+    Description: "Twilio Account SID"
+    NoEcho: true
+  TwilioAuthToken:
+    Type: String
+    Description: "Twilio Auth Token"
+    NoEcho: true
+  AiProcessingLambdaFunctionName:
+    Type: String
+    Description: "Name of the AI Processing Lambda function"
+    Default: "obw-ai-processing-function"
+  # ImmediateResponseFunction の Function URL が Outputs から取得される場合、
+  # 最初は空文字をデフォルトにすることでエラーを防ぎ、後続のパイプラインで上書き
+  ImmediateResponseFunctionUrlParam:
+    Type: String
+    Description: "Function URL for Immediate Response, provided from Outputs"
+    Default: ""
+
+Resources:
+  # TwilioのLambda用レイヤー
+  TwilioFunctionLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: layer_for_obw
+      Description: Common libraries for obwWebApp (Twilio, OpenAI, lingual-manager, etc.)
+      ContentUri: layers/
+      CompatibleRuntimes:
+        - python3.13
+      CompatibleArchitectures:
+        - x86_64
+      LicenseInfo: 'Available under the MIT license.'
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: python3.13
+      BuildArchitecture: x86_64
+
+  # TwilioのLambda1
+  ImmediateResponseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Layers:
+        - !Ref TwilioFunctionLayer
+      FunctionName: obw-immediate-response-function
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 128
+      Architectures:
+        - x86_64
+      CodeUri: lambda_functions/immediate-response/
+      Handler: lambda_handler_immediate_response.lambda_handler
+      SnapStart:
+        ApplyOn: PublishedVersions
+      AutoPublishAlias: live
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins: [ "*" ]
+          AllowMethods: [ "POST" ]
+          AllowHeaders: [ "Content-Type" ]
+      Environment:
+        Variables:
+          AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AiProcessingLambdaFunctionName
+
+  # TwilioのLambda2
+  AiProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Layers:
+        - !Ref TwilioFunctionLayer
+      FunctionName: !Ref AiProcessingLambdaFunctionName
+      Runtime: python3.13
+      Timeout: 30
+      MemorySize: 1024
+      Architectures:
+        - x86_64
+      CodeUri: lambda_functions/ai_processing/
+      Handler: lambda_handler_ai_processing.lambda_handler
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+          TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
+          TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
+          LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam
+
+Outputs:
+  ImmediateResponseFunctionArn:
+    Description: "ARN for Immediate Response function"
+    Value: !GetAtt ImmediateResponseFunction.Arn
+  AiProcessingFunctionArn:
+    Description: "ARN for AI Processing function"
+    Value: !GetAtt AiProcessingFunction.Arn
