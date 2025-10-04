@@ -694,8 +694,6 @@ Resources:
     Properties:
       UserPoolId: !Ref AdminUserPool
       Username: obw-admin
-      TemporaryPassword: 2025StrongP@ss
-      MessageAction: SUPPRESS
 
   RequestAccessResolver:
     Condition: DoLambdaIntegration
