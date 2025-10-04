@@ -112,6 +112,8 @@ jobs:
 
       - name: SAM Deploy
         env:
+          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}
@@ -123,6 +125,8 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
+              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
+              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               GuestTableName="${{ steps.get_guest_table_name.outputs.guest_table_name }}" \
               TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
               TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
@@ -172,6 +176,8 @@ jobs:
       
       - name: Update CloudFormation Stack with Function URL 
         env:
+          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}  # ← 追加
@@ -190,8 +196,6 @@ jobs:
               ImmediateResponseFunctionUrlParam="${{ steps.get_function_url.outputs.function_url }}" \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
-              TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
               TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
               TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
               SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET"

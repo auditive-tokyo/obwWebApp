@@ -12,6 +12,13 @@ Globals:
       - x86_64
 
 Parameters:
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+  OpenAiVectorStoreId:
+    Type: String
+    Description: "OpenAI Vector Store ID"
+    NoEcho: true
   GuestTableName:
     Type: String
     Description: "DynamoDB guest table name (from AppSync stack)"
