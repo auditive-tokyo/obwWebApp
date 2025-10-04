@@ -100,9 +100,26 @@ jobs:
 
       - name: Enable Lambda integration in AppSync
         run: |
+          # Get Lambda ARNs from CloudFormation exports
+          REQUEST_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-RequestAccessFunctionArn'].Value" --output text)
+          VERIFY_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-VerifyAccessTokenFunctionArn'].Value" --output text)
+          PRESIGNED_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-GetPresignedUrlFunctionArn'].Value" --output text)
+          APPROVE_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-AdminApproveGuestFunctionArn'].Value" --output text)
+          
+          echo "Enabling Lambda integration with ARNs:"
+          echo "RequestAccessFunctionArn=${REQUEST_ARN}"
+          echo "VerifyAccessTokenFunctionArn=${VERIFY_ARN}"
+          echo "GetPresignedUrlFunctionArn=${PRESIGNED_ARN}"
+          echo "AdminApproveGuestFunctionArn=${APPROVE_ARN}"
+          
           aws cloudformation deploy \
             --template-file template-infra-appsync.yaml \
             --stack-name obw-infra-appsync \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides EnableLambdaIntegration=true \
+            --parameter-overrides \
+              EnableLambdaIntegration=true \
+              RequestAccessFunctionArn=${REQUEST_ARN} \
+              VerifyAccessTokenFunctionArn=${VERIFY_ARN} \
+              GetPresignedUrlFunctionArn=${PRESIGNED_ARN} \
+              AdminApproveGuestFunctionArn=${APPROVE_ARN} \
             --no-fail-on-empty-changeset
