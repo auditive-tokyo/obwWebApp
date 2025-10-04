@@ -6,7 +6,7 @@ on:
     paths:
       - 'lambda_functions/ai_processing/**'
       - 'lambda_functions/immediate-response/**'
-      - 'layers/twilio_functions_layer/**'
+      - 'layers/twilio_functions/**'
       - '.github/workflows/twilio-functions.yml'
       - 'template-twilio-functions.yaml'
   workflow_dispatch:

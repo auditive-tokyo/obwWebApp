@@ -36,7 +36,7 @@ Resources:
     Properties:
       LayerName: layer_for_obw
       Description: Common libraries for obwWebApp (Twilio, OpenAI, lingual-manager, etc.)
-      ContentUri: layers/
+      ContentUri: layers/twilio_functions/
       CompatibleRuntimes:
         - python3.13
       CompatibleArchitectures:
