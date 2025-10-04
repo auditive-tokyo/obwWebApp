@@ -248,7 +248,7 @@ Resources:
     Type: AWS::AppSync::DataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
-      Name: obw-guest-checkin-table
+      Name: obw_guest_table
       Type: AMAZON_DYNAMODB
       ServiceRoleArn: !GetAtt AppSyncDynamoDBRole.Arn
       DynamoDBConfig:
@@ -336,7 +336,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: createGuest
-      DataSourceName: obw-guest-checkin-table
+      DataSourceName: obw_guest_table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -376,7 +376,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: updateGuest
-      DataSourceName: obw-guest-checkin-table
+      DataSourceName: obw_guest_table
       RequestMappingTemplate: |
         #set($setExp = "SET #updatedAt = :updatedAt")
         #set($removeExp = "")
@@ -492,7 +492,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: getGuest
-      DataSourceName: obw-guest-checkin-table
+      DataSourceName: obw_guest_table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -514,7 +514,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByRoom
-      DataSourceName: obw-guest-checkin-table
+      DataSourceName: obw_guest_table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -538,7 +538,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByBooking
-      DataSourceName: obw-guest-checkin-table
+      DataSourceName: obw_guest_table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -563,7 +563,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByApprovalStatus
-      DataSourceName: obw-guest-checkin-table
+      DataSourceName: obw_guest_table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
