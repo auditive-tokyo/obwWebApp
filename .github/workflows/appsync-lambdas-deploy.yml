@@ -44,7 +44,7 @@ jobs:
           if ! aws cloudformation describe-stacks --stack-name obw-infra-appsync >/dev/null 2>&1; then
             echo "obw-infra-appsync not found. Deploying base stack..."
             aws cloudformation deploy \
-              --template-file obw_react_app/infrastructure/cloudformation.yaml \
+              --template-file template-infra-appsync.yaml \
               --stack-name obw-infra-appsync \
               --capabilities CAPABILITY_NAMED_IAM \
               --parameter-overrides EnableLambdaIntegration=false \
@@ -56,7 +56,7 @@ jobs:
       - name: Force disable Lambda integration in AppSync (idempotent)
         run: |
           aws cloudformation deploy \
-            --template-file obw_react_app/infrastructure/cloudformation.yaml \
+            --template-file template-infra-appsync.yaml \
             --stack-name obw-infra-appsync \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides EnableLambdaIntegration=false \
@@ -110,7 +110,7 @@ jobs:
       - name: Enable Lambda integration in AppSync
         run: |
           aws cloudformation deploy \
-            --template-file obw_react_app/infrastructure/cloudformation.yaml \
+            --template-file template-infra-appsync.yaml \
             --stack-name obw-infra-appsync \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides EnableLambdaIntegration=true \
