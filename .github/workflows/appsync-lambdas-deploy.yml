@@ -53,15 +53,6 @@ jobs:
             echo "obw-infra-appsync exists. Skipping base deploy."
           fi
 
-      - name: Force disable Lambda integration in AppSync (idempotent)
-        run: |
-          aws cloudformation deploy \
-            --template-file template-infra-appsync.yaml \
-            --stack-name obw-infra-appsync \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides EnableLambdaIntegration=false \
-            --no-fail-on-empty-changeset
-
       - name: SAM Build
         run: sam build --use-container --template-file template-appsync-lambdas.yaml
 
