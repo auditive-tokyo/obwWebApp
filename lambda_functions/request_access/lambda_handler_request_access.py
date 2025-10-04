@@ -85,15 +85,19 @@ def build_email_body(lang: str, link: str) -> str:
     )
 
 # SMS本文生成（短縮）
+# 注意: 日本の通信キャリアはSender IDをサポートしていないため、
+# メッセージの冒頭に施設名を明記して識別しやすくしています
 def build_sms(lang: str, link: str) -> str:
     if lang == 'ja':
         return (
-            f"【Osaka Bay Wheel】ご宿泊ありがとうございます。"
-            f"こちらのリンクより安全に本人確認書類をアップロードいただけます: {link}"
+            f"【Osaka Bay Wheel】\n"
+            f"ご宿泊ありがとうございます。\n"
+            f"本人確認書類アップロード: {link}"
         )
     return (
-        f"[Osaka Bay Wheel] Thank you for staying with us. "
-        f"Please securely upload your ID via this link: {link}"
+        f"[Osaka Bay Wheel]\n"
+        f"Thank you for staying with us.\n"
+        f"Upload ID: {link}"
     )
 
 def lambda_handler(event, context):
