@@ -25,7 +25,7 @@ jobs:
           role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
           aws-region: ap-northeast-1
 
-      - name: Deploy CloudFormation stack (AppSync dynamic)
+      - name: Deploy Infra-AppSync
         run: |
           set -e
           
