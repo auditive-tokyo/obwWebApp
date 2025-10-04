@@ -275,11 +275,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource:
-                  - !Ref RequestAccessFunctionArn
-                  - !Ref VerifyAccessTokenFunctionArn
-                  - !Ref GetPresignedUrlFunctionArn
-                  - !Ref AdminApproveGuestFunctionArn
+                Resource: "*"
 
   RequestAccessLambdaDataSource:
     Condition: DoLambdaIntegration
