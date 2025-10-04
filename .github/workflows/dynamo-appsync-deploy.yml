@@ -1,0 +1,87 @@
+name: Deploy Infrastructure
+
+on:
+  # workflow_run: # 本番ではコメントアウト外して、Lambdaのデプロイが完了したら実行
+  #   workflows: ["Deploy Lambda Functions"]
+  #   types: [completed]
+  push:
+    branches: [main, feature/*] # 本番では main ブランチを使用
+    paths:
+      - 'cloudformation.yaml'
+      - '.github/workflows/dynamo-appsync-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-infra:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: obw-appsync-stack
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Deploy CloudFormation stack (AppSync dynamic)
+        run: |
+          set -e
+          
+          # Check if Lambda function exports exist
+          COUNT=$(aws cloudformation list-exports \
+            --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn' || Name=='Obw-AdminApproveGuestFunctionArn'])" \
+            --output text || echo 0)
+          
+          if [ "$COUNT" -ge 4 ]; then
+            FLAG=true
+            # Get Lambda ARNs from CloudFormation exports
+            REQUEST_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-RequestAccessFunctionArn'].Value" --output text)
+            VERIFY_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-VerifyAccessTokenFunctionArn'].Value" --output text)
+            PRESIGNED_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-GetPresignedUrlFunctionArn'].Value" --output text)
+            APPROVE_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-AdminApproveGuestFunctionArn'].Value" --output text)
+            
+            echo "EnableLambdaIntegration=${FLAG}"
+            echo "RequestAccessFunctionArn=${REQUEST_ARN}"
+            echo "VerifyAccessTokenFunctionArn=${VERIFY_ARN}"
+            echo "GetPresignedUrlFunctionArn=${PRESIGNED_ARN}"
+            echo "AdminApproveGuestFunctionArn=${APPROVE_ARN}"
+            
+            aws cloudformation deploy \
+              --template-file cloudformation.yaml \
+              --stack-name obw-appsync-stack \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --parameter-overrides \
+                EnableLambdaIntegration=${FLAG} \
+                RequestAccessFunctionArn=${REQUEST_ARN} \
+                VerifyAccessTokenFunctionArn=${VERIFY_ARN} \
+                GetPresignedUrlFunctionArn=${PRESIGNED_ARN} \
+                AdminApproveGuestFunctionArn=${APPROVE_ARN} \
+              --no-fail-on-empty-changeset
+          else
+            FLAG=false
+            echo "EnableLambdaIntegration=${FLAG} (Lambda functions not yet deployed)"
+            
+            aws cloudformation deploy \
+              --template-file cloudformation.yaml \
+              --stack-name obw-appsync-stack \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --parameter-overrides EnableLambdaIntegration=${FLAG} \
+              --no-fail-on-empty-changeset
+          fi
+
+      - name: Show stack events on failure
+        if: failure()
+        run: aws cloudformation describe-stack-events --stack-name obw-appsync-stack --max-items 50
+
+      - name: List AppSync data sources (debug)
+        run: |
+          API_ID=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack \
+            --query "Stacks[0].Outputs[?OutputKey=='AppSyncApiId'].OutputValue" --output text)
+          aws appsync list-data-sources --api-id "$API_ID"
