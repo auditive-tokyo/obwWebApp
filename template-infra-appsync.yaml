@@ -40,7 +40,7 @@ Resources:
   AppSyncApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
-      Name: GuestCheckinAPI
+      Name: obw-guest-checkin-api
       AuthenticationType: AWS_IAM
       AdditionalAuthenticationProviders:
         - AuthenticationType: AMAZON_COGNITO_USER_POOLS
@@ -128,7 +128,7 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: pendingVerificationTtl
         Enabled: true
-      TableName: guest
+      TableName: obw-guest
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
 
@@ -248,7 +248,7 @@ Resources:
     Type: AWS::AppSync::DataSource
     Properties:
       ApiId: !GetAtt AppSyncApi.ApiId
-      Name: guestcheckintable
+      Name: obw-guest-checkin-table
       Type: AMAZON_DYNAMODB
       ServiceRoleArn: !GetAtt AppSyncDynamoDBRole.Arn
       DynamoDBConfig:
@@ -336,7 +336,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: createGuest
-      DataSourceName: guestcheckintable
+      DataSourceName: obw-guest-checkin-table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -376,7 +376,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Mutation
       FieldName: updateGuest
-      DataSourceName: guestcheckintable
+      DataSourceName: obw-guest-checkin-table
       RequestMappingTemplate: |
         #set($setExp = "SET #updatedAt = :updatedAt")
         #set($removeExp = "")
@@ -492,7 +492,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: getGuest
-      DataSourceName: guestcheckintable
+      DataSourceName: obw-guest-checkin-table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -514,7 +514,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByRoom
-      DataSourceName: guestcheckintable
+      DataSourceName: obw-guest-checkin-table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -538,7 +538,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByBooking
-      DataSourceName: guestcheckintable
+      DataSourceName: obw-guest-checkin-table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -563,7 +563,7 @@ Resources:
       ApiId: !GetAtt AppSyncApi.ApiId
       TypeName: Query
       FieldName: listGuestsByApprovalStatus
-      DataSourceName: guestcheckintable
+      DataSourceName: obw-guest-checkin-table
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
@@ -650,7 +650,7 @@ Resources:
     Properties:
       UserPoolName: obw-admin-userpool
       MfaConfiguration: 'OFF'
-      DeletionProtection: ACTIVE
+      DeletionProtection: INACTIVE
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
       Policies:
@@ -688,6 +688,14 @@ Resources:
     Properties:
       Domain: !Ref AdminCognitoDomainPrefix
       UserPoolId: !Ref AdminUserPool
+
+  AdminUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref AdminUserPool
+      Username: obw-admin
+      TemporaryPassword: 2025StrongP@ss
+      MessageAction: SUPPRESS
 
   RequestAccessResolver:
     Condition: DoLambdaIntegration

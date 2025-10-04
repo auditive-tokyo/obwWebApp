@@ -1,14 +1,11 @@
-name: Deploy Infrastructure
+name: Deploy AppSync Infrastructure
 
 on:
-  # workflow_run: # 本番ではコメントアウト外して、Lambdaのデプロイが完了したら実行
-  #   workflows: ["Deploy Lambda Functions"]
-  #   types: [completed]
   push:
-    branches: [main, feature/*] # 本番では main ブランチを使用
+    branches: [main, feature/*]
     paths:
-      - 'cloudformation.yaml'
-      - '.github/workflows/dynamo-appsync-deploy.yml'
+      - 'template-infra-appsync.yaml'
+      - '.github/workflows/infra-appsync-deploy.yml'
   workflow_dispatch:
 
 jobs:
@@ -17,9 +14,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    concurrency:
-      group: obw-appsync-stack
-      cancel-in-progress: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,8 +49,8 @@ jobs:
             echo "AdminApproveGuestFunctionArn=${APPROVE_ARN}"
             
             aws cloudformation deploy \
-              --template-file cloudformation.yaml \
-              --stack-name obw-appsync-stack \
+              --template-file template-infra-appsync.yaml \
+              --stack-name obw-infra-appsync \
               --capabilities CAPABILITY_NAMED_IAM \
               --parameter-overrides \
                 EnableLambdaIntegration=${FLAG} \
@@ -69,8 +64,8 @@ jobs:
             echo "EnableLambdaIntegration=${FLAG} (Lambda functions not yet deployed)"
             
             aws cloudformation deploy \
-              --template-file cloudformation.yaml \
-              --stack-name obw-appsync-stack \
+              --template-file template-infra-appsync.yaml \
+              --stack-name obw-infra-appsync \
               --capabilities CAPABILITY_NAMED_IAM \
               --parameter-overrides EnableLambdaIntegration=${FLAG} \
               --no-fail-on-empty-changeset
@@ -78,10 +73,10 @@ jobs:
 
       - name: Show stack events on failure
         if: failure()
-        run: aws cloudformation describe-stack-events --stack-name obw-appsync-stack --max-items 50
+        run: aws cloudformation describe-stack-events --stack-name obw-infra-appsync --max-items 50
 
       - name: List AppSync data sources (debug)
         run: |
-          API_ID=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack \
+          API_ID=$(aws cloudformation describe-stacks --stack-name obw-infra-appsync \
             --query "Stacks[0].Outputs[?OutputKey=='AppSyncApiId'].OutputValue" --output text)
           aws appsync list-data-sources --api-id "$API_ID"
