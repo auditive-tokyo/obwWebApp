@@ -1,0 +1,51 @@
+name: Deploy ResponseAPI Functions
+
+on:
+  push:
+    branches: [main, feature/*]
+    paths:
+      - 'lambda_functions/ResponseApi/codes/**'
+      - '.github/workflows/responseapi-deploy.yml'
+      - 'template-responseapi-function.yaml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM Build
+        run: sam build --use-container --template-file template-responseapi-function.yaml
+
+      - name: SAM Deploy
+        env:
+          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name obw-responseapi-function \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --parameter-overrides \
+              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
+              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
+            --no-fail-on-empty-changeset

@@ -45,7 +45,7 @@ jobs:
         run: |
           # AppSyncスタックからのVITE変数取得
           aws cloudformation describe-stacks \
-            --stack-name obw-appsync-stack \
+            --stack-name obw-infra-appsync \
             --query "Stacks[0].Outputs" \
             --output json > appsync_outputs.json
 

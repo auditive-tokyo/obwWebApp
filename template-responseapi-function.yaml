@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ResponseAPI Lambda functions for obwWebApp
+
+Parameters:
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+  OpenAiVectorStoreId:
+    Type: String
+    Description: "OpenAI Vector Store ID"
+    NoEcho: true
+
+Resources:
+  LayerForResponseAPI:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: response-api-layer
+      ContentUri: layers/ResponseApi/
+      CompatibleRuntimes:
+        - nodejs22.x
+      CompatibleArchitectures:
+        - x86_64
+    Metadata:
+      BuildMethod: nodejs22.x
+      BuildArchitecture: x86_64
+
+  ResponseApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: obw-response-api-function
+      CodeUri: lambda_functions/ResponseApi/codes/
+      Handler: chat_handler.handler
+      Runtime: nodejs22.x
+      Timeout: 30
+      MemorySize: 512
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+      Layers:
+        - !Ref LayerForResponseAPI
+
+  ChatFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt ResponseApiFunction.Arn
+      AuthType: NONE
+      InvokeMode: RESPONSE_STREAM
+      Cors:
+        AllowOrigins:
+          - http://localhost:5173 # TODO: テスト終わったら削除
+          - https://app.osakabaywheel.com
+        AllowHeaders:
+          - content-type
+        AllowMethods:
+          - POST
+        AllowCredentials: false
+
+Outputs:
+  ChatFunctionUrl:
+    Description: "Function URL for ResponseApiFunction"
+    Value: !GetAtt ChatFunctionUrl.FunctionUrl

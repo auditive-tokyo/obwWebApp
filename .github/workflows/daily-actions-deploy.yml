@@ -5,19 +5,16 @@ on:
     branches: [main, feature/*]
     paths:
       - 'lambda_functions/daily_records_cleanup/**'
-      - '.github/workflows/daily-actions.yml'
+      - '.github/workflows/daily-actions-deploy.yml'
       - 'template-daily-actions.yaml'
   workflow_dispatch:
 
 jobs:
-  deploy-daily-cleanup:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-    concurrency:
-      group: obw-daily-cleanup
-      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
@@ -44,7 +41,7 @@ jobs:
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
-            --stack-name obw-daily-cleanup \
+            --stack-name obw-daily-actions \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \

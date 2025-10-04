@@ -17,9 +17,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    concurrency:
-      group: obw-appsync-stack
-      cancel-in-progress: false
 
     steps:
       - name: Checkout main repository

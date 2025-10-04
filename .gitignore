@@ -38,3 +38,4 @@ venv/
 .aws-sam/
 .venv/
 vector_db_files/
+samconfig.toml

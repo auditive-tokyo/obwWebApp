@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Daily cleanup Lambda (removes expired approved guests and pending records)
+Description: Daily actions for obwWebApp
 
 Resources:
   DailyRecordsCleanupFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: daily-records-cleanup
+      FunctionName: obw-daily-records-cleanup
       Runtime: python3.13
       Handler: daily_records_cleanup.lambda_handler
       CodeUri: lambda_functions/daily_records_cleanup/
@@ -23,7 +23,7 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: cron(0 15 * * ? *)   # 00:00 JST (UTC+9)
-            Name: daily-records-cleanup-schedule
+            Name: obw-daily-records-cleanup-schedule
             Description: Run guest cleanup at 00:00 JST
             Enabled: true
 
