@@ -29,7 +29,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: obw-response-api-function
-      CodeUri: lambda_functions/ResponseApi/codes/
+      CodeUri: lambda_functions/ResponseApi/
       Handler: chat_handler.handler
       Runtime: nodejs22.x
       Timeout: 30
@@ -42,6 +42,16 @@ Resources:
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
       Layers:
         - !Ref LayerForResponseAPI
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - codes/chat_handler.ts
+        Target: es2023
+        Minify: false
+        Sourcemap: true
+        External:
+          - openai
 
   ChatFunctionUrl:
     Type: AWS::Lambda::Url
