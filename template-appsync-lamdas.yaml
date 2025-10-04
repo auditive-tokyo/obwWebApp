@@ -10,9 +10,6 @@ Globals:
       - x86_64
 
 Parameters:
-  GuestTableName:
-    Type: String
-    Description: "DynamoDB guest table name (from AppSync stack)"
   TelegramBotTokenParam:
     Type: String
     NoEcho: true
@@ -75,11 +72,11 @@ Resources:
       CodeUri: lambda_functions/request_access/
       Environment:
         Variables:
-          TABLE_NAME: !Ref GuestTableName
+          TABLE_NAME: !ImportValue Obw-GuestTableName
           SENDGRID_API_KEY: !Ref SendGridApiKey
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref GuestTableName
+            TableName: !ImportValue Obw-GuestTableName
         - Statement:
             - Effect: Allow
               Action:
@@ -97,12 +94,12 @@ Resources:
       CodeUri: lambda_functions/verify_access/
       Environment:
         Variables:
-          TABLE_NAME: !Ref GuestTableName
+          TABLE_NAME: !ImportValue Obw-GuestTableName
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref GuestTableName
+            TableName: !ImportValue Obw-GuestTableName
         - DynamoDBWritePolicy:
-            TableName: !Ref GuestTableName
+            TableName: !ImportValue Obw-GuestTableName
 
   # 管理者への通知Lambda
   NotifyAdminOnPendingFunction:
@@ -154,12 +151,12 @@ Resources:
       MemorySize: 128
       Environment:
         Variables:
-          TABLE_NAME: !Ref GuestTableName
+          TABLE_NAME: !ImportValue Obw-GuestTableName
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref GuestTableName
+            TableName: !ImportValue Obw-GuestTableName
         - DynamoDBWritePolicy:
-            TableName: !Ref GuestTableName
+            TableName: !ImportValue Obw-GuestTableName
 
 Outputs:
   PassportUploadBucketName:

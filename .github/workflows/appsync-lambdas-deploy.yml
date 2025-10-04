@@ -1,4 +1,4 @@
-name: Deploy Lambda Functions
+name: Deploy AppSync Lambda Functions
 
 on:
   push:
@@ -9,8 +9,8 @@ on:
       - 'lambda_functions/notify_admin/**'
       - 'lambda_functions/request_access/**'
       - 'lambda_functions/verify_access/**'
-      - '.github/workflows/lambda-deploy.yml'
-      - 'template-lambdas.yaml'
+      - '.github/workflows/appsync-lambdas-deploy.yml'
+      - 'template-appsync-lambdas.yaml'
   workflow_dispatch:
 
 jobs:
@@ -19,20 +19,10 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    concurrency:
-      group: obw-appsync-stack
-      cancel-in-progress: false
 
     steps:
       - name: Checkout main repository
         uses: actions/checkout@v4
-
-      - name: Checkout ServerlessResponseAPI repository
-        uses: actions/checkout@v4
-        with:
-          repository: auditive-tokyo/ServerlessResponseAPI
-          ref: OBW-Customized
-          path: external/ServerlessResponseAPI
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -45,89 +35,49 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Build ServerlessResponseAPI Lambda (TypeScript)
-        run: |
-          cd external/ServerlessResponseAPI
-          npm install
-          npm run build
-
-      - name: Build ServerlessResponseAPI Layer (Node.js)
-        run: |
-          cd external/ServerlessResponseAPI/layer
-          npm install
-
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
       - name: Ensure AppSync base stack exists (EnableLambdaIntegration=false)
         run: |
           set -e
-          if ! aws cloudformation describe-stacks --stack-name obw-appsync-stack >/dev/null 2>&1; then
-            echo "obw-appsync-stack not found. Deploying base stack..."
+          if ! aws cloudformation describe-stacks --stack-name obw-infra-appsync >/dev/null 2>&1; then
+            echo "obw-infra-appsync not found. Deploying base stack..."
             aws cloudformation deploy \
               --template-file obw_react_app/infrastructure/cloudformation.yaml \
-              --stack-name obw-appsync-stack \
+              --stack-name obw-infra-appsync \
               --capabilities CAPABILITY_NAMED_IAM \
               --parameter-overrides EnableLambdaIntegration=false \
               --no-fail-on-empty-changeset
           else
-            echo "obw-appsync-stack exists. Skipping base deploy."
+            echo "obw-infra-appsync exists. Skipping base deploy."
           fi
 
       - name: Force disable Lambda integration in AppSync (idempotent)
         run: |
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \
-            --stack-name obw-appsync-stack \
+            --stack-name obw-infra-appsync \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides EnableLambdaIntegration=false \
             --no-fail-on-empty-changeset
 
-      - name: Get GuestTableName from CloudFormation (Outputs or Exports)
-        id: get_guest_table_name
-        run: |
-          set -e
-          GUEST_TABLE_NAME=$(aws cloudformation describe-stacks \
-            --stack-name obw-appsync-stack \
-            --query "Stacks[0].Outputs[?OutputKey=='GuestTableName'].OutputValue" \
-            --output text || true)
-
-          if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
-            echo "Outputs not found. Trying Exports (Obw-GuestTableName)..."
-            GUEST_TABLE_NAME=$(aws cloudformation list-exports \
-              --query "Exports[?Name=='Obw-GuestTableName'].Value" \
-              --output text || true)
-          fi
-
-          if [ -z "$GUEST_TABLE_NAME" ] || [ "$GUEST_TABLE_NAME" = "None" ]; then
-            echo "GuestTableName not found. Ensure cloudformation.yaml has Outputs.GuestTableName and stack deployed." >&2
-            exit 1
-          fi
-
-          echo "GuestTableName is $GUEST_TABLE_NAME"
-          echo "guest_table_name=$GUEST_TABLE_NAME" >> $GITHUB_OUTPUT
-
       - name: SAM Build
-        run: sam build --use-container --template-file template-lambdas.yaml
+        run: sam build --use-container --template-file template-appsync-lambdas.yaml
 
       - name: SAM Deploy
         env:
-          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
-            --stack-name obw-lambda-functions \
+            --stack-name obw-appsync-lambdas \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
-              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
-              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
-              GuestTableName="${{ steps.get_guest_table_name.outputs.guest_table_name }}" \
               TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
               TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
               SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET" \
@@ -151,7 +101,7 @@ jobs:
       - name: Wait until AppSync stack is idle
         run: |
           for i in {1..20}; do
-            STATUS=$(aws cloudformation describe-stacks --stack-name obw-appsync-stack --query "Stacks[0].StackStatus" --output text || echo "")
+            STATUS=$(aws cloudformation describe-stacks --stack-name obw-infra-appsync --query "Stacks[0].StackStatus" --output text || echo "")
             echo "AppSync stack status: $STATUS"
             if [[ "$STATUS" != *"_IN_PROGRESS" ]]; then break; fi
             sleep 9
@@ -161,7 +111,7 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file obw_react_app/infrastructure/cloudformation.yaml \
-            --stack-name obw-appsync-stack \
+            --stack-name obw-infra-appsync \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides EnableLambdaIntegration=true \
             --no-fail-on-empty-changeset
