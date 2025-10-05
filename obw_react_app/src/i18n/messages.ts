@@ -39,6 +39,7 @@ type MessageKeys =
   | "submitting"
   | "sendLink"
   | "allFieldsRequired"
+  | "missingFieldsPrompt"
   | "sendFailed"
   | "emailLinkSent"
   | "smsLinkSent"
@@ -48,7 +49,6 @@ type MessageKeys =
   | "emailValidation"
   | "emailConsent"
   | "promoConsent"
-  | "address"
   | "addressLine1"
   | "addressLine1Placeholder"
   | "addressLine2"
@@ -149,6 +149,7 @@ type Messages = {
     submitting: string;
     sendLink: string;
     allFieldsRequired: string;
+    missingFieldsPrompt: string;
     sendFailed: string;
     emailLinkSent: string;
     smsLinkSent: string;
@@ -158,7 +159,6 @@ type Messages = {
     emailValidation: string;
     emailConsent: string;
     promoConsent: string;
-    address: string;
     addressLine1: string;
     addressLine1Placeholder: string;
     addressLine2: string;
@@ -261,6 +261,7 @@ const messages: Messages = {
     submitting: "送信中…",
     sendLink: "リンクを送信",
     allFieldsRequired: "お名前・Email・電話番号はすべて必須です",
+    missingFieldsPrompt: "以下の項目を入力してください：",
     sendFailed: "送信に失敗しました",
     emailLinkSent: "メールにアクセスリンクを送信しました。ご確認ください。",
     smsLinkSent: "SMSにアクセスリンクを送信しました。ご確認ください。",
@@ -270,7 +271,6 @@ const messages: Messages = {
     emailValidation: "正しいメールアドレスを入力してください",
     emailConsent: "最新情報をメールで受け取る",
     promoConsent: "プロモーションや特別割引、近隣イベント情報などをお送りします。\n受取りをご希望されない場合はチェックは外したままにして下さい。",
-    address: "住所",
     addressLine1: "住所1",
     addressLine1Placeholder: "住所1（番地・丁目・号など）",
     addressLine2: "住所2",
@@ -379,6 +379,7 @@ const messages: Messages = {
     submitting: "Submitting...",
     sendLink: "Send Link",
     allFieldsRequired: "Name, Email, and Phone number are all required",
+    missingFieldsPrompt: "Please complete the following fields:",
     sendFailed: "Failed to send",
     emailLinkSent: "Access link sent to your email. Please check your inbox.",
     smsLinkSent: "Access link sent to your SMS. Please check your messages.",
@@ -389,7 +390,6 @@ const messages: Messages = {
     emailValidation: "Please enter a valid email address.",
     emailConsent: "Receive updates via email",
     promoConsent: "We will send you promotions, special discounts, and local event information. \nIf you do not wish to receive these, please leave the checkbox unchecked.",
-    address: "Address",
     addressLine1: "Address Line 1",
     addressLine1Placeholder: "Address Line 1 (Street, Block, etc.)",
     addressLine2: "Address Line 2",
