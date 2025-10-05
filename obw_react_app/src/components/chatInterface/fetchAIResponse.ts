@@ -1,6 +1,12 @@
 import { saveResponseId, loadResponseId } from './utils';
 import { parse } from 'best-effort-json-parser';
 
+type OptionalUserInfo = {
+  representativeName?: string;
+  representativeEmail?: string;
+  representativePhone?: string;
+};
+
 export async function fetchAIResponseStream(
   message: string,
   roomId: string,
@@ -9,7 +15,8 @@ export async function fetchAIResponseStream(
   onDelta: (
     text: string | { assistant_response_text: string; reference_sources?: string[]; images?: string[] },
     isDone?: boolean
-  ) => void
+  ) => void,
+  userInfo?: OptionalUserInfo
 ): Promise<void> {
   let streamedText = "";
   let gotFinal = false;
@@ -21,7 +28,8 @@ export async function fetchAIResponseStream(
     previous_response_id, 
     roomId,
     approved,
-    currentLocation
+    currentLocation,
+    ...((userInfo && Object.keys(userInfo).length) ? { userInfo } : {})
   };
 
   const response = await fetch(url, {

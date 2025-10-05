@@ -16,6 +16,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   roomId, 
   approved, 
   currentLocation, 
+  representativeName,
+  representativeEmail,
+  representativePhone,
   messages, 
   setMessages, 
   nextId 
@@ -81,7 +84,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       roomId,
       approved,
       currentLocation,
-      handleStreamDelta
+      handleStreamDelta,
+      {
+        representativeName,
+        representativeEmail,
+        representativePhone,
+      }
     );
   }
 

@@ -9,7 +9,7 @@ const WELCOME_MESSAGES = {
   en: "Welcome to Osaka Bay Wheel WebApp."
 }
 
-const ChatWidget = ({ roomId, approved, currentLocation }: RoomProps) => {
+const ChatWidget = ({ roomId, approved, currentLocation, representativeName, representativeEmail, representativePhone }: RoomProps) => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     // 初期化時にウェルカムメッセージを設定
@@ -49,6 +49,9 @@ const ChatWidget = ({ roomId, approved, currentLocation }: RoomProps) => {
             roomId={roomId} 
             approved={approved} 
             currentLocation={currentLocation}
+            representativeName={representativeName}
+            representativeEmail={representativeEmail}
+            representativePhone={representativePhone}
             messages={messages}
             setMessages={setMessages}
             nextId={nextId}

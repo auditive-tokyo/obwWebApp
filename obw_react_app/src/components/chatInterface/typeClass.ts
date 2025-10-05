@@ -23,4 +23,7 @@ export type RoomProps = {
   roomId: string;
   approved: boolean;
   currentLocation?: string;
+  representativeName?: string;
+  representativeEmail?: string;
+  representativePhone?: string;
 };

@@ -575,6 +575,37 @@ export function RoomPageView(
             roomId={roomId || ''} 
             approved={isApproved}
             currentLocation={myCurrentLocation || undefined}
+
+            representativeName={(() => {
+              try {
+                const gid = localStorage.getItem('guestId');
+                if (gid && Array.isArray(guestSessions)) {
+                  const rep = guestSessions.find(g => g.guestId === gid);
+                  return rep?.guestName || name;
+                }
+              } catch {}
+              return name;
+            })()}
+            representativeEmail={(() => {
+              try {
+                const gid = localStorage.getItem('guestId');
+                if (gid && Array.isArray(guestSessions)) {
+                  const rep = guestSessions.find(g => g.guestId === gid);
+                  return rep?.email || email;
+                }
+              } catch {}
+              return email;
+            })()}
+            representativePhone={(() => {
+              try {
+                const gid = localStorage.getItem('guestId');
+                if (gid && Array.isArray(guestSessions)) {
+                  const rep = guestSessions.find(g => g.guestId === gid);
+                  return rep?.phone || phone;
+                }
+              } catch {}
+              return phone;
+            })()}
           />
         </div>
       </div>
