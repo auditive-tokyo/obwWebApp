@@ -159,6 +159,16 @@ export function RoomPageView(
     setShowGeoModal(false)
     if (handleSyncGeo) {
       await handleSyncGeo()
+      await refreshGuestSessions({ client, roomId, setGuestSessions })
+    }
+  }
+
+  // ステータスのみ更新
+  const handleStatusRefreshOnly = async () => {
+    try {
+      await refreshGuestSessions({ client, roomId, setGuestSessions })
+    } finally {
+      setShowGeoModal(false)
     }
   }
 
@@ -258,12 +268,12 @@ export function RoomPageView(
               ) : (
                 // 位置情報がない場合: 同期ボタン
                 <>
-                  <span className="text-xs text-gray-500">{getMessage("syncLocation")}</span>
+                  <span className="text-xs text-gray-500">{getMessage("updateStatus")}</span>
                   <button 
                     type="button"
                     onClick={() => setShowGeoModal(true)}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                    title={getMessage("syncLocation") as string}
+                    title={getMessage("updateStatus") as string}
                   >
                     <svg 
                       className="w-5 h-5" 
@@ -404,7 +414,7 @@ export function RoomPageView(
                 {getMessage(myCurrentLocation ? "locationResyncTitle" : "locationShareTitle")}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
-                {getMessage("locationShareMessage")}
+                {getMessage("statusUpdateMessage")}
               </p>
               <div className="flex gap-3 justify-end">
                 <button
@@ -412,14 +422,21 @@ export function RoomPageView(
                   onClick={() => setShowGeoModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  {getMessage("close")}
+                  {getMessage("cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStatusRefreshOnly}
+                  className="px-4 py-2 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  {getMessage("updateStatusOnly")}
                 </button>
                 <button
                   type="button"
                   onClick={handleGeoConfirm}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {getMessage(myCurrentLocation ? "resync" : "share")}
+                  {getMessage("shareLocation")}
                 </button>
               </div>
             </div>

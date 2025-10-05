@@ -81,14 +81,14 @@ type MessageKeys =
   | "whyWeAsk"
   | "securityIntro"
   | "currentLocation"
-  | "syncLocation"
+  | "updateStatus"
   | "unsyncLocation"
   | "locationInfo"
   | "locationShareTitle"
   | "locationResyncTitle"
-  | "locationShareMessage"
-  | "resync"
-  | "share"
+  | "statusUpdateMessage"
+  | "shareLocation"
+  | "updateStatusOnly"
   | "updatedAt"
   | "locationSyncSuccess"
   | "locationSyncError"
@@ -191,14 +191,14 @@ type Messages = {
     whyWeAsk: string;
     securityIntro: string;
     currentLocation: string;
-    syncLocation: string;
+    updateStatus: string;
     unsyncLocation: string;
     locationInfo: string;
     locationShareTitle: string;
     locationResyncTitle: string;
-    locationShareMessage: string;
-    resync: string;
-    share: string;
+    statusUpdateMessage: string;
+    shareLocation: string;
+    updateStatusOnly: string;
     updatedAt: string;
     locationSyncSuccess: string;
     locationSyncError: string;
@@ -312,21 +312,21 @@ const messages: Messages = {
     whyWeAsk: "この情報をお願いする理由",
     securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
     currentLocation: "現在地",
-    syncLocation: "現在地を同期",
+    updateStatus: "ステータス更新",
     unsyncLocation: "同期解除",
     locationInfo: "現在地情報",
-    locationShareTitle: "現在地の共有",
-    locationResyncTitle: "現在地の再同期",
-    locationShareMessage: "お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。",
-    resync: "再同期",
-    share: "共有する",
+    locationShareTitle: "現在地も共有しますか？",
+    locationResyncTitle: "現在地も再同期しますか？",
+    statusUpdateMessage: "ステータスを更新します。お客様の現在地を保存しますか？お客様の位置情報はサポートの目的においてのみ使用されます。",
+    shareLocation: "位置情報も共有",
+    updateStatusOnly: "ステータス更新",
     updatedAt: "更新日時",
     locationSyncSuccess: "位置情報の同期が完了しました。",
     locationSyncError: "位置情報の同期に失敗しました。",
     locationDeleteSuccess: "位置情報を削除しました。",
     locationDeleteError: "位置情報の削除に失敗しました。",
     pleaseRetryLater: "少し時間をおいてから再度お試しください。",
-    welcomeToGuestPage: "大阪ベイホイール ゲストページへようこそ",
+    welcomeToGuestPage: "大阪ベイウィール ゲストページへようこそ",
     smsLinkKeepSafe: "このリンクは大切に保管してください。",
     smsShareWarning: "同じ部屋に宿泊するご家族・ご友人以外には共有しないでください。",
     smsMultiDeviceInfo: "複数のデバイスやブラウザからアクセスする場合も、このリンクを開くことでセッションを復元できます。",
@@ -430,14 +430,14 @@ const messages: Messages = {
     whyWeAsk: "Why we ask for this information",
     securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
     currentLocation: "Current Location",
-    syncLocation: "Sync Location",
+    updateStatus: "Update Status",
     unsyncLocation: "Unsync",
     locationInfo: "Location Information",
-    locationShareTitle: "Share Current Location",
-    locationResyncTitle: "Re-sync Current Location",
-    locationShareMessage: "We can notify support of your current location. Your location information will only be used for support purposes.",
-    resync: "Re-sync",
-    share: "Share",
+    locationShareTitle: "Share Current Location?",
+    locationResyncTitle: "Re-sync Current Location?",
+    statusUpdateMessage: "We will update your status. Would you like to save your current location? Your location information will only be used for support purposes.",
+    shareLocation: "Share location",
+    updateStatusOnly: "Update status only",
     updatedAt: "Updated",
     locationSyncSuccess: "Location sync completed successfully.",
     locationSyncError: "Location sync failed.",
