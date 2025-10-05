@@ -13,6 +13,9 @@ interface GenerateStreamResponseParams {
     roomId?: string;
     approved?: boolean;
     currentLocation?: string;
+    representativeName?: string | null;
+    representativeEmail?: string | null;
+    representativePhone?: string | null;
 }
 
 export async function* generateStreamResponse({
@@ -21,16 +24,22 @@ export async function* generateStreamResponse({
     previousResponseId,
     roomId,
     approved,
-    currentLocation
+    currentLocation,
+    representativeName,
+    representativeEmail,
+    representativePhone
 }: GenerateStreamResponseParams): AsyncGenerator<any, void, unknown> {
     try {
         // システムプロンプトを動的生成
         const systemPrompt = getSystemPrompt(
             roomId || '', 
             approved || false, 
-            currentLocation ? currentLocation : undefined
+            currentLocation ? currentLocation : undefined,
+            representativeName ?? null,
+            representativeEmail ?? null,
+            representativePhone ?? null
         );
-        console.info("Generated system prompt for:", { roomId, approved, currentLocation });
+        console.info("Generated system prompt for:", { roomId, approved, currentLocation, representativeName, representativeEmail, representativePhone });
 
         let tools: any[] = [];
 

@@ -70,7 +70,10 @@ export const handler = awslambda.streamifyResponse(
                 previousResponseId,
                 roomId,
                 approved,
-                currentLocation
+                currentLocation,
+                representativeName,
+                representativeEmail,
+                representativePhone
             })) {
                 if (DEBUG) {
                     console.debug("OpenAI chunk:", chunk);

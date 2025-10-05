@@ -88,15 +88,13 @@ ${POLICY_INSTRUCTION}`;
  * - 部屋固有の機密情報（キーコードなど）にアクセス可能
  * - ユーザーの現在位置を考慮した回答が可能
  */
-function getApprovedWithLocationSystemPrompt(roomId: string, currentLocation: string): string {
+function getApprovedWithLocationSystemPrompt(roomId: string): string {
     const keyCode = calculateKeyCode(roomId);
     
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
 
 ${roomId}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : ${keyCode}
-
-**お客様の現在位置**: ${currentLocation}
 
 ${TOOL_USAGE_INSTRUCTION}
 
@@ -110,11 +108,9 @@ ${POLICY_INSTRUCTION}`;
  * - 一般的な質問のみ対応（キーコード情報なし）
  * - ユーザーの現在位置を考慮した回答が可能
  */
-function getUnapprovedWithLocationSystemPrompt(roomId: string, currentLocation: string): string {
+function getUnapprovedWithLocationSystemPrompt(roomId: string): string {
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
-
-**お客様の現在位置**: ${currentLocation}
 
 ${TOOL_USAGE_INSTRUCTION}
 
@@ -130,7 +126,14 @@ ${POLICY_INSTRUCTION}`;
  * @param currentLocation - お客様の現在位置（オプション）
  * @returns システムプロンプト文字列
  */
-export function getSystemPrompt(roomId: string, approved: boolean, currentLocation?: string): string {
+export function getSystemPrompt(
+    roomId: string,
+    approved: boolean,
+    currentLocation?: string,
+    representativeName?: string | null,
+    representativeEmail?: string | null,
+    representativePhone?: string | null
+): string {
     if (!roomId) {
         // roomIdがない場合（グローバルチャット）
         return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
@@ -142,18 +145,28 @@ ${JSON_OUTPUT_INSTRUCTION}
 ${POLICY_INSTRUCTION}`;
     }
 
-    // 4パターンの分岐
+    // 4パターンの分岐でベースのプロンプトを決定
+    let base = "";
     if (approved && currentLocation) {
-        // ① 承認済み + 位置情報あり（キーコード + 位置情報）
-        return getApprovedWithLocationSystemPrompt(roomId, currentLocation);
+        base = getApprovedWithLocationSystemPrompt(roomId);
     } else if (approved) {
-        // ② 承認済み + 位置情報なし（キーコードのみ）
-        return getApprovedSystemPrompt(roomId);
+        base = getApprovedSystemPrompt(roomId);
     } else if (currentLocation) {
-        // ③ 未承認 + 位置情報あり（位置情報のみ、キーコードなし）
-        return getUnapprovedWithLocationSystemPrompt(roomId, currentLocation);
+        base = getUnapprovedWithLocationSystemPrompt(roomId);
     } else {
-        // ④ 未承認 + 位置情報なし（基本情報のみ）
-        return getUnapprovedSystemPrompt(roomId);
+        base = getUnapprovedSystemPrompt(roomId);
     }
+
+    // お客様情報ブロックを追記（任意）
+    const customerLines: string[] = [];
+    if (representativeName) customerLines.push(`- お名前: ${representativeName}`);
+    if (representativePhone) customerLines.push(`- 電話番号: ${representativePhone}`);
+    if (representativeEmail) customerLines.push(`- Email: ${representativeEmail}`);
+    if (currentLocation) customerLines.push(`- 現在位置: ${currentLocation}`);
+
+    if (customerLines.length > 0) {
+        base += `\n\n**お客様情報**:\n${customerLines.join("\n")}`;
+    }
+
+    return base;
 }
