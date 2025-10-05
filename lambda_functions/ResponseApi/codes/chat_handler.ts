@@ -8,12 +8,19 @@ const TELEGRAM_LAMBDA_FUNCTION_NAME = process.env.TELEGRAM_LAMBDA_FUNCTION_NAME 
 
 const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
 
+interface UserInfo {
+    guestName?: string;
+    guestEmail?: string;
+    representativePhone?: string;
+}
+
 interface RequestBody {
     message?: string;
     previous_response_id?: string;
     roomId?: string;
     approved?: boolean;
     currentLocation?: string;
+    userInfo?: UserInfo;
 }
 
 // AWS Lambdaランタイムが提供するグローバル変数に型を適用
@@ -38,6 +45,10 @@ export const handler = awslambda.streamifyResponse(
             const roomId = body.roomId;
             const approved = body.approved;
             const currentLocation = body.currentLocation;
+            const userInfo = body.userInfo || {};
+            const guestName = userInfo.guestName || null;
+            const guestEmail = userInfo.guestEmail || null;
+            const representativePhone = userInfo.representativePhone || null;
 
             if (!userMessage) {
                 responseStream.write(JSON.stringify({ error: 'Message is required' }));
@@ -48,6 +59,7 @@ export const handler = awslambda.streamifyResponse(
             // ユーザーメッセージをログ出力
             console.info("👤 ユーザーメッセージ:", userMessage);
             console.info("📍 位置情報:", currentLocation || 'なし');
+            console.info("🧾 ゲスト情報:", { guestName, guestEmail, representativePhone });
 
             // Telegram Lambda呼び出しの重複を防ぐフラグ
             let telegramNotificationSent = false;
