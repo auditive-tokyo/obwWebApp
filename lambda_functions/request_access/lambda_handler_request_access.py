@@ -92,12 +92,14 @@ def build_sms(lang: str, link: str) -> str:
         return (
             f"【Osaka Bay Wheel】\n"
             f"ご宿泊ありがとうございます。\n"
-            f"本人確認書類アップロード: {link}"
+            f"こちらのリンクより安全に本人確認書類をアップロードいただけます:\n"
+            f"{link}"
         )
     return (
         f"[Osaka Bay Wheel]\n"
         f"Thank you for staying with us.\n"
-        f"Upload ID: {link}"
+        f"Please securely upload your ID via this link:\n"
+        f"{link}"
     )
 
 def lambda_handler(event, context):
