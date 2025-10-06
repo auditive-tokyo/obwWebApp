@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/api';
-import type { Guest, ApprovalStatus } from './adminpage/types/types';
+import type { Guest } from './adminpage/types/types';
 import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
 import { rejectGuest } from './handlers/rejectGuest';
 import { approveGuest } from './handlers/approveGuest';
+import { confirmApproveDialog, confirmRejectDialog } from './adminpage/components/Dialogs';
 import { fetchGuests } from './handlers/fetchGuests';
 import { updateGuest } from './handlers/updateGuest';
 import { DetailsModal } from './adminpage/components/detailsModal';
+import GuestList from './adminpage/components/GuestList';
+import FiltersBar from './adminpage/components/FiltersBar';
 
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
@@ -33,40 +36,23 @@ export default function AdminPage({ roomId }: AdminPageProps) {
   });
   
   const [statusFilter, setStatusFilter] = useState('pending')
+  const [bookingFilter, setBookingFilter] = useState('')
+  const [checkInFilter, setCheckInFilter] = useState('')
   const [detail, setDetail] = useState<Guest | null>(null)
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)
   const [signing, setSigning] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
 
-  // 部屋番号のプルダウン（シンプルに実際の部屋番号のみ）
-  const roomOptions = useMemo(() => {
-    const set = new Set<string>(all.map(g => g.roomNumber).filter(Boolean))
-    
-    // 2階〜8階の全部屋を追加（データがなくても選択可能にする）
-    for (let floor = 2; floor <= 8; floor++) {
-      for (let room = 1; room <= 4; room++) {
-        const roomNumber = `${floor}${String(room).padStart(2, '0')}`;
-        set.add(roomNumber);
-      }
-    }
-    
-    // 数値として正しくソート
-    return Array.from(set).sort((a, b) => {
-      const numA = parseInt(a, 10);
-      const numB = parseInt(b, 10);
-      return numA - numB;
-    });
-  }, [all])
+  // ... filters moved to FiltersBar component
 
-  const statusOptions: (ApprovalStatus | '')[] = [
-    '',  // フィルターなし を追加
-    'pending',
-    'waitingForBasicInfo', 
-    'waitingForPassportImage',
-    'approved',
-    'rejected'
-  ];
+  // clear bookingFilter when roomFilter changes
+  useEffect(() => {
+    setBookingFilter('');
+    setCheckInFilter('');
+  }, [roomFilter]);
+
+  // フィルター UI moved into FiltersBar component
 
   // フィルタリングロジック（空文字 = フィルターなし）
   const filteredGuests = useMemo(() => {
@@ -79,7 +65,7 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     })
 
     // チェックイン日優先ソート（修正箇所）
-    return [...base].sort((a, b) => {
+    const sorted = [...base].sort((a, b) => {
       // チェックイン日を最優先に
       const aDate = a.checkInDate || '';
       const bDate = b.checkInDate || '';
@@ -90,8 +76,21 @@ export default function AdminPage({ roomId }: AdminPageProps) {
       const bId = b.bookingId || '';
       if (aId !== bId) return aId.localeCompare(bId);
       return (a.guestName || '').localeCompare(b.guestName || '');
-    })
-  }, [all, roomFilter, statusFilter])
+    });
+
+    // チェックイン日で絞る（roomFilter が有効な場合のみ意味を持つ）
+    let post = sorted;
+    if (checkInFilter) {
+      post = post.filter(g => (g.checkInDate || '') === checkInFilter);
+    }
+
+    // bookingFilter が設定されていればさらに絞る（roomFilter/チェックインフィルターが有効な場合のみ意味を持つ）
+    if (bookingFilter) {
+      return post.filter(g => (g.bookingId || '') === bookingFilter);
+    }
+
+    return post;
+  }, [all, roomFilter, statusFilter, checkInFilter, bookingFilter])
 
   // データ読み込み関数を作成
   const loadData = useCallback(async () => {
@@ -139,33 +138,31 @@ export default function AdminPage({ roomId }: AdminPageProps) {
 
   // 承認前の確認ダイアログ
   const confirmApprove = async (g: Guest) => {
-    if (!g) return
-    const ok = window.confirm(`${g.guestName} を承認します。よろしいですか？`)
-    if (!ok) return
-    await approveGuest({
-      client,
-      guest: g,
-      detail,
-      setAll,
-      setDetail,
-      setSignedPassportUrl,
-      setApprovingId
+    await confirmApproveDialog(g, async () => {
+      await approveGuest({
+        client,
+        guest: g,
+        detail,
+        setAll,
+        setDetail,
+        setSignedPassportUrl,
+        setApprovingId
+      })
     })
   }
 
   // 拒否前の確認ダイアログ
   const confirmReject = async (g: Guest) => {
-    if (!g) return
-    const ok = window.confirm(`${g.guestName} を拒否します。よろしいですか？`)
-    if (!ok) return
-    await rejectGuest({
-      client,
-      guest: g,
-      detail,
-      setAll,
-      setDetail,
-      setSignedPassportUrl,
-      setRejectingId
+    await confirmRejectDialog(g, async () => {
+      await rejectGuest({
+        client,
+        guest: g,
+        detail,
+        setAll,
+        setDetail,
+        setSignedPassportUrl,
+        setRejectingId
+      })
     })
   }
 
@@ -208,29 +205,17 @@ export default function AdminPage({ roomId }: AdminPageProps) {
           {loading ? '更新中…' : '更新'}
         </button>
         
-        {/* 部屋フィルター */}
-        <select
-          style={{ marginLeft: 12 }}
-          value={roomFilter}
-          onChange={(e) => setRoomFilter(e.target.value)}
-        >
-          <option value="">フィルターなし</option>
-          {roomOptions.map(r => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
-        
-        {/* ステータスフィルター - フィルターなしを追加 */}
-        <select
-          style={{ marginLeft: 12 }}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">フィルターなし</option>
-          {statusOptions.slice(1).map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+        <FiltersBar
+          all={all}
+          roomFilter={roomFilter}
+          setRoomFilter={setRoomFilter}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          bookingFilter={bookingFilter}
+          setBookingFilter={setBookingFilter}
+          checkInFilter={checkInFilter}
+          setCheckInFilter={setCheckInFilter}
+        />
       </div>
 
       {/* 現在の状態表示を詳細に */}
@@ -240,67 +225,19 @@ export default function AdminPage({ roomId }: AdminPageProps) {
         Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}
       </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {!loading && filteredGuests.length === 0 && <p>該当するゲストはありません。</p>}
-
-      <ul>
-        {filteredGuests.map(g => (
-          <li
-            key={`${g.roomNumber}:${g.guestId}`}
-            style={{ marginBottom: 8, display: 'flex', alignItems: 'center' }}
-          >
-            <strong>Room {g.roomNumber}</strong> — {g.guestName}
-            {g.bookingId && <> ／ 予約ID: {g.bookingId}</>}
-            {g.checkInDate && g.checkOutDate && <> ／ 滞在: {g.checkInDate} ~ {g.checkOutDate}</>}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                style={{
-                  backgroundColor: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: 4,
-                  cursor: 'pointer'
-                }}
-                onClick={() => setDetail(g)}
-              >
-                詳細
-              </button>
-              <button
-                type="button"
-                style={{
-                  backgroundColor: '#2e7d32',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: 4,
-                  cursor: 'pointer'
-                }}
-                disabled={approvingId === g.guestId || rejectingId === g.guestId}
-                onClick={() => confirmApprove(g)}
-              >
-                {approvingId === g.guestId ? '承認中…' : '承認'}
-              </button>
-             <button
-               type="button"
-               style={{
-                 backgroundColor: '#c62828',
-                 color: '#fff',
-                 border: 'none',
-                 padding: '6px 12px',
-                 borderRadius: 4,
-                 cursor: 'pointer'
-               }}
-               disabled={rejectingId === g.guestId || approvingId === g.guestId}
-               onClick={() => confirmReject(g)}
-             >
-               {rejectingId === g.guestId ? '拒否中…' : '拒否'}
-             </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <GuestList
+        guests={filteredGuests}
+        loading={loading}
+        error={error}
+        roomFilter={roomFilter}
+        statusFilter={statusFilter}
+        roomId={roomId}
+        setDetail={setDetail}
+        approvingId={approvingId}
+        rejectingId={rejectingId}
+        confirmApprove={confirmApprove}
+        confirmReject={confirmReject}
+      />
 
       {/* 詳細モーダル */}
       {detail && (
