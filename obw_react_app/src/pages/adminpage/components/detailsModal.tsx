@@ -25,7 +25,6 @@ export function DetailsModal({
   confirmReject,
   onUpdate
 }: Props) {
-  if (!detail) return null;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Guest>(detail);

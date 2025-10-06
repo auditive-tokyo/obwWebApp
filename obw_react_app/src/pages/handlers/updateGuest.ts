@@ -1,6 +1,8 @@
 import type { Guest } from '../adminpage/types/types';
 
 interface UpdateGuestParams {
+  // The Amplify-generated client shape is complex; suppress the explicit-any rule here
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any;
   guest: Guest;
   onSuccess?: () => void;

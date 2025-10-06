@@ -4,9 +4,6 @@ type Props = {
   guests: Guest[];
   loading: boolean;
   error: string | null;
-  roomFilter: string;
-  statusFilter: string;
-  roomId?: string;
   setDetail: (g: Guest) => void;
   approvingId: string | null;
   rejectingId: string | null;
@@ -18,9 +15,6 @@ export function GuestList({
   guests,
   loading,
   error,
-  roomFilter,
-  statusFilter,
-  roomId,
   setDetail,
   approvingId,
   rejectingId,
@@ -29,13 +23,6 @@ export function GuestList({
 }: Props) {
   return (
     <>
-      {/* 現在の状態表示を詳細に */}
-      <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
-        表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}
-        <br />
-        Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}
-      </div>
-
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {!loading && guests.length === 0 && <p>該当するゲストはありません。</p>}
 

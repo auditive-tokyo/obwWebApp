@@ -10,6 +10,8 @@ import { updateGuest } from './handlers/updateGuest';
 import { DetailsModal } from './adminpage/components/detailsModal';
 import GuestList from './adminpage/components/GuestList';
 import FiltersBar from './adminpage/components/FiltersBar';
+import { computeFilteredGuests } from './adminpage/utils/guestFilters';
+import BulkChangeButton from './adminpage/components/BulkChangeButton';
 
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
@@ -43,8 +45,7 @@ export default function AdminPage({ roomId }: AdminPageProps) {
   const [signing, setSigning] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
-
-  // ... filters moved to FiltersBar component
+  const [bulkProcessing, setBulkProcessing] = useState(false)
 
   // clear bookingFilter when roomFilter changes
   useEffect(() => {
@@ -52,45 +53,15 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     setCheckInFilter('');
   }, [roomFilter]);
 
-  // フィルター UI moved into FiltersBar component
-
-  // フィルタリングロジック（空文字 = フィルターなし）
+  // フィルタリングロジック
   const filteredGuests = useMemo(() => {
-    const sf = (statusFilter || '').toLowerCase()
-    const base = all.filter(g => {
-      const st = (g.approvalStatus || '').trim().toLowerCase()
-      const statusOk = !sf || st === sf
-      const roomOk = !roomFilter || g.roomNumber === roomFilter  // 空文字なら全部OK
-      return statusOk && roomOk
-    })
-
-    // チェックイン日優先ソート（修正箇所）
-    const sorted = [...base].sort((a, b) => {
-      // チェックイン日を最優先に
-      const aDate = a.checkInDate || '';
-      const bDate = b.checkInDate || '';
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
-      
-      // 同じチェックイン日なら予約ID → 氏名順
-      const aId = a.bookingId || '';
-      const bId = b.bookingId || '';
-      if (aId !== bId) return aId.localeCompare(bId);
-      return (a.guestName || '').localeCompare(b.guestName || '');
+    return computeFilteredGuests(all, {
+      roomFilter, statusFilter, checkInFilter, bookingFilter
     });
+  }, [all, roomFilter, statusFilter, checkInFilter, bookingFilter]);
 
-    // チェックイン日で絞る（roomFilter が有効な場合のみ意味を持つ）
-    let post = sorted;
-    if (checkInFilter) {
-      post = post.filter(g => (g.checkInDate || '') === checkInFilter);
-    }
-
-    // bookingFilter が設定されていればさらに絞る（roomFilter/チェックインフィルターが有効な場合のみ意味を持つ）
-    if (bookingFilter) {
-      return post.filter(g => (g.bookingId || '') === bookingFilter);
-    }
-
-    return post;
-  }, [all, roomFilter, statusFilter, checkInFilter, bookingFilter])
+  // 宿泊日変更ボタンがアクティブになれる条件
+  const canBulk = Boolean(roomFilter && (checkInFilter || bookingFilter));
 
   // データ読み込み関数を作成
   const loadData = useCallback(async () => {
@@ -99,20 +70,15 @@ export default function AdminPage({ roomId }: AdminPageProps) {
       setAll, 
       setLoading, 
       setError,
-      roomFilter: roomFilter || undefined,  // 空文字をundefinedに変換
+      roomFilter: roomFilter || undefined,
       statusFilter: statusFilter || undefined
     });
-  }, [roomFilter, statusFilter, client]);
+  }, [roomFilter, statusFilter]);
 
-  // 初回読み込み
+  // 初回読み込みおよびフィルター変更時の自動更新
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // フィルター変更時にも自動更新
-  useEffect(() => {
-    loadData();
-  }, [roomFilter, statusFilter]); // これを追加
 
   // ESCで閉じる
   useEffect(() => {
@@ -134,7 +100,7 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     } else {
       setSignedPassportUrl(null);
     }
-  }, [detail, client])
+  }, [detail])
 
   // 承認前の確認ダイアログ
   const confirmApprove = async (g: Guest) => {
@@ -142,7 +108,6 @@ export default function AdminPage({ roomId }: AdminPageProps) {
       await approveGuest({
         client,
         guest: g,
-        detail,
         setAll,
         setDetail,
         setSignedPassportUrl,
@@ -195,7 +160,11 @@ export default function AdminPage({ roomId }: AdminPageProps) {
 
   return (
     <div style={{ padding: '2rem' }}>
-      <h1>承認待ちリスト</h1>
+      {/* タイトル/サマリー（中央寄せ） */}
+      <div style={{ textAlign: 'center', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}</h3>
+        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}</div>
+      </div>
 
       <div style={{ marginBottom: 12 }}>
         <button
@@ -216,22 +185,73 @@ export default function AdminPage({ roomId }: AdminPageProps) {
           checkInFilter={checkInFilter}
           setCheckInFilter={setCheckInFilter}
         />
+
+        {/* 宿泊日変更ボタン：UI を分離したコンポーネントに置換 */}
+        <BulkChangeButton
+          canBulk={canBulk}
+          bulkProcessing={bulkProcessing}
+          title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
+          onClick={async () => {
+            if (!canBulk) return;
+            // prompt for new dates
+            const newCheckIn = window.prompt('新しいチェックイン日を入力してください (YYYY-MM-DD)', '');
+            if (!newCheckIn) return;
+            const newCheckOut = window.prompt('新しいチェックアウト日を入力してください (YYYY-MM-DD)', '');
+            if (!newCheckOut) return;
+
+            // affected guests are those currently filtered
+            const affected = filteredGuests;
+            if (!affected || affected.length === 0) {
+              alert('該当するゲストがいません。');
+              return;
+            }
+
+            if (!confirm(`${affected.length} 件のゲストの宿泊日を ${newCheckIn} ～ ${newCheckOut} に変更します。よろしいですか？`)) return;
+
+            setBulkProcessing(true);
+            let success = 0;
+            let fail = 0;
+
+            for (const g of affected) {
+              const updatedGuest: Guest = { ...g, checkInDate: newCheckIn, checkOutDate: newCheckOut };
+              try {
+                // call low-level updateGuest handler but suppress per-item alerts
+                // we await each one to keep rate reasonable and preserve order
+                 
+                await updateGuest({
+                  client,
+                  guest: updatedGuest,
+                  onSuccess: () => {
+                    setAll(prev => prev.map(p => p.roomNumber === updatedGuest.roomNumber && p.guestId === updatedGuest.guestId ? updatedGuest : p));
+                    if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
+                      setDetail(updatedGuest);
+                    }
+                    success += 1;
+                  },
+                  onError: (err) => {
+                    console.error('bulk update failed for', g, err);
+                    fail += 1;
+                  }
+                });
+              } catch (err) {
+                console.error('bulk update exception', err);
+                fail += 1;
+              }
+            }
+
+            setBulkProcessing(false);
+            alert(`完了: 成功 ${success} 件、失敗 ${fail} 件`);
+          }}
+        />
       </div>
 
-      {/* 現在の状態表示を詳細に */}
-      <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
-        表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}
-        <br />
-        Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}
-      </div>
+      {/* status display moved above (in centered header) */}
 
       <GuestList
         guests={filteredGuests}
         loading={loading}
         error={error}
-        roomFilter={roomFilter}
-        statusFilter={statusFilter}
-        roomId={roomId}
+        
         setDetail={setDetail}
         approvingId={approvingId}
         rejectingId={rejectingId}

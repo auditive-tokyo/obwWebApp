@@ -85,7 +85,7 @@ export default function FiltersBar({
         value={roomFilter}
         onChange={(e) => setRoomFilter(e.target.value)}
       >
-        <option value="">フィルターなし</option>
+        <option value="">部屋番号</option>
         {roomOptions.map(r => (
           <option key={r} value={r}>{r}</option>
         ))}
@@ -97,7 +97,7 @@ export default function FiltersBar({
         value={statusFilter}
         onChange={(e) => setStatusFilter(e.target.value)}
       >
-        <option value="">フィルターなし</option>
+        <option value="">ステータス</option>
         {statusOptions.slice(1).map(s => (
           <option key={s} value={s}>{s}</option>
         ))}
@@ -114,7 +114,7 @@ export default function FiltersBar({
         onChange={(e) => setCheckInFilter(e.target.value)}
         disabled={!roomFilter}
       >
-        <option value="">チェックイン日で絞らない</option>
+        <option value="">チェックイン日</option>
         {checkInOptions.map(d => (
           <option key={d} value={d}>{d}</option>
         ))}
@@ -131,7 +131,7 @@ export default function FiltersBar({
         onChange={(e) => setBookingFilter(e.target.value)}
         disabled={!roomFilter}
       >
-        <option value="">予約IDで絞らない</option>
+        <option value="">予約ID</option>
         {bookingOptions.map(b => (
           <option key={b} value={b}>{b}</option>
         ))}
