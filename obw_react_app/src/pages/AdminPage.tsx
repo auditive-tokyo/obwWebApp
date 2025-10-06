@@ -5,6 +5,7 @@ import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
 import { rejectGuest } from './handlers/rejectGuest';
 import { approveGuest } from './handlers/approveGuest';
 import { fetchGuests } from './handlers/fetchGuests';
+import { updateGuest } from './handlers/updateGuest';
 import { DetailsModal } from './adminpage/components/detailsModal';
 
 // AdminはUser Pool固定（ここで明示）
@@ -168,6 +169,33 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     })
   }
 
+  // ゲスト情報更新ハンドラー
+  const handleUpdateGuest = async (updatedGuest: Guest) => {
+    await updateGuest({
+      client,
+      guest: updatedGuest,
+      onSuccess: () => {
+        // ローカル状態を更新
+        setAll(prev => prev.map(g => 
+          g.roomNumber === updatedGuest.roomNumber && g.guestId === updatedGuest.guestId
+            ? updatedGuest
+            : g
+        ));
+        
+        // 詳細モーダルの表示も更新
+        if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
+          setDetail(updatedGuest);
+        }
+        
+        alert('更新しました！');
+      },
+      onError: (error) => {
+        console.error('Update failed:', error);
+        alert('更新に失敗しました: ' + error.message);
+      }
+    });
+  }
+
   return (
     <div style={{ padding: '2rem' }}>
       <h1>承認待ちリスト</h1>
@@ -278,13 +306,14 @@ export default function AdminPage({ roomId }: AdminPageProps) {
       {detail && (
         <DetailsModal
           detail={detail}
-            onClose={() => setDetail(null)}
-            signing={signing}
-            signedPassportUrl={signedPassportUrl}
-            approvingId={approvingId}
-            rejectingId={rejectingId}
-            confirmApprove={confirmApprove}
-            confirmReject={confirmReject}
+          onClose={() => setDetail(null)}
+          signing={signing}
+          signedPassportUrl={signedPassportUrl}
+          approvingId={approvingId}
+          rejectingId={rejectingId}
+          confirmApprove={confirmApprove}
+          confirmReject={confirmReject}
+          onUpdate={handleUpdateGuest}
         />
       )}
     </div>
