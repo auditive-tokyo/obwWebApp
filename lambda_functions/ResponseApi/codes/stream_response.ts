@@ -24,22 +24,22 @@ export async function* generateStreamResponse({
     previousResponseId,
     roomId,
     approved,
-    currentLocation,
     representativeName,
     representativeEmail,
-    representativePhone
+    representativePhone,
+    currentLocation,
 }: GenerateStreamResponseParams): AsyncGenerator<any, void, unknown> {
     try {
         // システムプロンプトを動的生成
         const systemPrompt = getSystemPrompt(
             roomId || '', 
             approved || false, 
-            currentLocation ? currentLocation : undefined,
             representativeName ?? null,
             representativeEmail ?? null,
-            representativePhone ?? null
+            representativePhone ?? null,
+            currentLocation ? currentLocation : undefined,
         );
-        console.info("Generated system prompt for:", { roomId, approved, currentLocation, representativeName, representativeEmail, representativePhone });
+        console.info("Generated system prompt for:", { roomId, approved, representativeName, representativeEmail, representativePhone, currentLocation });
 
         let tools: any[] = [];
 
@@ -103,7 +103,7 @@ export async function* generateStreamResponse({
                             },
                             inquiry_summary_for_operator: {
                                 type: "string",
-                                description: "A concise summary of the guest's inquiry for the human operator, formatted for Telegram messaging. Include key details like the issue type, guest's current situation, and any urgent actions needed. Return empty string \"\" if needs_human_operator is false."
+                                description: "A concise summary of the guest's inquiry for the human operator, formatted for Telegram messaging. Include key details like the issue type, current situation, and any urgent actions needed. DO NOT include guest personal information (name, email, phone) as it will be retrieved from the database. Return empty string \"\" if needs_human_operator is false."
                             }
                         },
                         required: ["assistant_response_text", "reference_sources", "images", "needs_human_operator", "inquiry_summary_for_operator"],

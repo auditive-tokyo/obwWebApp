@@ -16,9 +16,11 @@ const JSON_OUTPUT_INSTRUCTION = `
 }
 
 **オペレーター判断ルール**:
-- 複雑な問題や解決困難な場合は、まず最善を尽くして回答し、その上で「オペレーターにお繋ぎしますか？」と確認する
-- needs_human_operatorをtrueにするのは、ユーザーが「オペレーターに連絡してもらえますか？」の質問に「はい」と答えた場合のみ：
-- inquiry_summary_for_operatorには、ユーザーが同意した場合のみ、問題の種類、状況、緊急度を簡潔にまとめる
+- 解決困難な場合は、まず最善を尽くして回答し、その上で「オペレーターにお繋ぎしますか？」と確認する
+- needs_human_operatorをtrueにするのは、ユーザーが「オペレーターに連絡してもらえますか？」の質問に「はい」と答えた場合のみ
+- inquiry_summary_for_operator
+    - ユーザーが同意した場合のみ、問題の種類、状況、緊急度を簡潔にまとめる
+    - お客様情報は後続でDBから参照されて管理者に通知されるので、ここでは含めない
 `;
 
 const POLICY_INSTRUCTION = `
@@ -28,13 +30,37 @@ const POLICY_INSTRUCTION = `
 `;
 
 /**
+ * お客様情報ブロックを生成
+ * @returns お客様情報の文字列（情報がない場合は空文字列）
+ */
+function buildCustomerInfo(
+    representativeName?: string | null,
+    representativeEmail?: string | null,
+    representativePhone?: string | null,
+    currentLocation?: string
+): string {
+    const customerLines: string[] = [];
+    if (representativeName) customerLines.push(`- お名前: ${representativeName}`);
+    if (representativePhone) customerLines.push(`- 電話番号: ${representativePhone}`);
+    if (representativeEmail) customerLines.push(`- Email: ${representativeEmail}`);
+    if (currentLocation) customerLines.push(`- 現在位置: ${currentLocation}`);
+
+    if (customerLines.length > 0) {
+        return `**お客様情報**:\n${customerLines.join("\n")}`;
+    }
+    return "";
+}
+
+/**
  * 承認されていないユーザー向けのシステムプロンプト
  * - 一般的な質問のみ対応
  * - 部屋固有の機密情報（キーコードなど）は提供しない
  */
-function getUnapprovedSystemPrompt(roomId: string): string {
+function getUnapprovedSystemPrompt(roomId: string, customerInfo: string): string {
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
+
+${customerInfo}
 
 ${TOOL_USAGE_INSTRUCTION}
 
@@ -68,13 +94,15 @@ function calculateKeyCode(roomId: string): string {
  * - 部屋固有の機密情報（キーコードなど）にアクセス可能
  * - 全ての質問に対応
  */
-function getApprovedSystemPrompt(roomId: string): string {
+function getApprovedSystemPrompt(roomId: string, customerInfo: string): string {
     const keyCode = calculateKeyCode(roomId);
     
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
 
 ${roomId}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : ${keyCode}
+
+${customerInfo}
 
 ${TOOL_USAGE_INSTRUCTION}
 
@@ -88,13 +116,15 @@ ${POLICY_INSTRUCTION}`;
  * - 部屋固有の機密情報（キーコードなど）にアクセス可能
  * - ユーザーの現在位置を考慮した回答が可能
  */
-function getApprovedWithLocationSystemPrompt(roomId: string): string {
+function getApprovedWithLocationSystemPrompt(roomId: string, customerInfo: string): string {
     const keyCode = calculateKeyCode(roomId);
     
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
 
 ${roomId}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : ${keyCode}
+
+${customerInfo}
 
 ${TOOL_USAGE_INSTRUCTION}
 
@@ -108,9 +138,11 @@ ${POLICY_INSTRUCTION}`;
  * - 一般的な質問のみ対応（キーコード情報なし）
  * - ユーザーの現在位置を考慮した回答が可能
  */
-function getUnapprovedWithLocationSystemPrompt(roomId: string): string {
+function getUnapprovedWithLocationSystemPrompt(roomId: string, customerInfo: string): string {
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
+
+${customerInfo}
 
 ${TOOL_USAGE_INSTRUCTION}
 
@@ -129,10 +161,10 @@ ${POLICY_INSTRUCTION}`;
 export function getSystemPrompt(
     roomId: string,
     approved: boolean,
-    currentLocation?: string,
     representativeName?: string | null,
     representativeEmail?: string | null,
-    representativePhone?: string | null
+    representativePhone?: string | null,
+    currentLocation?: string | undefined
 ): string {
     if (!roomId) {
         // roomIdがない場合（グローバルチャット）
@@ -145,28 +177,22 @@ ${JSON_OUTPUT_INSTRUCTION}
 ${POLICY_INSTRUCTION}`;
     }
 
-    // 4パターンの分岐でベースのプロンプトを決定
-    let base = "";
+    // お客様情報ブロックを生成
+    const customerInfo = buildCustomerInfo(
+        representativeName,
+        representativeEmail,
+        representativePhone,
+        currentLocation
+    );
+
+    // 4パターンの分岐でプロンプトを決定（お客様情報を含む）
     if (approved && currentLocation) {
-        base = getApprovedWithLocationSystemPrompt(roomId);
+        return getApprovedWithLocationSystemPrompt(roomId, customerInfo);
     } else if (approved) {
-        base = getApprovedSystemPrompt(roomId);
+        return getApprovedSystemPrompt(roomId, customerInfo);
     } else if (currentLocation) {
-        base = getUnapprovedWithLocationSystemPrompt(roomId);
+        return getUnapprovedWithLocationSystemPrompt(roomId, customerInfo);
     } else {
-        base = getUnapprovedSystemPrompt(roomId);
+        return getUnapprovedSystemPrompt(roomId, customerInfo);
     }
-
-    // お客様情報ブロックを追記（任意）
-    const customerLines: string[] = [];
-    if (representativeName) customerLines.push(`- お名前: ${representativeName}`);
-    if (representativePhone) customerLines.push(`- 電話番号: ${representativePhone}`);
-    if (representativeEmail) customerLines.push(`- Email: ${representativeEmail}`);
-    if (currentLocation) customerLines.push(`- 現在位置: ${currentLocation}`);
-
-    if (customerLines.length > 0) {
-        base += `\n\n**お客様情報**:\n${customerLines.join("\n")}`;
-    }
-
-    return base;
 }

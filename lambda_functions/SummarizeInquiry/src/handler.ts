@@ -4,12 +4,19 @@ import { Handler, Context } from 'aws-lambda';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 
+// ユーザー情報の型定義
+interface UserInfo {
+    representativeName?: string;
+    representativeEmail?: string;
+    representativePhone?: string;
+    currentLocation?: string;
+}
+
 // イベントの型定義
 interface TelegramNotificationEvent {
     roomId: string;
-    userMessage: string;
     inquirySummary: string;
-    currentLocation?: string;
+    userInfo?: UserInfo;
     timestamp: string;
 }
 
@@ -55,10 +62,13 @@ async function sendTelegram(text: string): Promise<void> {
  * Lambda handler
  */
 export const handler: Handler<TelegramNotificationEvent, { success: boolean }> = async (event: TelegramNotificationEvent, context: Context) => {
+    const userInfo = event.userInfo || {};
+    
     console.info('🚨 Human operator notification received:', {
         roomId: event.roomId,
         timestamp: event.timestamp,
-        hasLocation: !!event.currentLocation
+        hasUserInfo: !!event.userInfo,
+        hasLocation: !!userInfo.currentLocation
     });
 
     try {
@@ -71,14 +81,15 @@ export const handler: Handler<TelegramNotificationEvent, { success: boolean }> =
             '',
             '*問い合わせサマリー:*',
             event.inquirySummary,
-            '',
-            '*ユーザーの元メッセージ:*',
-            `"${event.userMessage}"`,
         ];
 
-        // 位置情報があれば追加
-        if (event.currentLocation) {
-            lines.push('', `*現在位置:* ${event.currentLocation}`);
+        // お客様情報を追加
+        if (userInfo.representativeName || userInfo.representativeEmail || userInfo.representativePhone || userInfo.currentLocation) {
+            lines.push('', '*お客様情報:*');
+            if (userInfo.representativeName) lines.push(`- お名前: ${userInfo.representativeName}`);
+            if (userInfo.representativePhone) lines.push(`- 電話番号: ${userInfo.representativePhone}`);
+            if (userInfo.representativeEmail) lines.push(`- Email: ${userInfo.representativeEmail}`);
+            if (userInfo.currentLocation) lines.push(`- 現在位置: ${userInfo.currentLocation}`);
         }
 
         const messageText = lines.join('\n');

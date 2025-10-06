@@ -15,10 +15,10 @@ interface ChatInterfaceProps extends RoomProps {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
   roomId, 
   approved, 
-  currentLocation, 
   representativeName,
   representativeEmail,
   representativePhone,
+  currentLocation,
   messages, 
   setMessages, 
   nextId 
@@ -83,12 +83,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       input,
       roomId,
       approved,
-      currentLocation,
       handleStreamDelta,
       {
         representativeName,
         representativeEmail,
         representativePhone,
+        currentLocation,
       }
     );
   }

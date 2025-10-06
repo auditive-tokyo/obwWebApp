@@ -12,6 +12,7 @@ interface UserInfo {
     representativeName?: string;
     representativeEmail?: string;
     representativePhone?: string;
+    currentLocation?: string;
 }
 
 interface RequestBody {
@@ -19,7 +20,6 @@ interface RequestBody {
     previous_response_id?: string;
     roomId?: string;
     approved?: boolean;
-    currentLocation?: string;
     userInfo?: UserInfo;
 }
 
@@ -44,11 +44,12 @@ export const handler = awslambda.streamifyResponse(
             const previousResponseId = body.previous_response_id;
             const roomId = body.roomId;
             const approved = body.approved;
-            const currentLocation = body.currentLocation;
             const userInfo = body.userInfo || {};
+            // userInfo内から取得、後方互換のためbody.currentLocationもフォールバック
             const representativeName = userInfo.representativeName || null;
             const representativeEmail = userInfo.representativeEmail || null;
             const representativePhone = userInfo.representativePhone || null;
+            const currentLocation = userInfo.currentLocation || undefined;
 
             if (!userMessage) {
                 responseStream.write(JSON.stringify({ error: 'Message is required' }));
@@ -58,8 +59,8 @@ export const handler = awslambda.streamifyResponse(
 
             // ユーザーメッセージをログ出力
             console.info("👤 ユーザーメッセージ:", userMessage);
-            console.info("📍 位置情報:", currentLocation || 'なし');
             console.info("🧾 代表者情報:", { representativeName, representativeEmail, representativePhone });
+            console.info("📍 位置情報:", currentLocation || 'なし');
 
             // Telegram Lambda呼び出しの重複を防ぐフラグ
             let telegramNotificationSent = false;
@@ -70,10 +71,10 @@ export const handler = awslambda.streamifyResponse(
                 previousResponseId,
                 roomId,
                 approved,
-                currentLocation,
                 representativeName,
                 representativeEmail,
-                representativePhone
+                representativePhone,
+                currentLocation
             })) {
                 if (DEBUG) {
                     console.debug("OpenAI chunk:", chunk);
@@ -98,9 +99,8 @@ export const handler = awslambda.streamifyResponse(
                             // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
                             invokeTelegramLambda({
                                 roomId: roomId || 'unknown',
-                                userMessage,
                                 inquirySummary: aiResponse.inquiry_summary_for_operator,
-                                currentLocation
+                                userInfo
                             }).catch(error => {
                                 console.error("Telegram Lambda呼び出しエラー:", error);
                             });
@@ -129,9 +129,8 @@ export const handler = awslambda.streamifyResponse(
                             // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
                             invokeTelegramLambda({
                                 roomId: roomId || 'unknown',
-                                userMessage,
                                 inquirySummary: aiResponse.inquiry_summary_for_operator,
-                                currentLocation
+                                userInfo
                             }).catch(error => {
                                 console.error("Telegram Lambda呼び出しエラー:", error);
                             });
@@ -160,15 +159,13 @@ export const handler = awslambda.streamifyResponse(
  */
 async function invokeTelegramLambda(params: {
     roomId: string;
-    userMessage: string;
     inquirySummary: string;
-    currentLocation?: string;
+    userInfo?: UserInfo;
 }): Promise<void> {
     const payload = {
         roomId: params.roomId,
-        userMessage: params.userMessage,
         inquirySummary: params.inquirySummary,
-        currentLocation: params.currentLocation,
+        userInfo: params.userInfo,
         timestamp: new Date().toISOString()
     };
 

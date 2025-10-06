@@ -5,13 +5,13 @@ type OptionalUserInfo = {
   representativeName?: string;
   representativeEmail?: string;
   representativePhone?: string;
+  currentLocation?: string;
 };
 
 export async function fetchAIResponseStream(
   message: string,
   roomId: string,
   approved: boolean,
-  currentLocation: string | undefined,
   onDelta: (
     text: string | { assistant_response_text: string; reference_sources?: string[]; images?: string[] },
     isDone?: boolean
@@ -28,7 +28,6 @@ export async function fetchAIResponseStream(
     previous_response_id, 
     roomId,
     approved,
-    currentLocation,
     ...((userInfo && Object.keys(userInfo).length) ? { userInfo } : {})
   };
 
