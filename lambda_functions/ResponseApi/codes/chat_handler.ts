@@ -26,12 +26,12 @@ interface RequestBody {
 // AWS Lambdaランタイムが提供するグローバル変数に型を適用
 declare const awslambda: {
     streamifyResponse(
-        handler: (event: LambdaFunctionURLEvent, responseStream: any, context: Context) => Promise<void>
-    ): any;
+        handler: (event: LambdaFunctionURLEvent, responseStream: { write: (chunk: string) => void; end: () => void }, context: Context) => Promise<void>
+    ): unknown;
 };
 
 export const handler = awslambda.streamifyResponse(
-    async (event: LambdaFunctionURLEvent, responseStream: any, context: Context) => {
+    async (event: LambdaFunctionURLEvent, responseStream: { write: (chunk: string) => void; end: () => void }) => {
         try {
             if (!event.body) {
                 responseStream.write(JSON.stringify({ error: 'Request body is required' }));
@@ -79,70 +79,85 @@ export const handler = awslambda.streamifyResponse(
                 if (DEBUG) {
                     console.debug("OpenAI chunk:", chunk);
                 }
-                if (chunk?.type === "response.output_text.delta") {
+
+                const c = chunk as unknown as Record<string, unknown>;
+
+                if (c && c.type === "response.output_text.delta") {
                     responseStream.write(JSON.stringify(chunk) + "\n");
                 }
+
                 // Structured output時のfinalは content_part.done で来るケースがある
-                if (chunk?.type === "response.content_part.done" &&
-                    chunk.part?.type === "output_text" &&
-                    typeof chunk.part?.text === "string") {
-                    
-                    // AI の最終レスポンスをログ出力
-                    console.info("🤖 AI最終レスポンス:", chunk.part.text);
-                    
-                    // needs_human_operatorの確認と別Lambda呼び出し（重複防止フラグ付き）
-                    try {
-                        const aiResponse = JSON.parse(chunk.part.text);
-                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator && !telegramNotificationSent) {
-                            console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
-                            telegramNotificationSent = true; // 重複防止フラグ
-                            // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
-                            invokeTelegramLambda({
-                                roomId: roomId || 'unknown',
-                                inquirySummary: aiResponse.inquiry_summary_for_operator,
-                                userInfo
-                            }).catch(error => {
-                                console.error("Telegram Lambda呼び出しエラー:", error);
-                            });
+                if (c && c.type === "response.content_part.done") {
+                    const part = c.part as Record<string, unknown> | undefined;
+                    if (part && part.type === 'output_text' && typeof part.text === 'string') {
+                        // AI の最終レスポンスをログ出力
+                        console.info("🤖 AI最終レスポンス:", part.text);
+
+                        // needs_human_operatorの確認と別Lambda呼び出し（重複防止フラグ付き）
+                        try {
+                            const parsed = JSON.parse(part.text) as unknown;
+                            if (typeof parsed === 'object' && parsed !== null) {
+                                const pr = parsed as Record<string, unknown>;
+                                const needs = pr.needs_human_operator;
+                                const summary = pr.inquiry_summary_for_operator;
+                                if (needs === true && typeof summary === 'string' && summary && !telegramNotificationSent) {
+                                    console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
+                                    telegramNotificationSent = true;
+                                    invokeTelegramLambda({
+                                        roomId: roomId || 'unknown',
+                                        inquirySummary: summary,
+                                        userInfo
+                                    }).catch(error => {
+                                        console.error("Telegram Lambda呼び出しエラー:", error);
+                                    });
+                                }
+                            }
+                        } catch (parseError) {
+                            console.warn("AI レスポンスのJSON解析に失敗:", parseError);
                         }
-                    } catch (parseError) {
-                        console.warn("AI レスポンスのJSON解析に失敗:", parseError);
+
+                        // 既存フロントが扱える形式（response.output_text.done）に正規化
+                        responseStream.write("\n" + JSON.stringify({
+                            type: "response.output_text.done",
+                            text: part.text
+                        }) + "\n");
                     }
-                    
-                    // 既存フロントが扱える形式（response.output_text.done）に正規化
-                    responseStream.write("\n" + JSON.stringify({
-                      type: "response.output_text.done",
-                      text: chunk.part.text
-                    }) + "\n");
                 }
-                if (chunk?.type === "response.output_text.done") {
-                    
-                    // AI の最終レスポンスをログ出力
-                    console.info("🤖 AI最終レスポンス:", chunk.text);
-                    
-                    // needs_human_operatorの確認と別Lambda呼び出し（重複防止フラグ付き）
-                    try {
-                        const aiResponse = JSON.parse(chunk.text);
-                        if (aiResponse.needs_human_operator === true && aiResponse.inquiry_summary_for_operator && !telegramNotificationSent) {
-                            console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
-                            telegramNotificationSent = true; // 重複防止フラグ
-                            // 非同期でTelegram送信Lambda呼び出し（レスポンスを待たない）
-                            invokeTelegramLambda({
-                                roomId: roomId || 'unknown',
-                                inquirySummary: aiResponse.inquiry_summary_for_operator,
-                                userInfo
-                            }).catch(error => {
-                                console.error("Telegram Lambda呼び出しエラー:", error);
-                            });
+
+                if (c && c.type === "response.output_text.done") {
+                    const text = c.text as string | undefined;
+                    if (text) {
+                        console.info("🤖 AI最終レスポンス:", text);
+                        try {
+                            const parsed = JSON.parse(text) as unknown;
+                            if (typeof parsed === 'object' && parsed !== null) {
+                                const pr = parsed as Record<string, unknown>;
+                                const needs = pr.needs_human_operator;
+                                const summary = pr.inquiry_summary_for_operator;
+                                if (needs === true && typeof summary === 'string' && summary && !telegramNotificationSent) {
+                                    console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
+                                    telegramNotificationSent = true;
+                                    invokeTelegramLambda({
+                                        roomId: roomId || 'unknown',
+                                        inquirySummary: summary,
+                                        userInfo
+                                    }).catch(error => {
+                                        console.error("Telegram Lambda呼び出しエラー:", error);
+                                    });
+                                }
+                            }
+                        } catch (parseError) {
+                            console.warn("AI レスポンスのJSON解析に失敗:", parseError);
                         }
-                    } catch (parseError) {
-                        console.warn("AI レスポンスのJSON解析に失敗:", parseError);
                     }
-                    
-                    responseStream.write("\n" + JSON.stringify(chunk) + "\n");
+                    responseStream.write("\n" + JSON.stringify(c) + "\n");
                 }
-                if (chunk?.type === "response.completed" && chunk.response?.id) {
-                    responseStream.write("\n" + JSON.stringify({ responseId: chunk.response.id }) + "\n");
+
+                if (c && c.type === "response.completed") {
+                    const resp = c.response as Record<string, unknown> | undefined;
+                    if (resp && typeof resp.id === 'string') {
+                        responseStream.write("\n" + JSON.stringify({ responseId: resp.id }) + "\n");
+                    }
                 }
             }
             responseStream.end();

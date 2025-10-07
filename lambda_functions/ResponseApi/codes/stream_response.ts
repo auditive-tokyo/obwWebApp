@@ -28,7 +28,7 @@ export async function* generateStreamResponse({
     representativeEmail,
     representativePhone,
     currentLocation,
-}: GenerateStreamResponseParams): AsyncGenerator<any, void, unknown> {
+}: GenerateStreamResponseParams): AsyncGenerator<unknown, void, unknown> {
     try {
         // システムプロンプトを動的生成
         const systemPrompt = getSystemPrompt(
@@ -41,11 +41,11 @@ export async function* generateStreamResponse({
         );
         console.info("Generated system prompt for:", { roomId, approved, representativeName, representativeEmail, representativePhone, currentLocation });
 
-        let tools: any[] = [];
+        const tools: Array<Record<string, unknown>> = [];
 
         // File Search ツール
         if (OPENAI_VECTOR_STORE_ID) {
-            const fileSearchTool: any = {
+            const fileSearchTool: Record<string, unknown> = {
                 type: "file_search",
                 vector_store_ids: [OPENAI_VECTOR_STORE_ID],
                 max_num_results: 10,
@@ -55,7 +55,7 @@ export async function* generateStreamResponse({
         }
 
         // Web Search ツール
-       const webSearchTool: any = {
+       const webSearchTool: Record<string, unknown> = {
             type: "web_search_preview",
             search_context_size: "low"
         };
@@ -63,7 +63,7 @@ export async function* generateStreamResponse({
 
         console.info("Enabled tools:", tools.map(t => t.type));
 
-        const requestPayload: any = {
+        const requestPayload: Record<string, unknown> = {
             model: model,
             instructions: systemPrompt,
             input: [{ role: "user", content: userMessage }],
@@ -114,10 +114,11 @@ export async function* generateStreamResponse({
         };
         if (previousResponseId) requestPayload.previous_response_id = previousResponseId;
 
-        const response = await openai.responses.create(requestPayload);
+        // OpenAI SDK expects a broadly typed payload; we cast here safely
+        const response = await openai.responses.create(requestPayload as unknown as Record<string, unknown>);
 
-        for await (const chunk of response as unknown as AsyncIterable<any>) {
-            yield chunk;
+        for await (const chunk of response as unknown as AsyncIterable<unknown>) {
+            yield chunk as unknown;
         }
 
         yield `data: ${JSON.stringify({ completed: true })}\n\n`;
