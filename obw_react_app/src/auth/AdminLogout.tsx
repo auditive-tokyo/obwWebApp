@@ -10,7 +10,7 @@ export default function AdminLogout() {
       localStorage.removeItem('bookingId')
       localStorage.removeItem('responseId')
       clearCognitoIdentityCache?.()
-    } catch {}
+    } catch { void 0 }
 
     const domain = import.meta.env.VITE_COGNITO_OAUTH_DOMAIN
     const clientId = import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID

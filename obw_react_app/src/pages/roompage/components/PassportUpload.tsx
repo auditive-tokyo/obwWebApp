@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { convertToJpeg } from '../utils/convertToJpeg'
 import { getMessage } from '@/i18n/messages'
+import type { GraphQLResult } from '@aws-amplify/api'
+import type { Client } from 'aws-amplify/api'
 
 export type PassportUploadProps = {
   roomId: string
   guestName: string
   guestId: string
-  client: any
+  client: Client
   // 画面側の操作（任意）
   onBack?: () => void
   showEditInfo?: boolean
@@ -79,7 +81,14 @@ export function PassportUpload({
         authMode: 'iam'
       })
 
-      const { putUrl, baseUrl } = presignedResult.data.getPresignedUrl
+      // client.graphql can return different shapes; narrow to GraphQLResult
+      const presignedRes = presignedResult as unknown as GraphQLResult<{ getPresignedUrl?: { putUrl?: string; baseUrl?: string } }>
+      const putUrl = presignedRes.data?.getPresignedUrl?.putUrl
+      const baseUrl = presignedRes.data?.getPresignedUrl?.baseUrl
+
+      if (!putUrl || !baseUrl) {
+        throw new Error('Failed to obtain presigned URL')
+      }
 
       // 4. jpeg画像をS3にアップロード
       await fetch(putUrl, {

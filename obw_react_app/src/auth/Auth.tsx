@@ -34,7 +34,7 @@ export default function Auth() {
         // Hosted UI flags (defensive)
         localStorage.removeItem('amplify-signin-with-hostedUI')
         localStorage.removeItem('amplify-redirected-from-hosted-ui')
-      } catch {}
+      } catch { void 0 }
 
       const url = new URL(window.location.href)
       const guestId = url.searchParams.get('guestId')
@@ -91,9 +91,19 @@ export default function Auth() {
           // ❌ 認証失敗時 - SMS渡さない（どうせエラー画面）
           setTimeout(() => navigate(`/${roomId}`, { replace: true }), 1000)
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (import.meta.env.DEV) console.error('VerifyAccessToken exception:', e)
-        setMessage(`Verification error: ${e?.message || 'unknown'}`)
+        const getMessageFromError = (err: unknown): string => {
+          if (typeof err === 'string') return err
+          if (err instanceof Error) return err.message
+          if (typeof err === 'object' && err !== null) {
+            const obj = err as Record<string, unknown>
+            if ('message' in obj && typeof obj.message === 'string') return obj.message
+          }
+          try { return JSON.stringify(err) } catch { return 'unknown' }
+        }
+        const msg = getMessageFromError(e)
+        setMessage(`Verification error: ${msg}`)
         localStorage.removeItem('guestId')
         localStorage.removeItem('token')
         localStorage.removeItem('bookingId')

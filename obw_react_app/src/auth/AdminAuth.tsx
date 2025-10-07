@@ -25,7 +25,7 @@ export default function AdminAuth() {
         if (prefixes.some(p => key.startsWith(p))) toRemove.push(key)
       }
       toRemove.forEach(k => localStorage.removeItem(k))
-    } catch {}
+    } catch { void 0 }
   }
 
   useEffect(() => {
@@ -44,14 +44,15 @@ export default function AdminAuth() {
 
           // Hosted UI 戻り直後はトークン確立待ち（短時間リトライ）
           const deadline = Date.now() + 8000
-          let ok = false, lastErr: any
+          let ok = false
+          let lastErr: unknown
           while (Date.now() < deadline) {
             try {
               const u = await getCurrentUser()
               dbg('getCurrentUser OK on callback:', u)
               ok = true
               break
-            } catch (e) {
+            } catch (e: unknown) {
               lastErr = e
               await new Promise(r => setTimeout(r, 250))
             }
@@ -79,7 +80,7 @@ export default function AdminAuth() {
         dbg('signed in as:', u)
         setReady(true)
         setMessage('')
-      } catch (e) {
+      } catch (e: unknown) {
         console.warn('[AdminAuth] not signed in. Redirecting to Hosted UI.', e)
         console.warn('env:', {
           domain: import.meta.env.VITE_COGNITO_OAUTH_DOMAIN,

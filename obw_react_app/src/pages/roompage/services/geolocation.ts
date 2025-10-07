@@ -1,4 +1,5 @@
 import { saveGuestLocation } from './apiCalls'
+import type { Client } from 'aws-amplify/api'
 
 type GeoFix = { lat: number; lng: number; accuracy?: number; ts: number }
 type SimplePlace = { country?: string; state?: string; city?: string; district?: string; fullText: string }
@@ -46,7 +47,7 @@ async function getCurrentPositionWithFallback(): Promise<GeoFix> {
       timeout: 8000,
       maximumAge: 30000,
     })
-  } catch (highAccuracyError) {
+  } catch {
     console.warn('[geo] high accuracy failed, trying low accuracy')
 
     // 低精度で再試行
@@ -59,7 +60,7 @@ async function getCurrentPositionWithFallback(): Promise<GeoFix> {
 }
 
 export async function syncGeoAndResolveAddress(params: {
-  client: any
+  client: Client
   roomId: string
   guestId: string
 }): Promise<SyncGeoResult> {
@@ -88,7 +89,7 @@ export async function syncGeoAndResolveAddress(params: {
       guestId,
       currentLocation: currentLocationText
     })
-  } catch (e) {
+  } catch (e: unknown) {
     console.warn('saveGuestLocation failed', e)
   }
 

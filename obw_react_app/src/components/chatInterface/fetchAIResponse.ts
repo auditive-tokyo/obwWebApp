@@ -68,28 +68,40 @@ export async function fetchAIResponseStream(
                  obj.type === "response.content_part.done" &&
                  obj.part?.type === "output_text" &&
                  obj.part?.text) {
-          const result = parse(obj.part.text) as any;
-          onDelta({
-            assistant_response_text: typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.part.text,
-            reference_sources: Array.isArray(result?.reference_sources) ? result.reference_sources : [],
-            images: Array.isArray(result?.images) ? result.images : [],
-          }, true);
+          type ParsedResult = {
+            assistant_response_text?: unknown;
+            reference_sources?: unknown;
+            images?: unknown;
+          };
+          const result = parse(obj.part.text) as ParsedResult;
+          const assistantText = typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.part.text;
+          const referenceSources = Array.isArray(result?.reference_sources) ? result.reference_sources.filter((x): x is string => typeof x === 'string') : [];
+          const images = Array.isArray(result?.images) ? result.images.filter((x): x is string => typeof x === 'string') : [];
+          onDelta({ assistant_response_text: assistantText, reference_sources: referenceSources, images }, true);
           gotFinal = true;
         }
         else if (!gotFinal && obj.type === "response.output_text.done" && obj.text) {
-          const result = parse(obj.text) as any;
-          onDelta({
-            assistant_response_text: typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.text,
-            reference_sources: Array.isArray(result?.reference_sources) ? result.reference_sources : [],
-            images: Array.isArray(result?.images) ? result.images : [],
-          }, true);
+          type ParsedResult = {
+            assistant_response_text?: unknown;
+            reference_sources?: unknown;
+            images?: unknown;
+          };
+          const result = parse(obj.text) as ParsedResult;
+          const assistantText = typeof result?.assistant_response_text === 'string' ? result.assistant_response_text : obj.text;
+          const referenceSources = Array.isArray(result?.reference_sources) ? result.reference_sources.filter((x): x is string => typeof x === 'string') : [];
+          const images = Array.isArray(result?.images) ? result.images.filter((x): x is string => typeof x === 'string') : [];
+          onDelta({ assistant_response_text: assistantText, reference_sources: referenceSources, images }, true);
           gotFinal = true;
         }
         else if (obj.responseId) {
           saveResponseId(obj.responseId);
         }
-      } catch (e) {
-        console.error("JSON parse error:", e, line);
+      } catch (e: unknown) {
+        try {
+          console.error("JSON parse error:", e, line);
+        } catch {
+          console.error("JSON parse error while logging, line:", line);
+        }
       }
     }
   }

@@ -27,11 +27,11 @@ export const saveResponseId = (responseId: string) => {
   try {
     localStorage.setItem("responseId", responseId);
     saved = true;
-  } catch (e) {
+  } catch {
     try {
       document.cookie = `responseId=${responseId}; path=/; max-age=31536000`;
       saved = true;
-    } catch (err) {
+    } catch {
       const lang = document.documentElement.lang;
       if (lang === "ja") {
         alert("この機能を利用するには、ブラウザのlocalStorageまたはcookieを有効にしてください。");
@@ -52,7 +52,7 @@ export const loadResponseId = (): string | null => {
   try {
     const id = localStorage.getItem("responseId");
     if (id) return id;
-  } catch (e) {
+  } catch {
     // localStorageが使えない場合はcookieから取得
     const match = document.cookie.match(/(?:^|; )responseId=([^;]*)/);
     if (match) return match[1];

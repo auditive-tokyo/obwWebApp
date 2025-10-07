@@ -1,8 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { Guest } from '../adminpage/types/types';
+import type { Client } from 'aws-amplify/api'
+
+type GraphParams = Parameters<Client['graphql']>[0]
 
 type Deps = {
-  client: any;
+  client: Client;
   guest: Guest;
   detail: Guest | null;
   setAll: Dispatch<SetStateAction<Guest[]>>;
@@ -41,7 +44,7 @@ export async function rejectGuest({
           approvalStatus: 'rejected'
         }
       }
-    } as any);
+    } as GraphParams);
 
     // 楽観更新
     setAll(prev =>
@@ -57,7 +60,7 @@ export async function rejectGuest({
     }
 
     window.alert(`${guest.guestName} を拒否しました。`);
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('[rejectGuest] failed:', e);
     alert('拒否に失敗しました');
   } finally {

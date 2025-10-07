@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import ChatWidget from '@/components/ChatWidget'
-import type { RoomPageViewProps } from './types'
+import type { RoomPageViewProps, GuestSession } from './types'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
@@ -19,7 +19,7 @@ export function RoomPageView(
     handleSyncGeo?: () => Promise<void>
     handleClearLocation?: () => Promise<void>
     myCurrentLocation?: string | null
-    setGuestSessions?: (sessions: any[]) => void
+    setGuestSessions?: (sessions: GuestSession[]) => void
   }
 ) {
   const {
@@ -90,13 +90,13 @@ export function RoomPageView(
   const isApproved = hasApprovedGuest && isAfterCheckInTime;
 
   // クリック選択時の表示判定
-  const shouldShowBasicInfoForSession = (g: any) =>
+  const shouldShowBasicInfoForSession = (g: GuestSession | null | undefined) =>
     g?.approvalStatus === 'waitingForBasicInfo'
 
-  const shouldShowUploadForSession = (g: any) =>
+  const shouldShowUploadForSession = (g: GuestSession | null | undefined) =>
     g?.approvalStatus === 'waitingForPassportImage'
 
-  const getStatusMessage = (g: any): string | null => {
+  const getStatusMessage = (g: GuestSession | null | undefined): string | null => {
     const status = g?.approvalStatus
     if (status === 'pending') return getMessage("statusPending") as string
     if (status === 'approved') return getMessage("statusApproved") as string
@@ -123,7 +123,7 @@ export function RoomPageView(
 
   // 「Add Guest」ボタンを無効化する条件:
   // どれかのセッションが waitingForBasicInfo かつ guestId を持っている場合は無効化
-  const disableAddGuest = !!guestSessions?.some((g: any) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
+  const disableAddGuest = !!guestSessions?.some((g: GuestSession) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
 
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
@@ -142,6 +142,8 @@ export function RoomPageView(
 
   dbg('selectedSession:', selectedSession)
   dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  // The form component's props type isn't exported from the component file; cast locally and suppress the lint rule
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const BasicInfoFormAny = BasicInfoForm as any
 
   // 位置情報同期モーダルの状態
@@ -349,7 +351,7 @@ export function RoomPageView(
               </div>
 
               <ul className="divide-y divide-gray-200 border border-gray-100 rounded-md">
-                {guestSessions.map(g => {
+                {guestSessions.map((g: GuestSession) => {
                   const isSelected =
                     !!selectedSession && selectedSession.guestId === g.guestId
                   return (
@@ -583,7 +585,7 @@ export function RoomPageView(
                   const rep = guestSessions.find(g => g.guestId === gid);
                   return rep?.guestName || name;
                 }
-              } catch {}
+              } catch { void 0 }
               return name;
             })()}
             representativeEmail={(() => {
@@ -593,7 +595,7 @@ export function RoomPageView(
                   const rep = guestSessions.find(g => g.guestId === gid);
                   return rep?.email || email;
                 }
-              } catch {}
+              } catch { void 0 }
               return email;
             })()}
             representativePhone={(() => {
@@ -603,7 +605,7 @@ export function RoomPageView(
                   const rep = guestSessions.find(g => g.guestId === gid);
                   return rep?.phone || phone;
                 }
-              } catch {}
+              } catch { void 0 }
               return phone;
             })()}
           />

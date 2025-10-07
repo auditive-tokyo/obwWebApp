@@ -1,4 +1,5 @@
 import type { HandleNextParams, HandleRegisterParams } from '../types'
+import type { Client } from 'aws-amplify/api'
 import { getMessage } from '@/i18n/messages'
 import{ dbg } from '@/utils/debugLogger'
 import { clearCognitoIdentityCache } from '@/utils/clearCognitoCache'
@@ -73,7 +74,25 @@ export const handleNextAction = async (params: HandleNextParams) => {
     `
 
   // 共通入力
-  const baseInput: any = {
+  type UpdateGuestInput = {
+    roomNumber: string
+    guestId?: string
+    guestName?: string
+    email?: string | null
+    address?: string | null
+    phone?: string | null
+    occupation?: string | null
+    nationality?: string | null
+    passportImageUrl?: string | null
+    checkInDate?: string | null
+    checkOutDate?: string | null
+    promoConsent?: boolean | null
+    approvalStatus?: string | null
+    bookingId?: string | null
+    isFamilyMember?: boolean
+  }
+
+  const baseInput: UpdateGuestInput = {
     roomNumber: roomId,
     guestName: name,
     email,
@@ -173,7 +192,7 @@ export const handleRegisterAction = async (params: HandleRegisterParams) => {
  */
 export async function verifyOnLoad({ roomId, client, setSessionChecked, setSessionValid }: {
   roomId: string
-  client: any
+  client: Client
   setSessionChecked: (b: boolean) => void
   setSessionValid: (b: boolean) => void
 }) {

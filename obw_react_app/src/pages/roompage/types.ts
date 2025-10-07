@@ -1,3 +1,5 @@
+import type { Client } from 'aws-amplify/api'
+
 type ApprovalStatus =
   | 'waitingForBasicInfo'
   | 'waitingForPassportImage'
@@ -71,12 +73,13 @@ export interface RoomPageViewProps {
   // 画面状態
   isInfoComplete: boolean
   message: string
-  client: any // GraphQLクライアント等
+  client: Client // GraphQLクライアント等
 
   // この部屋の申請状況一覧（任意）
   guestSessions?: GuestSession[]
   selectedGuest: GuestSession | null
   onSelectGuest: (g: string | GuestSession | null) => void
+  setGuestSessions?: (sessions: GuestSession[]) => void
   onAddGuest: () => void
 }
 
@@ -96,7 +99,7 @@ export interface HandleNextParams {
   checkInDate: Date | null
   checkOutDate: Date | null
   promoConsent: boolean
-  client: any
+  client: Client
   setMessage: (message: string) => void
   guestId?: string | null
   selectedGuest?: GuestSession | null 
@@ -111,7 +114,7 @@ export interface HandleRegisterParams {
   roomId: string
   guestId: string
   passportImageUrl: string | null
-  client: any // GraphQLクライアント等
+  client: Client // GraphQLクライアント等
   setMessage: (message: string) => void // メッセージ表示用
 }
 
@@ -123,7 +126,7 @@ export type PassportUploadScreenProps = {
   roomId: string
   name: string
   guestId: string
-  client: any
+  client: Client
   passportImageUrl: string | null
   setPassportImageUrl: (url: string | null) => void
   onBack: () => void

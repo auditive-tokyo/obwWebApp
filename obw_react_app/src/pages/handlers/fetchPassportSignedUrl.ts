@@ -1,7 +1,11 @@
 import type { Guest } from '../adminpage/types/types';
+import type { Client } from 'aws-amplify/api'
+
+type GraphParams = Parameters<Client['graphql']>[0]
+type GraphqlResponse<T = unknown> = { data?: T }
 
 type Deps = {
-  client: any;
+  client: Client;
   guest: Guest;
   setSignedPassportUrl: (v: string | null) => void;
   setSigning: (v: boolean) => void;
@@ -45,10 +49,11 @@ export async function fetchPassportSignedUrl({
     const res = await client.graphql({
       query: gql,
       variables: { input: { roomId, timestamp, filename } }
-    } as any);
-    const url = (res as any)?.data?.getPresignedUrl?.getUrl || null;
+    } as GraphParams);
+    const obj = res as unknown as GraphqlResponse<{ getPresignedUrl?: { getUrl?: string } }>;
+    const url = obj.data?.getPresignedUrl?.getUrl ?? null;
     setSignedPassportUrl(url);
-  } catch (e) {
+  } catch (e: unknown) {
     console.warn('[fetchPassportSignedUrl] failed', e);
     setSignedPassportUrl(null);
   } finally {

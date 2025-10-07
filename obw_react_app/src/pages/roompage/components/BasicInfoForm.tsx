@@ -5,6 +5,7 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import { getMessage } from '@/i18n/messages'
 import { parseAddressFields } from '../utils/formValidation'
+import type { InputHTMLAttributes } from 'react'
 
 type BasicInfoFormProps = {
   name: string
@@ -31,7 +32,7 @@ type BasicInfoFormProps = {
   hasRoomCheckDates?: boolean
 }
 
-function CustomPhoneInput(props: any) {
+function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
