@@ -45,12 +45,14 @@ Resources:
   # 署名付きURL用Lambda
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
     Properties:
       FunctionName: obw-get-presigned-url-function
       MemorySize: 128
       CodeUri: lambda_functions/get_presigned_url/
-      Handler: lambda_handler_get_presigned_url.lambda_handler
-      Runtime: python3.13
+      Handler: main
+      Runtime: go1.x
       Timeout: 30
       Environment:
         Variables:
