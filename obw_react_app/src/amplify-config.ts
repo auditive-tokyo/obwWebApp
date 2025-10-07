@@ -45,7 +45,7 @@ const cognitoConfig = adminUserPoolConfigured
     }
   : baseCognito;
 
-const authConfig = cognitoConfig as unknown as ResourcesConfig['Auth'];
+const authConfig = { Cognito: cognitoConfig } as unknown as ResourcesConfig['Auth'];
 
 export const amplifyConfig: ResourcesConfig = {
   API: {
