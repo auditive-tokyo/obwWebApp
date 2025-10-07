@@ -1,23 +1,41 @@
 /**
- * 住所JSONの必須項目がすべて入力されているかチェック
- * StructuredAddressInputのcomputeValid関数と同じロジック
+ * 住所JSONをパースして個別フィールドを取得
  */
-function validateAddressFields(addressJson: string): boolean {
-  if (!addressJson.trim()) return false
+export interface ParsedAddress {
+  addressLine1: string
+  city: string
+  state: string
+  country: string
+  zipcode: string
+}
+
+export function parseAddressFields(addressJson: string): ParsedAddress | null {
+  if (!addressJson.trim()) return null
   
   try {
     const obj = JSON.parse(addressJson)
-    const addressLine1 = obj.addressLine1 ?? obj.line1 ?? ""
-    const city = obj.city ?? ""
-    const state = obj.state ?? obj.province ?? ""
-    const country = obj.country ?? obj.countryCode ?? ""
-    const zipcode = obj.zipcode ?? obj.postalCode ?? ""
-    
-    return [addressLine1, city, state, country, zipcode].every((v) => (v || '').trim() !== '')
+    return {
+      addressLine1: obj.addressLine1 ?? obj.line1 ?? "",
+      city: obj.city ?? "",
+      state: obj.state ?? obj.province ?? "",
+      country: obj.country ?? obj.countryCode ?? "",
+      zipcode: obj.zipcode ?? obj.postalCode ?? ""
+    }
   } catch {
-    // JSONパースに失敗した場合（プレーンテキスト）
-    return false
+    return null
   }
+}
+
+/**
+ * 住所JSONの必須項目がすべて入力されているかチェック
+ * StructuredAddressInputのcomputeValid関数と同じロジック
+ */
+export function validateAddressFields(addressJson: string): boolean {
+  const parsed = parseAddressFields(addressJson)
+  if (!parsed) return false
+  
+  return [parsed.addressLine1, parsed.city, parsed.state, parsed.country, parsed.zipcode]
+    .every((v) => v.trim() !== '')
 }
 
 /**

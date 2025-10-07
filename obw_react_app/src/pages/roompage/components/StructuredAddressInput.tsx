@@ -62,7 +62,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
         zipcode: "",
       }))
     }
-  }, [value])
+  }, [value, onValidityChange])
 
   const buildAndSetAddress = (override?: Partial<{
     addressLine1: string;
@@ -72,32 +72,31 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
     country: string;
     zipcode: string;
   }>) => {
-    const data = {
+    type Merged = Partial<Record<'addressLine1'|'addressLine2'|'city'|'stateProv'|'country'|'zipcode', string>>
+
+    const merged: Merged = {
       addressLine1,
       addressLine2,
       city,
-      state: stateProv,
+      stateProv,
       country,
       zipcode,
       ...(override || {}),
-    } as any
+    }
 
-    // normalize state property name
-    if ('stateProv' in data) {
-      data.state = (override as any)?.stateProv ?? stateProv
-      delete data.stateProv
+    // Normalize into the canonical shape we store as JSON
+    const data = {
+      addressLine1: merged.addressLine1 ?? "",
+      addressLine2: merged.addressLine2 ?? "",
+      city: merged.city ?? "",
+      state: merged.stateProv ?? stateProv,
+      country: merged.country ?? "",
+      zipcode: merged.zipcode ?? "",
     }
 
     const valid = computeValid(data)
 
-    onChange(JSON.stringify({
-      addressLine1: data.addressLine1 || "",
-      addressLine2: data.addressLine2 || "",
-      city: data.city || "",
-      state: data.state || "",
-      country: data.country || "",
-      zipcode: data.zipcode || "",
-    }))
+    onChange(JSON.stringify(data))
     onValidityChange?.(valid)
   }
 

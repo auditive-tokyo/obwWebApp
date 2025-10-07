@@ -22,6 +22,16 @@ const processText = (text: string): string => {
   return convertUrlsToLinks(text).replace(/\n/g, "<br />");
 };
 
+// 安全に msg.text から images を取り出すユーティリティ
+function extractImages(text: unknown): string[] {
+  if (typeof text === 'object' && text !== null) {
+    const t = text as Record<string, unknown>;
+    const imgs = t.images;
+    if (Array.isArray(imgs)) return imgs.filter((i): i is string => typeof i === 'string');
+  }
+  return [];
+}
+
 const ChatInterfaceView: React.FC<Props> = ({
   messages,
   input,
@@ -100,14 +110,9 @@ const ChatInterfaceView: React.FC<Props> = ({
                   )}
                   {/* 画像は msg.images（正規化済み）か、未正規化なら msg.text.images から表示 */}
                   {!msg.personal && (() => {
-                    const imgs =
-                      Array.isArray(msg.images) && msg.images.length > 0
-                        ? msg.images
-                        : (typeof msg.text === "object" &&
-                           Array.isArray((msg.text as any).images) &&
-                           (msg.text as any).images.length > 0
-                           ? (msg.text as any).images
-                           : []);
+                    const imgs = (Array.isArray(msg.images) && msg.images.length > 0)
+                      ? msg.images
+                      : extractImages(msg.text);
                     return imgs.length > 0 ? (
                       <div className="ai-images">
                         {imgs.map((url: string, i: number) => (

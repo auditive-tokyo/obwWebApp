@@ -13,6 +13,9 @@ interface GenerateStreamResponseParams {
     roomId?: string;
     approved?: boolean;
     currentLocation?: string;
+    representativeName?: string | null;
+    representativeEmail?: string | null;
+    representativePhone?: string | null;
 }
 
 export async function* generateStreamResponse({
@@ -21,22 +24,28 @@ export async function* generateStreamResponse({
     previousResponseId,
     roomId,
     approved,
-    currentLocation
-}: GenerateStreamResponseParams): AsyncGenerator<any, void, unknown> {
+    representativeName,
+    representativeEmail,
+    representativePhone,
+    currentLocation,
+}: GenerateStreamResponseParams): AsyncGenerator<unknown, void, unknown> {
     try {
         // システムプロンプトを動的生成
         const systemPrompt = getSystemPrompt(
             roomId || '', 
             approved || false, 
-            currentLocation ? currentLocation : undefined
+            representativeName ?? null,
+            representativeEmail ?? null,
+            representativePhone ?? null,
+            currentLocation ? currentLocation : undefined,
         );
-        console.info("Generated system prompt for:", { roomId, approved, currentLocation });
+        console.info("Generated system prompt for:", { roomId, approved, representativeName, representativeEmail, representativePhone, currentLocation });
 
-        let tools: any[] = [];
+        const tools: Array<Record<string, unknown>> = [];
 
         // File Search ツール
         if (OPENAI_VECTOR_STORE_ID) {
-            const fileSearchTool: any = {
+            const fileSearchTool: Record<string, unknown> = {
                 type: "file_search",
                 vector_store_ids: [OPENAI_VECTOR_STORE_ID],
                 max_num_results: 10,
@@ -46,7 +55,7 @@ export async function* generateStreamResponse({
         }
 
         // Web Search ツール
-       const webSearchTool: any = {
+       const webSearchTool: Record<string, unknown> = {
             type: "web_search_preview",
             search_context_size: "low"
         };
@@ -54,7 +63,7 @@ export async function* generateStreamResponse({
 
         console.info("Enabled tools:", tools.map(t => t.type));
 
-        const requestPayload: any = {
+        const requestPayload: Record<string, unknown> = {
             model: model,
             instructions: systemPrompt,
             input: [{ role: "user", content: userMessage }],
@@ -87,9 +96,17 @@ export async function* generateStreamResponse({
                                 type: "array",
                                 items: { type: "string" },
                                 description: "An array of absolute HTTPS image URLs relevant to the answer for display in the chat UI. If none are relevant, return an empty array []. Limit to at most 15."
+                            },
+                            needs_human_operator: {
+                                type: "boolean",
+                                description: "Set to true ONLY when the user explicitly requests human operator assistance or answers 'yes' to the question 'Would you like me to contact a human operator?'. Do NOT set to true automatically based on the complexity of the issue."
+                            },
+                            inquiry_summary_for_operator: {
+                                type: "string",
+                                description: "A concise summary of the guest's inquiry for the human operator, formatted for Telegram messaging. Include key details like the issue type, current situation, and any urgent actions needed. DO NOT include guest personal information (name, email, phone) as it will be retrieved from the database. Return empty string \"\" if needs_human_operator is false."
                             }
                         },
-                        required: ["assistant_response_text", "reference_sources", "images"],
+                        required: ["assistant_response_text", "reference_sources", "images", "needs_human_operator", "inquiry_summary_for_operator"],
                         additionalProperties: false
                     }
                 }
@@ -97,10 +114,11 @@ export async function* generateStreamResponse({
         };
         if (previousResponseId) requestPayload.previous_response_id = previousResponseId;
 
-        const response = await openai.responses.create(requestPayload);
+        // OpenAI SDK expects a broadly typed payload; we cast here safely
+        const response = await openai.responses.create(requestPayload as unknown as Record<string, unknown>);
 
-        for await (const chunk of response as unknown as AsyncIterable<any>) {
-            yield chunk;
+        for await (const chunk of response as unknown as AsyncIterable<unknown>) {
+            yield chunk as unknown;
         }
 
         yield `data: ${JSON.stringify({ completed: true })}\n\n`;

@@ -45,6 +45,8 @@ const cognitoConfig = adminUserPoolConfigured
     }
   : baseCognito;
 
+const authConfig = { Cognito: cognitoConfig } as unknown as ResourcesConfig['Auth'];
+
 export const amplifyConfig: ResourcesConfig = {
   API: {
     GraphQL: {
@@ -54,7 +56,5 @@ export const amplifyConfig: ResourcesConfig = {
       defaultAuthMode: 'iam',
     }
   },
-  Auth: {
-    Cognito: cognitoConfig as any,
-  }
+  Auth: authConfig,
 } as ResourcesConfig;

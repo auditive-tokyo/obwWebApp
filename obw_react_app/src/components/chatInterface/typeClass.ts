@@ -22,5 +22,8 @@ export type Message = {
 export type RoomProps = {
   roomId: string;
   approved: boolean;
+  representativeName?: string;
+  representativeEmail?: string;
+  representativePhone?: string;
   currentLocation?: string;
 };

@@ -1,9 +1,9 @@
 import type { Guest } from '../adminpage/types/types';
 
 type Deps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any;
   guest: Guest;
-  detail: Guest | null;
   setAll: React.Dispatch<React.SetStateAction<Guest[]>>;
   setDetail: React.Dispatch<React.SetStateAction<Guest | null>>;
   setSignedPassportUrl: React.Dispatch<React.SetStateAction<string | null>>;
@@ -22,7 +22,6 @@ const mutation = `
 export async function approveGuest({
   client,
   guest,
-  detail,
   setAll,
   setDetail,
   setSignedPassportUrl,
@@ -34,19 +33,17 @@ export async function approveGuest({
     await client.graphql({
       query: mutation,
       variables: { roomNumber: guest.roomNumber, guestId: guest.guestId }
-    } as any);
+    });
 
     // 楽観更新
     setAll(prev =>
-      prev.map(x =>
-        x.guestId === guest.guestId ? { ...x, approvalStatus: 'approved' } : x
-      )
+      prev.map(x => (x.guestId === guest.guestId ? { ...x, approvalStatus: 'approved' } : x))
     );
 
-    if (detail?.guestId === guest.guestId) {
-      setDetail(null);
-      setSignedPassportUrl(null);
-    }
+    // 詳細モーダルが現在このゲストを表示していれば閉じる（関数更新で最新状態を参照）
+    setDetail(prev => (prev && prev.guestId === guest.guestId ? null : prev));
+    // 署名付きURLもクリア
+    setSignedPassportUrl(null);
 
     window.alert(`${guest.guestName} を承認しました。`);
   } catch (e) {

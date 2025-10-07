@@ -66,6 +66,7 @@ export default function RoomPage() {
   }, [sessionChecked, sessionValid])
 
   // 部屋レベルのチェックイン/アウト日を guestSessions から算出（先頭に見つかった値で可）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parseToDate = (d: any): Date | null => {
     if (!d) return null
     if (d instanceof Date) return d
@@ -111,7 +112,8 @@ export default function RoomPage() {
 
   // 戻る（ID→基本情報フォームへ。家族は名前のみ）
   const handleBack = () => {
-    const isFamily = !!(selectedGuest as any)?.isFamilyMember
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isFamily = !!(selectedGuest as any)?.isFamilyMember
     setIsRepresentativeFamily(isFamily)
     setForceShowForm(true)
     setOverrideFamilyForEdit(isFamily)
@@ -176,7 +178,8 @@ export default function RoomPage() {
       setPassportImageUrl(selectedGuest.passportImageUrl ?? null)
       setPromoConsent(!!selectedGuest.promoConsent)
       // 家族フラグはサーバ値をそのまま採用
-      setIsRepresentativeFamily(!!(selectedGuest as any)?.isFamilyMember)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setIsRepresentativeFamily(!!(selectedGuest as any)?.isFamilyMember)
     } else {
       setName(''); setEmail(''); setAddress(''); setPhone('')
       setOccupation(''); setNationality('')
@@ -197,10 +200,14 @@ export default function RoomPage() {
       dbg('guestSessions updated for selected guest', {
         guestId: g.guestId,
         approvalStatus: g.approvalStatus,
-        isFamilyMember: (g as any)?.isFamilyMember,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  isFamilyMember: (g as any)?.isFamilyMember,
         flags: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           isRepresentativeFamily: (g as any)?.isRepresentativeFamily,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           isFamily: (g as any)?.isFamily,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           role: (g as any)?.role,
         }
       })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type InputHTMLAttributes } from 'react'
 import { generateClient } from 'aws-amplify/api'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
@@ -7,7 +7,7 @@ import { SecurityInfoCards } from '@/pages/roompage/components/SecurityInfoCards
 
 type Props = { roomNumber: string }
 
-function CustomPhoneInput(props: any) {
+function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
@@ -86,12 +86,27 @@ export default function AccessForm({ roomNumber }: Props) {
         const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
         setError(`${getMessage("sendFailed")}${firstErr}`)
       }
-    } catch (e: any) {
-      const msg =
-        Array.isArray(e?.errors) && e.errors[0]?.message
-          ? e.errors[0].message
-          : e?.message || JSON.stringify(e)
-      setError(`${getMessage("sendFailed")}: ${msg}`)
+    } catch (e: unknown) {
+      const getErrorMessage = (err: unknown): string => {
+        if (typeof err === 'string') return err
+        if (err instanceof Error) return err.message
+        if (typeof err === 'object' && err !== null) {
+          const obj = err as Record<string, unknown>
+          const maybeErrors = obj.errors
+          if (Array.isArray(maybeErrors) && maybeErrors.length > 0) {
+            const first = maybeErrors[0]
+            if (typeof first === 'object' && first !== null && 'message' in first) {
+              const m = (first as Record<string, unknown>).message
+              if (typeof m === 'string') return m
+            }
+          }
+          const maybeMessage = obj.message
+          if (typeof maybeMessage === 'string') return maybeMessage
+        }
+        try { return JSON.stringify(err) } catch { return String(err) }
+      }
+      const msg = getErrorMessage(e)
+      setError(`${getMessage('sendFailed')}: ${msg}`)
     } finally {
       setLoading(false)
     }

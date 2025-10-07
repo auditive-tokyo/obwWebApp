@@ -4,6 +4,8 @@ import { BasicCheckInOutDate } from './BasicCheckInOutDate'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import { getMessage } from '@/i18n/messages'
+import { parseAddressFields } from '../utils/formValidation'
+import type { InputHTMLAttributes } from 'react'
 
 type BasicInfoFormProps = {
   name: string
@@ -30,7 +32,7 @@ type BasicInfoFormProps = {
   hasRoomCheckDates?: boolean
 }
 
-function CustomPhoneInput(props: any) {
+function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
@@ -63,6 +65,70 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
   const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
     ? getMessage("emailValidation")
     : ""
+
+  // 不足している項目のリスト
+  const missingFields: string[] = []
+  
+  if (isRepresentativeFamily) {
+    // 代表者の家族の場合：名前のみ必須
+    if (!name.trim()) {
+      missingFields.push(getMessage("name") as string)
+    }
+  } else {
+    // 家族以外：各項目をチェック
+    if (!name.trim()) {
+      missingFields.push(getMessage("name") as string)
+    }
+    if (!email.trim()) {
+      missingFields.push(getMessage("email") as string)
+    }
+    
+    // 住所の個別フィールドチェック
+    const parsedAddress = parseAddressFields(address)
+    if (parsedAddress) {
+      if (!parsedAddress.addressLine1.trim()) {
+        missingFields.push(getMessage("addressLine1") as string)
+      }
+      if (!parsedAddress.city.trim()) {
+        missingFields.push(getMessage("city") as string)
+      }
+      if (!parsedAddress.state.trim()) {
+        missingFields.push(getMessage("state") as string)
+      }
+      if (!parsedAddress.country.trim()) {
+        missingFields.push(getMessage("country") as string)
+      }
+      if (!parsedAddress.zipcode.trim()) {
+        missingFields.push(getMessage("zipcode") as string)
+      }
+    } else {
+      // address が空またはパース失敗の場合
+      missingFields.push(getMessage("addressLine1") as string)
+      missingFields.push(getMessage("city") as string)
+      missingFields.push(getMessage("state") as string)
+      missingFields.push(getMessage("country") as string)
+      missingFields.push(getMessage("zipcode") as string)
+    }
+    
+    if (!phone.trim()) {
+      missingFields.push(getMessage("phone") as string)
+    }
+    if (!occupation.trim()) {
+      missingFields.push(getMessage("occupation") as string)
+    }
+    if (!nationality.trim()) {
+      missingFields.push(getMessage("nationality") as string)
+    }
+    // チェックイン・アウト日（部屋日付未設定のときのみチェック）
+    if (!hasRoomCheckDates) {
+      if (!checkInDate) {
+        missingFields.push(getMessage("checkInDate") as string)
+      }
+      if (!checkOutDate) {
+        missingFields.push(getMessage("checkOutDate") as string)
+      }
+    }
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -149,9 +215,6 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
 
             {/* 住所 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {getMessage("address")}<span className="text-red-500">*</span>
-              </label>
               <StructuredAddressInput
                 value={address}
                 onChange={setAddress}
@@ -227,6 +290,22 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
           >
             {getMessage("proceedToPassportImageUpload")}
           </button>
+
+          {/* 不足項目リスト */}
+          {!isInfoComplete && missingFields.length > 0 && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm font-medium text-red-700 mb-2">
+                {getMessage("missingFieldsPrompt")}
+              </p>
+              <ul className="list-disc list-inside space-y-1">
+                {missingFields.map((field, index) => (
+                  <li key={index} className="text-sm text-red-600">
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

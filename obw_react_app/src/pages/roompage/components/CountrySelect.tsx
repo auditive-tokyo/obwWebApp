@@ -1,4 +1,5 @@
 import Select from 'react-select'
+import type { SingleValue } from 'react-select'
 import countryList from 'react-select-country-list'
 
 export interface CountrySelectProps {
@@ -9,15 +10,16 @@ export interface CountrySelectProps {
   className?: string
 }
 
-const options = countryList().getData()
+type CountryOption = { label: string; value: string }
+const options = countryList().getData() as CountryOption[]
 
 export function CountrySelect({ value, onChange, placeholder, isClearable = true, className }: CountrySelectProps) {
   const selected = options.find(opt => opt.label === value) || null
   return (
-    <Select
+    <Select<CountryOption, false>
       options={options}
       value={selected}
-      onChange={opt => onChange((opt as any)?.label || "")}
+      onChange={(opt: SingleValue<CountryOption>) => onChange(opt?.label ?? "")}
       className={className || 'w-full'}
       classNamePrefix="react-select"
       placeholder={placeholder}

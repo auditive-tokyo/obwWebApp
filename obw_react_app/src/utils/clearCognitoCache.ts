@@ -17,5 +17,5 @@ export function clearCognitoIdentityCache() {
     }
     sweep(localStorage)
     sweep(sessionStorage)
-  } catch {}
+  } catch { void 0 }
 }

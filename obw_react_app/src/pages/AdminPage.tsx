@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/api';
-import type { Guest, ApprovalStatus } from './adminpage/types/types';
+import type { Guest } from './adminpage/types/types';
 import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
 import { rejectGuest } from './handlers/rejectGuest';
 import { approveGuest } from './handlers/approveGuest';
+import { confirmApproveDialog, confirmRejectDialog } from './adminpage/components/Dialogs';
 import { fetchGuests } from './handlers/fetchGuests';
+import { updateGuest } from './handlers/updateGuest';
 import { DetailsModal } from './adminpage/components/detailsModal';
+import GuestList from './adminpage/components/GuestList';
+import FiltersBar from './adminpage/components/FiltersBar';
+import { computeFilteredGuests } from './adminpage/utils/guestFilters';
+import BulkChangeButton from './adminpage/components/BulkChangeButton';
 
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
@@ -32,65 +38,30 @@ export default function AdminPage({ roomId }: AdminPageProps) {
   });
   
   const [statusFilter, setStatusFilter] = useState('pending')
+  const [bookingFilter, setBookingFilter] = useState('')
+  const [checkInFilter, setCheckInFilter] = useState('')
   const [detail, setDetail] = useState<Guest | null>(null)
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)
   const [signing, setSigning] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [bulkProcessing, setBulkProcessing] = useState(false)
 
-  // 部屋番号のプルダウン（シンプルに実際の部屋番号のみ）
-  const roomOptions = useMemo(() => {
-    const set = new Set<string>(all.map(g => g.roomNumber).filter(Boolean))
-    
-    // 2階〜8階の全部屋を追加（データがなくても選択可能にする）
-    for (let floor = 2; floor <= 8; floor++) {
-      for (let room = 1; room <= 4; room++) {
-        const roomNumber = `${floor}${String(room).padStart(2, '0')}`;
-        set.add(roomNumber);
-      }
-    }
-    
-    // 数値として正しくソート
-    return Array.from(set).sort((a, b) => {
-      const numA = parseInt(a, 10);
-      const numB = parseInt(b, 10);
-      return numA - numB;
-    });
-  }, [all])
+  // clear bookingFilter when roomFilter changes
+  useEffect(() => {
+    setBookingFilter('');
+    setCheckInFilter('');
+  }, [roomFilter]);
 
-  const statusOptions: (ApprovalStatus | '')[] = [
-    '',  // フィルターなし を追加
-    'pending',
-    'waitingForBasicInfo', 
-    'waitingForPassportImage',
-    'approved',
-    'rejected'
-  ];
-
-  // フィルタリングロジック（空文字 = フィルターなし）
+  // フィルタリングロジック
   const filteredGuests = useMemo(() => {
-    const sf = (statusFilter || '').toLowerCase()
-    const base = all.filter(g => {
-      const st = (g.approvalStatus || '').trim().toLowerCase()
-      const statusOk = !sf || st === sf
-      const roomOk = !roomFilter || g.roomNumber === roomFilter  // 空文字なら全部OK
-      return statusOk && roomOk
-    })
+    return computeFilteredGuests(all, {
+      roomFilter, statusFilter, checkInFilter, bookingFilter
+    });
+  }, [all, roomFilter, statusFilter, checkInFilter, bookingFilter]);
 
-    // チェックイン日優先ソート（修正箇所）
-    return [...base].sort((a, b) => {
-      // チェックイン日を最優先に
-      const aDate = a.checkInDate || '';
-      const bDate = b.checkInDate || '';
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
-      
-      // 同じチェックイン日なら予約ID → 氏名順
-      const aId = a.bookingId || '';
-      const bId = b.bookingId || '';
-      if (aId !== bId) return aId.localeCompare(bId);
-      return (a.guestName || '').localeCompare(b.guestName || '');
-    })
-  }, [all, roomFilter, statusFilter])
+  // 宿泊日変更ボタンがアクティブになれる条件
+  const canBulk = Boolean(roomFilter && (checkInFilter || bookingFilter));
 
   // データ読み込み関数を作成
   const loadData = useCallback(async () => {
@@ -99,20 +70,15 @@ export default function AdminPage({ roomId }: AdminPageProps) {
       setAll, 
       setLoading, 
       setError,
-      roomFilter: roomFilter || undefined,  // 空文字をundefinedに変換
+      roomFilter: roomFilter || undefined,
       statusFilter: statusFilter || undefined
     });
-  }, [roomFilter, statusFilter, client]);
+  }, [roomFilter, statusFilter]);
 
-  // 初回読み込み
+  // 初回読み込みおよびフィルター変更時の自動更新
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // フィルター変更時にも自動更新
-  useEffect(() => {
-    loadData();
-  }, [roomFilter, statusFilter]); // これを追加
 
   // ESCで閉じる
   useEffect(() => {
@@ -134,43 +100,71 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     } else {
       setSignedPassportUrl(null);
     }
-  }, [detail, client])
+  }, [detail])
 
   // 承認前の確認ダイアログ
   const confirmApprove = async (g: Guest) => {
-    if (!g) return
-    const ok = window.confirm(`${g.guestName} を承認します。よろしいですか？`)
-    if (!ok) return
-    await approveGuest({
-      client,
-      guest: g,
-      detail,
-      setAll,
-      setDetail,
-      setSignedPassportUrl,
-      setApprovingId
+    await confirmApproveDialog(g, async () => {
+      await approveGuest({
+        client,
+        guest: g,
+        setAll,
+        setDetail,
+        setSignedPassportUrl,
+        setApprovingId
+      })
     })
   }
 
   // 拒否前の確認ダイアログ
   const confirmReject = async (g: Guest) => {
-    if (!g) return
-    const ok = window.confirm(`${g.guestName} を拒否します。よろしいですか？`)
-    if (!ok) return
-    await rejectGuest({
-      client,
-      guest: g,
-      detail,
-      setAll,
-      setDetail,
-      setSignedPassportUrl,
-      setRejectingId
+    await confirmRejectDialog(g, async () => {
+      await rejectGuest({
+        client,
+        guest: g,
+        detail,
+        setAll,
+        setDetail,
+        setSignedPassportUrl,
+        setRejectingId
+      })
     })
+  }
+
+  // ゲスト情報更新ハンドラー
+  const handleUpdateGuest = async (updatedGuest: Guest) => {
+    await updateGuest({
+      client,
+      guest: updatedGuest,
+      onSuccess: () => {
+        // ローカル状態を更新
+        setAll(prev => prev.map(g => 
+          g.roomNumber === updatedGuest.roomNumber && g.guestId === updatedGuest.guestId
+            ? updatedGuest
+            : g
+        ));
+        
+        // 詳細モーダルの表示も更新
+        if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
+          setDetail(updatedGuest);
+        }
+        
+        alert('更新しました！');
+      },
+      onError: (error) => {
+        console.error('Update failed:', error);
+        alert('更新に失敗しました: ' + error.message);
+      }
+    });
   }
 
   return (
     <div style={{ padding: '2rem' }}>
-      <h1>承認待ちリスト</h1>
+      {/* タイトル/サマリー（中央寄せ） */}
+      <div style={{ textAlign: 'center', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}</h3>
+        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}</div>
+      </div>
 
       <div style={{ marginBottom: 12 }}>
         <button
@@ -180,111 +174,103 @@ export default function AdminPage({ roomId }: AdminPageProps) {
           {loading ? '更新中…' : '更新'}
         </button>
         
-        {/* 部屋フィルター */}
-        <select
-          style={{ marginLeft: 12 }}
-          value={roomFilter}
-          onChange={(e) => setRoomFilter(e.target.value)}
-        >
-          <option value="">フィルターなし</option>
-          {roomOptions.map(r => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
+        <FiltersBar
+          all={all}
+          roomFilter={roomFilter}
+          setRoomFilter={setRoomFilter}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          bookingFilter={bookingFilter}
+          setBookingFilter={setBookingFilter}
+          checkInFilter={checkInFilter}
+          setCheckInFilter={setCheckInFilter}
+        />
+
+        {/* 宿泊日変更ボタン：UI を分離したコンポーネントに置換 */}
+        <BulkChangeButton
+          canBulk={canBulk}
+          bulkProcessing={bulkProcessing}
+          title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
+          onClick={async () => {
+            if (!canBulk) return;
+            // prompt for new dates
+            const newCheckIn = window.prompt('新しいチェックイン日を入力してください (YYYY-MM-DD)', '');
+            if (!newCheckIn) return;
+            const newCheckOut = window.prompt('新しいチェックアウト日を入力してください (YYYY-MM-DD)', '');
+            if (!newCheckOut) return;
+
+            // affected guests are those currently filtered
+            const affected = filteredGuests;
+            if (!affected || affected.length === 0) {
+              alert('該当するゲストがいません。');
+              return;
+            }
+
+            if (!confirm(`${affected.length} 件のゲストの宿泊日を ${newCheckIn} ～ ${newCheckOut} に変更します。よろしいですか？`)) return;
+
+            setBulkProcessing(true);
+            let success = 0;
+            let fail = 0;
+
+            for (const g of affected) {
+              const updatedGuest: Guest = { ...g, checkInDate: newCheckIn, checkOutDate: newCheckOut };
+              try {
+                // call low-level updateGuest handler but suppress per-item alerts
+                // we await each one to keep rate reasonable and preserve order
+                 
+                await updateGuest({
+                  client,
+                  guest: updatedGuest,
+                  onSuccess: () => {
+                    setAll(prev => prev.map(p => p.roomNumber === updatedGuest.roomNumber && p.guestId === updatedGuest.guestId ? updatedGuest : p));
+                    if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
+                      setDetail(updatedGuest);
+                    }
+                    success += 1;
+                  },
+                  onError: (err) => {
+                    console.error('bulk update failed for', g, err);
+                    fail += 1;
+                  }
+                });
+              } catch (err) {
+                console.error('bulk update exception', err);
+                fail += 1;
+              }
+            }
+
+            setBulkProcessing(false);
+            alert(`完了: 成功 ${success} 件、失敗 ${fail} 件`);
+          }}
+        />
+      </div>
+
+      {/* status display moved above (in centered header) */}
+
+      <GuestList
+        guests={filteredGuests}
+        loading={loading}
+        error={error}
         
-        {/* ステータスフィルター - フィルターなしを追加 */}
-        <select
-          style={{ marginLeft: 12 }}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">フィルターなし</option>
-          {statusOptions.slice(1).map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* 現在の状態表示を詳細に */}
-      <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
-        表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}
-        <br />
-        Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}
-      </div>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {!loading && filteredGuests.length === 0 && <p>該当するゲストはありません。</p>}
-
-      <ul>
-        {filteredGuests.map(g => (
-          <li
-            key={`${g.roomNumber}:${g.guestId}`}
-            style={{ marginBottom: 8, display: 'flex', alignItems: 'center' }}
-          >
-            <strong>Room {g.roomNumber}</strong> — {g.guestName}
-            {g.bookingId && <> ／ 予約ID: {g.bookingId}</>}
-            {g.checkInDate && g.checkOutDate && <> ／ 滞在: {g.checkInDate} ~ {g.checkOutDate}</>}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                style={{
-                  backgroundColor: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: 4,
-                  cursor: 'pointer'
-                }}
-                onClick={() => setDetail(g)}
-              >
-                詳細
-              </button>
-              <button
-                type="button"
-                style={{
-                  backgroundColor: '#2e7d32',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: 4,
-                  cursor: 'pointer'
-                }}
-                disabled={approvingId === g.guestId || rejectingId === g.guestId}
-                onClick={() => confirmApprove(g)}
-              >
-                {approvingId === g.guestId ? '承認中…' : '承認'}
-              </button>
-             <button
-               type="button"
-               style={{
-                 backgroundColor: '#c62828',
-                 color: '#fff',
-                 border: 'none',
-                 padding: '6px 12px',
-                 borderRadius: 4,
-                 cursor: 'pointer'
-               }}
-               disabled={rejectingId === g.guestId || approvingId === g.guestId}
-               onClick={() => confirmReject(g)}
-             >
-               {rejectingId === g.guestId ? '拒否中…' : '拒否'}
-             </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+        setDetail={setDetail}
+        approvingId={approvingId}
+        rejectingId={rejectingId}
+        confirmApprove={confirmApprove}
+        confirmReject={confirmReject}
+      />
 
       {/* 詳細モーダル */}
       {detail && (
         <DetailsModal
           detail={detail}
-            onClose={() => setDetail(null)}
-            signing={signing}
-            signedPassportUrl={signedPassportUrl}
-            approvingId={approvingId}
-            rejectingId={rejectingId}
-            confirmApprove={confirmApprove}
-            confirmReject={confirmReject}
+          onClose={() => setDetail(null)}
+          signing={signing}
+          signedPassportUrl={signedPassportUrl}
+          approvingId={approvingId}
+          rejectingId={rejectingId}
+          confirmApprove={confirmApprove}
+          confirmReject={confirmReject}
+          onUpdate={handleUpdateGuest}
         />
       )}
     </div>

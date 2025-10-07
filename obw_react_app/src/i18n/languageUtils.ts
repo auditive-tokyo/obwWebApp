@@ -12,11 +12,11 @@ export const saveLang = (lang: string) => {
   try {
     localStorage.setItem("lang", lang);
     saved = true;
-  } catch (e) {
+  } catch {
     try {
       document.cookie = `lang=${lang}; path=/; max-age=31536000`;
       saved = true;
-    } catch (err) {
+    } catch {
       alert("Failed to save language preference. LocalStorage or Cookies may be disabled.");
     }
   }
@@ -29,7 +29,7 @@ export const loadLang = (): "ja" | "en" => {
   try {
     const lang = localStorage.getItem("lang");
     if (lang === "ja" || lang === "en") return lang;
-  } catch (e) {
+  } catch {
     const match = document.cookie.match(/(?:^|; )lang=(ja|en)/);
     if (match) return match[1] as "ja" | "en";
   }

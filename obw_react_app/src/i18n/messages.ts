@@ -39,6 +39,7 @@ type MessageKeys =
   | "submitting"
   | "sendLink"
   | "allFieldsRequired"
+  | "missingFieldsPrompt"
   | "sendFailed"
   | "emailLinkSent"
   | "smsLinkSent"
@@ -48,7 +49,6 @@ type MessageKeys =
   | "emailValidation"
   | "emailConsent"
   | "promoConsent"
-  | "address"
   | "addressLine1"
   | "addressLine1Placeholder"
   | "addressLine2"
@@ -81,14 +81,14 @@ type MessageKeys =
   | "whyWeAsk"
   | "securityIntro"
   | "currentLocation"
-  | "syncLocation"
+  | "updateStatus"
   | "unsyncLocation"
   | "locationInfo"
   | "locationShareTitle"
   | "locationResyncTitle"
-  | "locationShareMessage"
-  | "resync"
-  | "share"
+  | "statusUpdateMessage"
+  | "shareLocation"
+  | "updateStatusOnly"
   | "updatedAt"
   | "locationSyncSuccess"
   | "locationSyncError"
@@ -149,6 +149,7 @@ type Messages = {
     submitting: string;
     sendLink: string;
     allFieldsRequired: string;
+    missingFieldsPrompt: string;
     sendFailed: string;
     emailLinkSent: string;
     smsLinkSent: string;
@@ -158,7 +159,6 @@ type Messages = {
     emailValidation: string;
     emailConsent: string;
     promoConsent: string;
-    address: string;
     addressLine1: string;
     addressLine1Placeholder: string;
     addressLine2: string;
@@ -191,14 +191,14 @@ type Messages = {
     whyWeAsk: string;
     securityIntro: string;
     currentLocation: string;
-    syncLocation: string;
+    updateStatus: string;
     unsyncLocation: string;
     locationInfo: string;
     locationShareTitle: string;
     locationResyncTitle: string;
-    locationShareMessage: string;
-    resync: string;
-    share: string;
+    statusUpdateMessage: string;
+    shareLocation: string;
+    updateStatusOnly: string;
     updatedAt: string;
     locationSyncSuccess: string;
     locationSyncError: string;
@@ -261,6 +261,7 @@ const messages: Messages = {
     submitting: "送信中…",
     sendLink: "リンクを送信",
     allFieldsRequired: "お名前・Email・電話番号はすべて必須です",
+    missingFieldsPrompt: "以下の項目を入力してください：",
     sendFailed: "送信に失敗しました",
     emailLinkSent: "メールにアクセスリンクを送信しました。ご確認ください。",
     smsLinkSent: "SMSにアクセスリンクを送信しました。ご確認ください。",
@@ -270,7 +271,6 @@ const messages: Messages = {
     emailValidation: "正しいメールアドレスを入力してください",
     emailConsent: "最新情報をメールで受け取る",
     promoConsent: "プロモーションや特別割引、近隣イベント情報などをお送りします。\n受取りをご希望されない場合はチェックは外したままにして下さい。",
-    address: "住所",
     addressLine1: "住所1",
     addressLine1Placeholder: "住所1（番地・丁目・号など）",
     addressLine2: "住所2",
@@ -312,21 +312,21 @@ const messages: Messages = {
     whyWeAsk: "この情報をお願いする理由",
     securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
     currentLocation: "現在地",
-    syncLocation: "現在地を同期",
+    updateStatus: "ステータス更新",
     unsyncLocation: "同期解除",
     locationInfo: "現在地情報",
-    locationShareTitle: "現在地の共有",
-    locationResyncTitle: "現在地の再同期",
-    locationShareMessage: "お客様の現在地をサポートに通知できます。お客様の位置情報はサポートの目的においてのみ使用されます。",
-    resync: "再同期",
-    share: "共有する",
+    locationShareTitle: "現在地も共有しますか？",
+    locationResyncTitle: "現在地も再同期しますか？",
+    statusUpdateMessage: "ステータスを更新します。お客様の現在地を保存しますか？お客様の位置情報はサポートの目的においてのみ使用されます。",
+    shareLocation: "位置情報も共有",
+    updateStatusOnly: "ステータス更新",
     updatedAt: "更新日時",
     locationSyncSuccess: "位置情報の同期が完了しました。",
     locationSyncError: "位置情報の同期に失敗しました。",
     locationDeleteSuccess: "位置情報を削除しました。",
     locationDeleteError: "位置情報の削除に失敗しました。",
     pleaseRetryLater: "少し時間をおいてから再度お試しください。",
-    welcomeToGuestPage: "大阪ベイホイール ゲストページへようこそ",
+    welcomeToGuestPage: "大阪ベイウィール ゲストページへようこそ",
     smsLinkKeepSafe: "このリンクは大切に保管してください。",
     smsShareWarning: "同じ部屋に宿泊するご家族・ご友人以外には共有しないでください。",
     smsMultiDeviceInfo: "複数のデバイスやブラウザからアクセスする場合も、このリンクを開くことでセッションを復元できます。",
@@ -379,6 +379,7 @@ const messages: Messages = {
     submitting: "Submitting...",
     sendLink: "Send Link",
     allFieldsRequired: "Name, Email, and Phone number are all required",
+    missingFieldsPrompt: "Please complete the following fields:",
     sendFailed: "Failed to send",
     emailLinkSent: "Access link sent to your email. Please check your inbox.",
     smsLinkSent: "Access link sent to your SMS. Please check your messages.",
@@ -389,7 +390,6 @@ const messages: Messages = {
     emailValidation: "Please enter a valid email address.",
     emailConsent: "Receive updates via email",
     promoConsent: "We will send you promotions, special discounts, and local event information. \nIf you do not wish to receive these, please leave the checkbox unchecked.",
-    address: "Address",
     addressLine1: "Address Line 1",
     addressLine1Placeholder: "Address Line 1 (Street, Block, etc.)",
     addressLine2: "Address Line 2",
@@ -430,14 +430,14 @@ const messages: Messages = {
     whyWeAsk: "Why we ask for this information",
     securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
     currentLocation: "Current Location",
-    syncLocation: "Sync Location",
+    updateStatus: "Update Status",
     unsyncLocation: "Unsync",
     locationInfo: "Location Information",
-    locationShareTitle: "Share Current Location",
-    locationResyncTitle: "Re-sync Current Location",
-    locationShareMessage: "We can notify support of your current location. Your location information will only be used for support purposes.",
-    resync: "Re-sync",
-    share: "Share",
+    locationShareTitle: "Share Current Location?",
+    locationResyncTitle: "Re-sync Current Location?",
+    statusUpdateMessage: "We will update your status. Would you like to save your current location? Your location information will only be used for support purposes.",
+    shareLocation: "Share location",
+    updateStatusOnly: "Update status only",
     updatedAt: "Updated",
     locationSyncSuccess: "Location sync completed successfully.",
     locationSyncError: "Location sync failed.",

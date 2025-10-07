@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import ChatWidget from '@/components/ChatWidget'
-import type { RoomPageViewProps } from './types'
+import type { RoomPageViewProps, GuestSession } from './types'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
 import BasicInfoForm from './components/BasicInfoForm'
@@ -19,7 +19,7 @@ export function RoomPageView(
     handleSyncGeo?: () => Promise<void>
     handleClearLocation?: () => Promise<void>
     myCurrentLocation?: string | null
-    setGuestSessions?: (sessions: any[]) => void
+    setGuestSessions?: (sessions: GuestSession[]) => void
   }
 ) {
   const {
@@ -90,13 +90,13 @@ export function RoomPageView(
   const isApproved = hasApprovedGuest && isAfterCheckInTime;
 
   // クリック選択時の表示判定
-  const shouldShowBasicInfoForSession = (g: any) =>
+  const shouldShowBasicInfoForSession = (g: GuestSession | null | undefined) =>
     g?.approvalStatus === 'waitingForBasicInfo'
 
-  const shouldShowUploadForSession = (g: any) =>
+  const shouldShowUploadForSession = (g: GuestSession | null | undefined) =>
     g?.approvalStatus === 'waitingForPassportImage'
 
-  const getStatusMessage = (g: any): string | null => {
+  const getStatusMessage = (g: GuestSession | null | undefined): string | null => {
     const status = g?.approvalStatus
     if (status === 'pending') return getMessage("statusPending") as string
     if (status === 'approved') return getMessage("statusApproved") as string
@@ -123,7 +123,7 @@ export function RoomPageView(
 
   // 「Add Guest」ボタンを無効化する条件:
   // どれかのセッションが waitingForBasicInfo かつ guestId を持っている場合は無効化
-  const disableAddGuest = !!guestSessions?.some((g: any) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
+  const disableAddGuest = !!guestSessions?.some((g: GuestSession) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
 
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
@@ -142,6 +142,8 @@ export function RoomPageView(
 
   dbg('selectedSession:', selectedSession)
   dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  // The form component's props type isn't exported from the component file; cast locally and suppress the lint rule
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const BasicInfoFormAny = BasicInfoForm as any
 
   // 位置情報同期モーダルの状態
@@ -159,6 +161,16 @@ export function RoomPageView(
     setShowGeoModal(false)
     if (handleSyncGeo) {
       await handleSyncGeo()
+      await refreshGuestSessions({ client, roomId, setGuestSessions })
+    }
+  }
+
+  // ステータスのみ更新
+  const handleStatusRefreshOnly = async () => {
+    try {
+      await refreshGuestSessions({ client, roomId, setGuestSessions })
+    } finally {
+      setShowGeoModal(false)
     }
   }
 
@@ -258,12 +270,12 @@ export function RoomPageView(
               ) : (
                 // 位置情報がない場合: 同期ボタン
                 <>
-                  <span className="text-xs text-gray-500">{getMessage("syncLocation")}</span>
+                  <span className="text-xs text-gray-500">{getMessage("updateStatus")}</span>
                   <button 
                     type="button"
                     onClick={() => setShowGeoModal(true)}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                    title={getMessage("syncLocation") as string}
+                    title={getMessage("updateStatus") as string}
                   >
                     <svg 
                       className="w-5 h-5" 
@@ -339,7 +351,7 @@ export function RoomPageView(
               </div>
 
               <ul className="divide-y divide-gray-200 border border-gray-100 rounded-md">
-                {guestSessions.map(g => {
+                {guestSessions.map((g: GuestSession) => {
                   const isSelected =
                     !!selectedSession && selectedSession.guestId === g.guestId
                   return (
@@ -404,7 +416,7 @@ export function RoomPageView(
                 {getMessage(myCurrentLocation ? "locationResyncTitle" : "locationShareTitle")}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
-                {getMessage("locationShareMessage")}
+                {getMessage("statusUpdateMessage")}
               </p>
               <div className="flex gap-3 justify-end">
                 <button
@@ -412,14 +424,21 @@ export function RoomPageView(
                   onClick={() => setShowGeoModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  {getMessage("close")}
+                  {getMessage("cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStatusRefreshOnly}
+                  className="px-4 py-2 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  {getMessage("updateStatusOnly")}
                 </button>
                 <button
                   type="button"
                   onClick={handleGeoConfirm}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {getMessage(myCurrentLocation ? "resync" : "share")}
+                  {getMessage("shareLocation")}
                 </button>
               </div>
             </div>
@@ -558,6 +577,37 @@ export function RoomPageView(
             roomId={roomId || ''} 
             approved={isApproved}
             currentLocation={myCurrentLocation || undefined}
+
+            representativeName={(() => {
+              try {
+                const gid = localStorage.getItem('guestId');
+                if (gid && Array.isArray(guestSessions)) {
+                  const rep = guestSessions.find(g => g.guestId === gid);
+                  return rep?.guestName || name;
+                }
+              } catch { void 0 }
+              return name;
+            })()}
+            representativeEmail={(() => {
+              try {
+                const gid = localStorage.getItem('guestId');
+                if (gid && Array.isArray(guestSessions)) {
+                  const rep = guestSessions.find(g => g.guestId === gid);
+                  return rep?.email || email;
+                }
+              } catch { void 0 }
+              return email;
+            })()}
+            representativePhone={(() => {
+              try {
+                const gid = localStorage.getItem('guestId');
+                if (gid && Array.isArray(guestSessions)) {
+                  const rep = guestSessions.find(g => g.guestId === gid);
+                  return rep?.phone || phone;
+                }
+              } catch { void 0 }
+              return phone;
+            })()}
           />
         </div>
       </div>

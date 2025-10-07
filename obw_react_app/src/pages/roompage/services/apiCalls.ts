@@ -2,10 +2,16 @@ import { dbg } from '@/utils/debugLogger'
 import type { Client } from 'aws-amplify/api'
 import type { GuestSession } from '../types'
 
+// Use the actual parameter type expected by Client.graphql to avoid mismatches
+type GraphParams = Parameters<Client['graphql']>[0]
+
+// Minimal helper to type GraphQL responses without using `any`.
+type GraphqlResponse<T = unknown> = { data?: T }
+
 type Params = {
   client: Client
   roomId: string
-  setGuestSessions?: (sessions: any[]) => void
+  setGuestSessions?: (sessions: GuestSession[]) => void
 }
 
 export async function refreshGuestSessions({ client, roomId, setGuestSessions }: Params) {
@@ -42,9 +48,11 @@ export async function refreshGuestSessions({ client, roomId, setGuestSessions }:
         }
       }
     `
-    const res = await client.graphql({ query, variables: { bookingId }, authMode: 'iam' } as any)
-    const items = ('data' in res ? (res as any).data?.listGuestsByBooking : null) || []
-    const list = (items || []).filter(Boolean) as GuestSession[]
+  const res = await client.graphql({ query, variables: { bookingId }, authMode: 'iam' } as GraphParams)
+  const resObj = res as unknown as GraphqlResponse<{ listGuestsByBooking?: unknown }>
+    const itemsRaw = resObj.data?.listGuestsByBooking ?? []
+    const items = Array.isArray(itemsRaw) ? itemsRaw : []
+    const list = items.filter(Boolean).map(i => i as unknown as GuestSession)
     dbg('setGuestSessions via bookingId length =', list.length)
     setGuestSessions(list)
   } catch (e) {
@@ -94,8 +102,9 @@ export async function loadMyGuest({ client, roomId }: { client: Client; roomId: 
   `
   try {
     dbg('loadMyGuest ->', { roomNumber: roomId, guestId: gid })
-    const res = await client.graphql({ query, variables: { roomNumber: roomId, guestId: gid }, authMode: 'iam' } as any)
-    const g = 'data' in res ? (res as any).data?.getGuest : null
+  const res = await client.graphql({ query, variables: { roomNumber: roomId, guestId: gid }, authMode: 'iam' } as GraphParams)
+  const resObj = res as unknown as GraphqlResponse<{ getGuest?: unknown }>
+    const g = resObj.data?.getGuest as unknown as GuestDetail | null
     dbg('loadMyGuest result ->', g ? { name: g.guestName, status: g.approvalStatus } : null)
     return g || null
   } catch (e) {
@@ -110,7 +119,7 @@ export async function saveGuestLocation({
   guestId,
   currentLocation
 }: {
-  client: any
+  client: Client
   roomId: string
   guestId: string
   currentLocation: string
@@ -129,7 +138,7 @@ export async function saveGuestLocation({
     guestId,
     currentLocation
   }
-  return client.graphql({ query: mutation, variables: { input } })
+  return client.graphql({ query: mutation, variables: { input } } as GraphParams)
 }
 
 export async function deleteGuestLocation({
@@ -137,7 +146,7 @@ export async function deleteGuestLocation({
   roomId,
   guestId
 }: {
-  client: any
+  client: Client
   roomId: string
   guestId: string
 }) {
@@ -161,7 +170,7 @@ export async function deleteGuestLocation({
   dbg('[deleteGuestLocation] 送信データ:', input)
   
   try {
-    const result = await client.graphql({ query: mutation, variables: { input } })
+  const result = await client.graphql({ query: mutation, variables: { input } } as GraphParams)
     dbg('[deleteGuestLocation] GraphQL レスポンス:', result)
     return result
   } catch (error) {
@@ -200,9 +209,10 @@ export async function updateRoomCheckDates({
       query, 
       variables: { bookingId },
       authMode: 'iam'
-    } as any)
-    
-    const guests = ('data' in guestsResult ? (guestsResult as any).data?.listGuestsByBooking : []) || []
+    } as GraphParams)
+    const guestsResObj = guestsResult as unknown as GraphqlResponse<{ listGuestsByBooking?: unknown }>
+    const guestsRaw = guestsResObj.data?.listGuestsByBooking ?? []
+    const guests = Array.isArray(guestsRaw) ? guestsRaw.map(g => g as unknown as GuestSession) : []
     dbg('[updateRoomCheckDates] 対象ゲスト:', guests.length)
     
     if (guests.length === 0) {
@@ -221,7 +231,7 @@ export async function updateRoomCheckDates({
       }
     `
     
-    const updatePromises = guests.map(async (guest: any) => {
+    const updatePromises = guests.map(async (guest: GuestSession) => {
       const input = {
         roomNumber: guest.roomNumber,
         guestId: guest.guestId,
@@ -233,7 +243,7 @@ export async function updateRoomCheckDates({
         query: updateMutation,
         variables: { input },
         authMode: 'iam'
-      } as any)
+      } as GraphParams)
     })
     
     // 3. 全て並行実行

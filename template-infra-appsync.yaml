@@ -450,10 +450,21 @@ Resources:
         #end
 
         ## currentLocation の処理
-        #if(!$util.isNullOrEmpty($ctx.args.input.currentLocation))
-          #set($setExp = $setExp + ", #currentLocation = :currentLocation")
-          $util.qr($names.put("#currentLocation","currentLocation"))
-          $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
+        #if($ctx.args.input.containsKey("currentLocation"))
+          #if($util.isNull($ctx.args.input.currentLocation) || $ctx.args.input.currentLocation == "")
+            ## 値が null または 空文字 の場合は属性を削除（REMOVE）
+            #if($removeExp == "")
+              #set($removeExp = " REMOVE #currentLocation")
+            #else
+              #set($removeExp = $removeExp + ", #currentLocation")
+            #end
+            $util.qr($names.put("#currentLocation","currentLocation"))
+          #else
+            ## 値が非空の場合は更新（SET）
+            #set($setExp = $setExp + ", #currentLocation = :currentLocation")
+            $util.qr($names.put("#currentLocation","currentLocation"))
+            $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
+          #end
         #end
 
         ## 最終的な UpdateExpression を構築
