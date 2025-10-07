@@ -47,6 +47,12 @@ Resources:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
+      BuildProperties:
+        BuildFlags:
+          - -tags
+          - lambda.norpc
+        Env:
+          - CGO_ENABLED=0
     Properties:
       FunctionName: obw-get-presigned-url-function
       MemorySize: 128

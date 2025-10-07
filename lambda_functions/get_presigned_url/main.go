@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 var (
-	s3client *s3.S3
+	s3client        *s3.Client
+	s3presignClient *s3.PresignClient
 	// 英数字とハイフン/アンダースコア/ピリオドだけ残す
 	filenameSanitizeRe = regexp.MustCompile(`[^A-Za-z0-9._-]`)
 )
@@ -38,9 +38,13 @@ type PresignResponse struct {
 }
 
 func init() {
-	// セッションとS3クライアントをモジュール初期化で作る（handler毎に作らない）
-	sess := session.Must(session.NewSession())
-	s3client = s3.New(sess)
+	// AWS SDK v2の設定ロードとクライアント初期化（handler毎に作らない）
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		panic(fmt.Sprintf("unable to load SDK config: %v", err))
+	}
+	s3client = s3.NewFromConfig(cfg)
+	s3presignClient = s3.NewPresignClient(s3client)
 }
 
 func sanitizeFilename(fn string) string {
@@ -103,23 +107,21 @@ func handler(ctx context.Context, event InputEvent) (PresignResponse, error) {
 
 	s3Key := fmt.Sprintf("%s/%s/%s", roomId, timestamp, filename)
 
-	// Put URL (Presign)
-	putReq, _ := s3client.PutObjectRequest(&s3.PutObjectInput{
+	// Put URL (Presign) - AWS SDK v2
+	putPresigned, err := s3presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(bucket),
 		Key:         aws.String(s3Key),
 		ContentType: aws.String(contentType),
-	})
-	putUrl, err := putReq.Presign(3600 * time.Second)
+	}, s3.WithPresignExpires(3600*time.Second))
 	if err != nil {
 		return PresignResponse{}, fmt.Errorf("failed to presign put: %w", err)
 	}
 
-	// Get URL
-	getReq, _ := s3client.GetObjectRequest(&s3.GetObjectInput{
+	// Get URL - AWS SDK v2
+	getPresigned, err := s3presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(s3Key),
-	})
-	getUrl, err := getReq.Presign(3600 * time.Second)
+	}, s3.WithPresignExpires(3600*time.Second))
 	if err != nil {
 		return PresignResponse{}, fmt.Errorf("failed to presign get: %w", err)
 	}
@@ -127,8 +129,8 @@ func handler(ctx context.Context, event InputEvent) (PresignResponse, error) {
 	baseUrl := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucket, s3Key)
 
 	return PresignResponse{
-		PutUrl:  putUrl,
-		GetUrl:  getUrl,
+		PutUrl:  putPresigned.URL,
+		GetUrl:  getPresigned.URL,
 		BaseUrl: baseUrl,
 	}, nil
 }
