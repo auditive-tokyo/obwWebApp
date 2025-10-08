@@ -57,8 +57,8 @@ export function PassportUpload({
       const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
       const jpegFileName = `${sanitizedGuestName}_id.jpg`
       
-  // produce timestamp in Japan time (UTC+9) in the same format as previous ISO-based string
-  const timestamp = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      // produce timestamp in Japan time (UTC+9) in the same format as previous ISO-based string
+      const timestamp = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
       // 3. AppSync経由でpresigned URL取得
       const presignedQuery = `
