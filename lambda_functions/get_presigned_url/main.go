@@ -19,8 +19,6 @@ import (
 var (
 	s3client        *s3.Client
 	s3presignClient *s3.PresignClient
-	// 英数字とハイフン/アンダースコア/ピリオドだけ残す
-	filenameSanitizeRe = regexp.MustCompile(`[^A-Za-z0-9._-]`)
 )
 
 // AppSync-style input shape
@@ -48,13 +46,28 @@ func init() {
 }
 
 func sanitizeFilename(fn string) string {
-	fn = path.Base(fn)
-	fn = filenameSanitizeRe.ReplaceAllString(fn, "_")
+	// Trim, normalize common user mistakes, and cap length to S3 limits.
+	// - remove surrounding whitespace
+	// - collapse spaces immediately before a dot (" foo .jpg" -> "foo.jpg")
+	// - replace remaining spaces with underscores
+	// - replace slashes with underscores to avoid accidental path segments
+	fn = strings.TrimSpace(fn)
+	// collapse spaces before dot
+	fn = regexp.MustCompile(`\s+\.`).ReplaceAllString(fn, ".")
+	// replace slashes
+	fn = strings.ReplaceAll(fn, "/", "_")
+	// replace remaining spaces with underscore
+	fn = strings.ReplaceAll(fn, " ", "_")
+	if fn == "" {
+		return "unnamed"
+	}
 	if len(fn) > 255 {
 		fn = fn[:255]
 	}
 	return fn
 }
+
+// escapedS3Path removed: use simple key and front-end validation/encoding if needed
 
 func guessContentTypeByExt(fn string) string {
 	ext := strings.ToLower(path.Ext(fn))
@@ -87,17 +100,8 @@ func handler(ctx context.Context, event InputEvent) (PresignResponse, error) {
 	if rawFilename == "" {
 		return PresignResponse{}, errors.New("filename is required")
 	}
-	// If caller provided a path like "timestamp/filename.jpg", keep the subpath but sanitize each segment.
-	var filename string
-	if strings.Contains(rawFilename, "/") {
-		parts := strings.Split(rawFilename, "/")
-		for i, p := range parts {
-			parts[i] = sanitizeFilename(p)
-		}
-		filename = strings.Join(parts, "/")
-	} else {
-		filename = sanitizeFilename(rawFilename)
-	}
+	// normalize filename: replace any slashes with underscore then sanitize
+	filename := sanitizeFilename(strings.ReplaceAll(rawFilename, "/", "_"))
 	roomId := getStr("roomId")
 	if roomId == "" {
 		roomId = "unknown"
@@ -128,13 +132,8 @@ func handler(ctx context.Context, event InputEvent) (PresignResponse, error) {
 		return PresignResponse{}, errors.New("UPLOAD_BUCKET env missing")
 	}
 
-	var s3Key string
-	if strings.Contains(filename, "/") {
-		// filename already includes subpath (e.g., timestamp/filename.jpg)
-		s3Key = fmt.Sprintf("%s/%s", roomId, filename)
-	} else {
-		s3Key = fmt.Sprintf("%s/%s/%s", roomId, timestamp, filename)
-	}
+	// filename will not contain '/', construct key as roomId/timestamp/filename
+	s3Key := fmt.Sprintf("%s/%s/%s", roomId, timestamp, filename)
 
 	// Put URL (Presign) - AWS SDK v2
 	putPresigned, err := s3presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
