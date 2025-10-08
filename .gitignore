@@ -39,3 +39,7 @@ venv/
 .venv/
 vector_db_files/
 samconfig.toml
+
+# Local built
+**/bootstrap
+.aws-sam/

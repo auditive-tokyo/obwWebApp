@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { convertToJpeg } from '../utils/convertToJpeg'
+import { convertToJpegFile } from '../utils/convertToJpeg'
 import { getMessage } from '@/i18n/messages'
 import type { GraphQLResult } from '@aws-amplify/api'
 import type { Client } from 'aws-amplify/api'
@@ -50,14 +50,15 @@ export function PassportUpload({
     setUploading(true)
     setError("")
     try {
-      // 1. 画像をjpegに変換
-      const jpegBlob = await convertToJpeg(file)
-      
-      // 2. ファイル名をguestNameベースに変更
+      // 1. 画像をjpegに変換（HEIC対応・EXIF補正・リサイズ）
+      const jpegFile = await convertToJpegFile(file, { maxEdge: 1024, quality: 0.6 })
+
+      // 2. ファイル名をguestNameベースに変更（拡張子は .jpg に統一）
       const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
-      const jpegFileName = `${sanitizedGuestName}_passport.jpeg`
+      const jpegFileName = `${sanitizedGuestName}_id.jpg`
       
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  // produce timestamp in Japan time (UTC+9) in the same format as previous ISO-based string
+  const timestamp = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
       // 3. AppSync経由でpresigned URL取得
       const presignedQuery = `
@@ -93,7 +94,7 @@ export function PassportUpload({
       // 4. jpeg画像をS3にアップロード
       await fetch(putUrl, {
         method: 'PUT',
-        body: jpegBlob,
+        body: jpegFile,
         headers: { 'Content-Type': 'image/jpeg' }
       })
 

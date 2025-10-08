@@ -83,21 +83,44 @@ func handler(ctx context.Context, event InputEvent) (PresignResponse, error) {
 		return ""
 	}
 
-	filename := sanitizeFilename(getStr("filename"))
-	if filename == "" {
+	rawFilename := getStr("filename")
+	if rawFilename == "" {
 		return PresignResponse{}, errors.New("filename is required")
+	}
+	// If caller provided a path like "timestamp/filename.jpg", keep the subpath but sanitize each segment.
+	var filename string
+	if strings.Contains(rawFilename, "/") {
+		parts := strings.Split(rawFilename, "/")
+		for i, p := range parts {
+			parts[i] = sanitizeFilename(p)
+		}
+		filename = strings.Join(parts, "/")
+	} else {
+		filename = sanitizeFilename(rawFilename)
 	}
 	roomId := getStr("roomId")
 	if roomId == "" {
 		roomId = "unknown"
 	}
-	timestamp := getStr("timestamp")
-	if timestamp == "" {
-		timestamp = time.Now().UTC().Format("20060102T150405Z")
+	// Prefer client-provided timestamp (expected to be JST if client follows spec).
+	// If missing or empty, fall back to server-generated Japan time (UTC+9).
+	clientTs := getStr("timestamp")
+	var timestamp string
+	if clientTs != "" {
+		// sanitize timestamp to remove problematic chars (keep 0-9, T, -, and Z if present)
+		ts := regexp.MustCompile(`[^0-9TtZz-]`).ReplaceAllString(clientTs, "")
+		timestamp = ts
+	} else {
+		timestamp = time.Now().UTC().Add(9 * time.Hour).Format("20060102T150405")
 	}
 	contentType := getStr("contentType")
 	if contentType == "" {
 		contentType = guessContentTypeByExt(filename)
+	}
+
+	// If filename ends with .jpg, prefer image/jpeg content type to keep S3 object metadata consistent
+	if strings.HasSuffix(strings.ToLower(filename), ".jpg") {
+		contentType = "image/jpeg"
 	}
 
 	bucket := os.Getenv("UPLOAD_BUCKET")
@@ -105,7 +128,13 @@ func handler(ctx context.Context, event InputEvent) (PresignResponse, error) {
 		return PresignResponse{}, errors.New("UPLOAD_BUCKET env missing")
 	}
 
-	s3Key := fmt.Sprintf("%s/%s/%s", roomId, timestamp, filename)
+	var s3Key string
+	if strings.Contains(filename, "/") {
+		// filename already includes subpath (e.g., timestamp/filename.jpg)
+		s3Key = fmt.Sprintf("%s/%s", roomId, filename)
+	} else {
+		s3Key = fmt.Sprintf("%s/%s/%s", roomId, timestamp, filename)
+	}
 
 	// Put URL (Presign) - AWS SDK v2
 	putPresigned, err := s3presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
