@@ -50,17 +50,17 @@ export function PassportUpload({
     setUploading(true)
     setError("")
     try {
-      // 1. 画像をjpegに変換（HEIC対応・EXIF補正・リサイズ）
+      // 1. 画像をjpegに変換（HEIC対応・リサイズ）
       const jpegFile = await convertToJpegFile(file, { maxEdge: 1024, quality: 0.6 })
 
       // 2. ファイル名をguestNameベースに変更（拡張子は .jpg に統一）
-      const sanitizedGuestName = guestName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
-      const jpegFileName = `${sanitizedGuestName}_id.jpg`
+      // 名前はから以外の入力を許可し、サニタイズはサーバー側で実行している
+      const jpegFileName = `${guestName}.jpg`
       
-      // produce timestamp in Japan time (UTC+9) in the same format as previous ISO-based string
+      // 3. 日本時間 (UTC+9) のタイムスタンプを生成（ISO ベースの文字列）
       const timestamp = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-      // 3. AppSync経由でpresigned URL取得
+      // 4. AppSync経由でpresigned URL取得
       const presignedQuery = `
         mutation GetPresignedUrl($input: GetPresignedUrlInput!) {
           getPresignedUrl(input: $input) {
