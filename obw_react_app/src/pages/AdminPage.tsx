@@ -12,6 +12,7 @@ import GuestList from './adminpage/components/GuestList';
 import FiltersBar from './adminpage/components/FiltersBar';
 import { computeFilteredGuests } from './adminpage/utils/guestFilters';
 import BulkChangeButton from './adminpage/components/BulkChangeButton';
+import RoomTransferButton from './adminpage/components/RoomTransferButton';
 
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
@@ -37,7 +38,7 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     return match ? match[1] : ''; // 空文字 = フィルターなし
   });
   
-  const [statusFilter, setStatusFilter] = useState('pending')
+  const [statusFilter, setStatusFilter] = useState<string[]>(['pending'])
   const [bookingFilter, setBookingFilter] = useState('')
   const [checkInFilter, setCheckInFilter] = useState('')
   const [detail, setDetail] = useState<Guest | null>(null)
@@ -241,6 +242,18 @@ export default function AdminPage({ roomId }: AdminPageProps) {
 
             setBulkProcessing(false);
             alert(`完了: 成功 ${success} 件、失敗 ${fail} 件`);
+          }}
+        />
+
+        {/* 部屋移動ボタン */}
+        <RoomTransferButton
+          canBulk={canBulk}
+          bulkProcessing={bulkProcessing}
+          title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
+          onClick={async () => {
+            if (!canBulk) return;
+            // TODO: 部屋移動の実装
+            alert('部屋移動機能は開発中です');
           }}
         />
       </div>
