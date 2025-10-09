@@ -166,27 +166,37 @@ export default function FiltersBar({
             }}
           >
             {statusOptions.map(status => (
-              <label
+              <div
                 key={status}
+                role="button"
+                aria-pressed={statusFilter.includes(status)}
+                onClick={() => toggleStatus(status)}
                 style={{
-                  display: 'block',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
                   padding: '6px 12px',
                   cursor: 'pointer',
                   userSelect: 'none',
                   fontSize: '14px',
                   transition: 'background-color 0.15s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                <input
-                  type="checkbox"
-                  checked={statusFilter.includes(status)}
-                  onChange={() => toggleStatus(status)}
-                  style={{ marginRight: 8 }}
-                />
-                {status}
-              </label>
+                <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {statusFilter.includes(status) ? (
+                    // Blue checkmark only (no circle)
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M20 6L9 17l-5-5" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    // empty placeholder to keep alignment
+                    <span style={{ display: 'inline-block', width: 16, height: 16 }} />
+                  )}
+                </span>
+                <span>{status}</span>
+              </div>
             ))}
           </div>
         )}

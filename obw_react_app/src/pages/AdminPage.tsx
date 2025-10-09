@@ -163,8 +163,8 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     <div style={{ padding: '2rem' }}>
       {/* タイトル/サマリー（中央寄せ） */}
       <div style={{ textAlign: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}</h3>
-        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}</div>
+        <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter && statusFilter.length ? statusFilter.join('') : 'すべての状態'}</h3>
+        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>{`Debug: roomFilter=${roomFilter || 'empty'}, statusFilter=${(statusFilter && statusFilter.length) ? statusFilter.join('') : 'empty'}, NumberOfSelectedGuests=${filteredGuests ? filteredGuests.length : 0}`}</div>
       </div>
 
       <div style={{ marginBottom: 12 }}>
