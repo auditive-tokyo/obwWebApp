@@ -1,12 +1,12 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import type { Guest, ApprovalStatus } from '../types/types';
 
 interface Props {
   all: Guest[];
   roomFilter: string;
   setRoomFilter: (v: string) => void;
-  statusFilter: string;
-  setStatusFilter: (v: string) => void;
+  statusFilter: string[];
+  setStatusFilter: (v: string[]) => void;
   bookingFilter: string;
   setBookingFilter: (v: string) => void;
   checkInFilter: string;
@@ -68,14 +68,47 @@ export default function FiltersBar({
     if (!bookingOptions.includes(bookingFilter)) setBookingFilter('');
   }, [bookingOptions, bookingFilter, setBookingFilter]);
 
-  const statusOptions: (ApprovalStatus | '')[] = [
-    '',
+  const statusOptions: ApprovalStatus[] = [
     'pending',
     'waitingForBasicInfo',
     'waitingForPassportImage',
     'approved',
     'rejected'
   ];
+
+  // カスタムドロップダウンの開閉状態
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 外側クリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setIsStatusDropdownOpen(false);
+      }
+    };
+    if (isStatusDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isStatusDropdownOpen]);
+
+  // ステータス選択のトグル
+  const toggleStatus = (status: ApprovalStatus) => {
+    if (statusFilter.includes(status)) {
+      setStatusFilter(statusFilter.filter(s => s !== status));
+    } else {
+      setStatusFilter([...statusFilter, status]);
+    }
+  };
+
+  // 表示用テキスト
+  const getStatusDisplayText = () => {
+    if (statusFilter.length === 0) return 'ステータス: 全て';
+    if (statusFilter.length === statusOptions.length) return 'ステータス: 全て';
+    if (statusFilter.length === 1) return `ステータス: ${statusFilter[0]}`;
+    return `ステータス: ${statusFilter.length}件選択`;
+  };
 
   return (
     <>
@@ -91,17 +124,83 @@ export default function FiltersBar({
         ))}
       </select>
 
-      {/* ステータスフィルター */}
-      <select
-        style={{ marginLeft: 12 }}
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
+      {/* ステータスフィルター（カスタムドロップダウン） */}
+      <div 
+        ref={statusDropdownRef}
+        style={{ 
+          position: 'relative', 
+          display: 'inline-block',
+          marginLeft: 12
+        }}
       >
-        <option value="">ステータス</option>
-        {statusOptions.slice(1).map(s => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </select>
+        <button
+          onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+          style={{
+            padding: '4px 8px',
+            border: '1px solid #ccc',
+            borderRadius: 4,
+            backgroundColor: 'white',
+            cursor: 'pointer',
+            fontSize: '14px',
+            minWidth: '150px',
+            textAlign: 'left'
+          }}
+        >
+          {getStatusDisplayText()} ▾
+        </button>
+        
+        {isStatusDropdownOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: 4,
+              backgroundColor: 'white',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              minWidth: '200px',
+              padding: '8px 0'
+            }}
+          >
+            {statusOptions.map(status => (
+              <div
+                key={status}
+                role="button"
+                aria-pressed={statusFilter.includes(status)}
+                onClick={() => toggleStatus(status)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  fontSize: '14px',
+                  transition: 'background-color 0.15s'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {statusFilter.includes(status) ? (
+                    // Blue checkmark only (no circle)
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M20 6L9 17l-5-5" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    // empty placeholder to keep alignment
+                    <span style={{ display: 'inline-block', width: 16, height: 16 }} />
+                  )}
+                </span>
+                <span>{status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* チェックイン日フィルター */}
       <select

@@ -2,16 +2,22 @@ import type { Guest } from '../types/types';
 
 export type GuestFilters = {
   roomFilter?: string;
-  statusFilter?: string;
+  statusFilter?: string | string[];
   checkInFilter?: string;
   bookingFilter?: string;
 };
 
 export function computeFilteredGuests(all: Guest[], f: GuestFilters): Guest[] {
-  const sf = (f.statusFilter || '').toLowerCase();
+  // statusFilter が配列の場合と文字列の場合に対応
+  const statusFilters = Array.isArray(f.statusFilter) 
+    ? f.statusFilter.map(s => s.toLowerCase())
+    : f.statusFilter 
+      ? [f.statusFilter.toLowerCase()]
+      : [];
+  
   const base = all.filter(g => {
     const st = (g.approvalStatus || '').trim().toLowerCase();
-    const statusOk = !sf || st === sf;
+    const statusOk = statusFilters.length === 0 || statusFilters.includes(st);
     const roomOk = !f.roomFilter || g.roomNumber === f.roomFilter;
     return statusOk && roomOk;
   });

@@ -54,7 +54,7 @@ jobs:
           fi
 
       - name: SAM Build
-        run: sam build --template-file template-appsync-lambdas.yaml
+        run: sam build --template-file template-appsync-lambdas.yaml --use-container
 
       - name: SAM Deploy
         env:

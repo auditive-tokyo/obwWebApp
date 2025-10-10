@@ -6,12 +6,13 @@ export interface StructuredAddressInputProps {
   value: string
   onChange: (value: string) => void
   onValidityChange?: (valid: boolean) => void
+  isAdmin?: boolean  // Admin編集時は必須マークを非表示にする
 }
 
 const computeValid = (d: { addressLine1?: string; city?: string; state?: string; country?: string; zipcode?: string }) =>
   [d.addressLine1, d.city, d.state, d.country, d.zipcode].every((v) => (v || '').trim() !== '')
 
-export function StructuredAddressInput({ value, onChange, onValidityChange }: StructuredAddressInputProps) {
+export function StructuredAddressInput({ value, onChange, onValidityChange, isAdmin = false }: StructuredAddressInputProps) {
   const [addressLine1, setAddressLine1] = useState("")
   const [addressLine2, setAddressLine2] = useState("")
   const [city, setCity] = useState("")
@@ -104,12 +105,12 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
     <div className="space-y-3">
       <div className="space-y-1">
         <label htmlFor="address-line1" className="text-sm text-gray-700">
-          {getMessage("addressLine1")}<span className="text-red-500">*</span>
+          {getMessage("addressLine1")}{!isAdmin && <span className="text-red-500">*</span>}
         </label>
         <input
           id="address-line1"
           type="text"
-          required
+          required={!isAdmin}
           value={addressLine1}
           onChange={e => {
             const v = e.target.value
@@ -140,12 +141,12 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label htmlFor="address-city" className="text-sm text-gray-700">
-            {getMessage("city")}<span className="text-red-500">*</span>
+            {getMessage("city")}{!isAdmin && <span className="text-red-500">*</span>}
           </label>
           <input
             id="address-city"
             type="text"
-            required
+            required={!isAdmin}
             value={city}
             onChange={e => {
               const v = e.target.value
@@ -158,12 +159,12 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
         </div>
         <div className="space-y-1">
           <label htmlFor="address-state" className="text-sm text-gray-700">
-            {getMessage("state")}<span className="text-red-500">*</span>
+            {getMessage("state")}{!isAdmin && <span className="text-red-500">*</span>}
           </label>
           <input
             id="address-state"
             type="text"
-            required
+            required={!isAdmin}
             value={stateProv}
             onChange={e => {
               const v = e.target.value
@@ -178,7 +179,7 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-sm text-gray-700">
-            {getMessage("country")}<span className="text-red-500">*</span>
+            {getMessage("country")}{!isAdmin && <span className="text-red-500">*</span>}
           </label>
           <CountrySelect
             value={country}
@@ -188,12 +189,12 @@ export function StructuredAddressInput({ value, onChange, onValidityChange }: St
         </div>
         <div className="space-y-1">
           <label htmlFor="address-zipcode" className="text-sm text-gray-700">
-            {getMessage("zipcode")}<span className="text-red-500">*</span>
+            {getMessage("zipcode")}{!isAdmin && <span className="text-red-500">*</span>}
           </label>
           <input
             id="address-zipcode"
             type="text"
-            required
+            required={!isAdmin}
             value={zipcode}
             onChange={e => {
               const v = e.target.value
