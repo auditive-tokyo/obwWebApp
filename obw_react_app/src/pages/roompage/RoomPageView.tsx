@@ -1,13 +1,13 @@
-import { useState, useMemo } from 'react'
 import ChatWidget from '@/components/ChatWidget'
-import type { RoomPageViewProps, GuestSession } from './types'
+import { getMessage } from '@/i18n/messages'
+import { BasicCheckInOutDate } from '@/pages/components/BasicCheckInOutDate'
+import BasicInfoForm from '@/pages/components/BasicInfoForm'
+import { dbg } from '@/utils/debugLogger'
+import { useMemo, useState } from 'react'
 import { PassportUpload } from './components/PassportUpload'
 import { SecurityInfoCards } from './components/SecurityInfoCards'
-import BasicInfoForm from '../components/BasicInfoForm'
-import { BasicCheckInOutDate } from './components/BasicCheckInOutDate'
-import { updateRoomCheckDates, refreshGuestSessions } from './services/apiCalls'
-import { getMessage } from '@/i18n/messages'
-import { dbg } from '@/utils/debugLogger'
+import { refreshGuestSessions, updateRoomCheckDates } from './services/apiCalls'
+import type { GuestSession, RoomPageViewProps } from './types'
 
 export function RoomPageView(
   props: RoomPageViewProps & {
@@ -74,15 +74,15 @@ export function RoomPageView(
   // チェックイン日の0時以降かどうかを判定（日本時間）
   const isAfterCheckInTime = useMemo(() => {
     if (!roomCheckInDate) return false; // チェックイン日が設定されていない場合は常にfalse
-    
+
     // 現在の日本時間を取得
     const now = new Date();
-    const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-    
+    const japanTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+
     // チェックイン日の0時（日本時間）を作成
     const checkInStart = new Date(roomCheckInDate);
     checkInStart.setHours(0, 0, 0, 0); // 0時0分0秒に設定
-    
+
     return japanTime >= checkInStart;
   }, [roomCheckInDate]);
 
@@ -177,18 +177,18 @@ export function RoomPageView(
   // 日付の保存処理
   const handleRoomDateSave = async () => {
     if (!tempCheckInDate || !tempCheckOutDate) return
-    
+
     const bookingId = localStorage.getItem('bookingId')
     if (!bookingId) {
       alert(getMessage("bookingNotFound"))
       return
     }
-    
+
     try {
       // JST形式で日付文字列を作成
       const checkInDateString = tempCheckInDate.toISOString().split('T')[0]
       const checkOutDateString = tempCheckOutDate.toISOString().split('T')[0]
-      
+
       // API呼び出し
       const result = await updateRoomCheckDates({
         client,
@@ -196,21 +196,21 @@ export function RoomPageView(
         checkInDate: checkInDateString,
         checkOutDate: checkOutDateString
       })
-      
+
       dbg("✅ Room dates updated successfully:", result)
-      
+
       // 既存のsetterを直接使用（propsから）
       setCheckInDate(tempCheckInDate)      // 既存のprop
       setCheckOutDate(tempCheckOutDate)    // 既存のprop
-    
+
       // ゲストセッション情報を再読み込み
       await refreshGuestSessions({ client, roomId, setGuestSessions })
-      
+
       // モーダルを閉じる
       setShowDateEditor(false)
       setTempCheckInDate(null)
       setTempCheckOutDate(null)
-      
+
     } catch (error) {
       console.error("❌ Failed to update room dates:", error)
       alert(getMessage("dateUpdateFailed"))
@@ -246,23 +246,23 @@ export function RoomPageView(
                   >
                     {getMessage("unsyncLocation")}
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowGeoModal(true)}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
                     title={getMessage("locationResyncTitle") as string}
                   >
-                    <svg 
-                      className="w-5 h-5" 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                       />
                     </svg>
                   </button>
@@ -271,23 +271,23 @@ export function RoomPageView(
                 // 位置情報がない場合: 同期ボタン
                 <>
                   <span className="text-xs text-gray-500">{getMessage("updateStatus")}</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowGeoModal(true)}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
                     title={getMessage("updateStatus") as string}
                   >
-                    <svg 
-                      className="w-5 h-5" 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                       />
                     </svg>
                   </button>
@@ -310,7 +310,7 @@ export function RoomPageView(
                 </div>
               ) : (
                 // 未承認：編集可能
-                <button 
+                <button
                   onClick={() => setShowDateEditor(true)}
                   className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                 >
@@ -322,7 +322,7 @@ export function RoomPageView(
               )}
             </div>
           )}
-          
+
           {guestSessions && guestSessions.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -344,7 +344,7 @@ export function RoomPageView(
                   </button>
                   {disableAddGuest && (
                     <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-max max-w-xs rounded bg-gray-800 text-white text-xs px-2 py-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                     {getMessage("completeBasicInfoFirst")}
+                      {getMessage("completeBasicInfoFirst")}
                     </div>
                   )}
                 </div>
@@ -372,12 +372,12 @@ export function RoomPageView(
                           (g.approvalStatus === 'approved'
                             ? 'bg-green-100 text-green-700'
                             : g.approvalStatus === 'rejected'
-                            ? 'bg-red-100 text-red-700'
-                            : g.approvalStatus === 'pending'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : g.approvalStatus === 'waitingForBasicInfo'
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-blue-100 text-blue-700')
+                              ? 'bg-red-100 text-red-700'
+                              : g.approvalStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : g.approvalStatus === 'waitingForBasicInfo'
+                                  ? 'bg-indigo-100 text-indigo-700'
+                                  : 'bg-blue-100 text-blue-700')
                         }
                       >
                         {getStatusLabel(g.approvalStatus)}
@@ -403,7 +403,7 @@ export function RoomPageView(
 
           {!guestSessions?.length && (
             <div className="flex items-center justify-between">
-             <div className="text-sm text-gray-600">{getMessage("noRegistrationYet")}</div>
+              <div className="text-sm text-gray-600">{getMessage("noRegistrationYet")}</div>
             </div>
           )}
         </div>
@@ -573,8 +573,8 @@ export function RoomPageView(
 
         {/* チャット */}
         <div className="mt-8">
-          <ChatWidget 
-            roomId={roomId || ''} 
+          <ChatWidget
+            roomId={roomId || ''}
             approved={isApproved}
             currentLocation={myCurrentLocation || undefined}
 

@@ -1,11 +1,11 @@
-import CountrySelect from './CountrySelect'
+import { getMessage } from '@/i18n/messages'
 import StructuredAddressInput from '@/pages/components/StructuredAddressInput'
-import { BasicCheckInOutDate } from '../roompage/components/BasicCheckInOutDate'
+import type { InputHTMLAttributes } from 'react'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
-import { getMessage } from '@/i18n/messages'
 import { parseAddressFields } from '../roompage/utils/formValidation'
-import type { InputHTMLAttributes } from 'react'
+import { BasicCheckInOutDate } from './BasicCheckInOutDate'
+import CountrySelect from './CountrySelect'
 
 type BasicInfoFormProps = {
   name: string
@@ -70,7 +70,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
 
   // 不足している項目のリスト
   const missingFields: string[] = []
-  
+
   if (isRepresentativeFamily) {
     // 代表者の家族の場合：名前のみ必須
     if (!name.trim()) {
@@ -84,7 +84,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
     if (!email.trim()) {
       missingFields.push(getMessage("email") as string)
     }
-    
+
     // 住所の個別フィールドチェック
     const parsedAddress = parseAddressFields(address)
     if (parsedAddress) {
@@ -111,7 +111,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
       missingFields.push(getMessage("country") as string)
       missingFields.push(getMessage("zipcode") as string)
     }
-    
+
     if (!phone.trim()) {
       missingFields.push(getMessage("phone") as string)
     }
