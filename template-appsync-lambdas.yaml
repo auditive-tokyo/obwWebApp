@@ -134,7 +134,7 @@ Resources:
             BatchSize: 1
             MaximumBatchingWindowInSeconds: 0
             StartingPosition: LATEST
-              MaximumRetryAttempts: 2
+            MaximumRetryAttempts: 2
             FilterCriteria:
               Filters:
                 - Pattern: |
