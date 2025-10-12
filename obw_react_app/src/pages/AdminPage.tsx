@@ -21,26 +21,38 @@ const client = generateClient({ authMode: 'userPool' })
 // Props interface を追加
 interface AdminPageProps {
   roomId?: string;
+  bookingFilter?: string | null;
 }
 
-export default function AdminPage({ roomId }: AdminPageProps) {
+export default function AdminPage({ roomId, bookingFilter: initialBookingFilter }: AdminPageProps) {
   const [all, setAll] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // URL解析でroomIdを取得（propsを優先、フォールバックでURL解析）
   const [roomFilter, setRoomFilter] = useState(() => {
-    // 1. Propsで渡された値を優先
     if (roomId) return roomId;
-
-    // 2. フォールバック: URL解析（既存ロジック）
     const path = window.location.pathname;
-    const match = path.match(/\/admin\/(\d+)$/);
-    return match ? match[1] : ''; // 空文字 = フィルターなし
+    const parts = path.split('/').filter(Boolean); // ['admin', '123', 'BOOKING']
+    if (parts[0] === 'admin') {
+      if (parts.length >= 2 && /^\d+$/.test(parts[1])) return parts[1];
+    }
+    return '';
   });
 
   const [statusFilter, setStatusFilter] = useState<string[]>(['pending'])
-  const [bookingFilter, setBookingFilter] = useState('')
+  // bookingFilter は props の初期値を優先して設定。propsが無ければURLから解析。
+  const [bookingFilter, setBookingFilter] = useState(() => {
+    if (initialBookingFilter) return initialBookingFilter;
+    const path = window.location.pathname;
+    const parts = path.split('/').filter(Boolean);
+    // /admin/:room/:booking  または  /admin/:booking
+    if (parts[0] === 'admin') {
+      if (parts.length >= 3 && parts[2]) return parts[2];
+      if (parts.length === 2 && !/^\d+$/.test(parts[1])) return parts[1];
+    }
+    return '';
+  })
   const [checkInFilter, setCheckInFilter] = useState('')
   const [detail, setDetail] = useState<Guest | null>(null)
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)

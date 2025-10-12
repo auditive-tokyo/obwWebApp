@@ -21,8 +21,8 @@ function App() {
   const roomId = match?.params?.roomId;
   const isValidRoom = roomId && allowedRooms.includes(roomId);
 
-  // Admin用のroomId検証
-  const adminMatch = matchPath("/admin/:roomId", location.pathname);
+  // Admin用のroomId検証。/admin/:roomId や /admin/:roomId/:booking を許容する
+  const adminMatch = matchPath("/admin/:roomId/*", location.pathname);
   const adminRoomId = adminMatch?.params?.roomId;
   const isValidAdminRoom = adminRoomId && allowedRooms.includes(adminRoomId);
 
@@ -37,6 +37,10 @@ function App() {
           <Route path="/admin" element={<AdminAuth />} />
           <Route 
             path="/admin/:roomId" 
+            element={isValidAdminRoom ? <AdminAuth /> : <ErrorPage />} 
+          />
+          <Route 
+            path="/admin/:roomId/:booking" 
             element={isValidAdminRoom ? <AdminAuth /> : <ErrorPage />} 
           />
           <Route path="/admin/callback" element={<AdminAuth />} />

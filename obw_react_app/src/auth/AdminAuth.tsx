@@ -8,7 +8,7 @@ import { dbg } from '@/utils/debugLogger'
 export default function AdminAuth() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { roomId } = useParams()  // URLパラメータから部屋番号を取得
+  const { roomId, bookingId } = useParams()  // URLパラメータから部屋番号と予約IDを取得
   const [message, setMessage] = useState('Checking authentication...')
   const [ready, setReady] = useState(false)
 
@@ -69,9 +69,9 @@ export default function AdminAuth() {
           setMessage('')
           
           // コールバック後は元のURL構造を保持してリダイレクト
-          const targetPath = roomId ? `/admin/${roomId}` : '/admin'
+          const targetPath = roomId ? (bookingId ? `/admin/${roomId}/${bookingId}` : `/admin/${roomId}`) : (bookingId ? `/admin/${bookingId}` : '/admin')
           dbg('navigate -> ', targetPath)
-          navigate(targetPath, { replace: true })  // 修正: roomIdを保持
+          navigate(targetPath, { replace: true })  // 修正: roomId/bookingIdを保持
           return
         }
 
@@ -95,5 +95,5 @@ export default function AdminAuth() {
   }, [location.pathname, location.search, navigate, roomId])  // roomId を依存配列に追加
 
   if (!ready) return <p>{message}</p>
-  return <AdminPage roomId={roomId} />  // AdminPageに部屋番号を渡す
+  return <AdminPage roomId={roomId} bookingFilter={bookingId} />  // AdminPageに部屋番号とbookingId(初期フィルタ)を渡す
 }
