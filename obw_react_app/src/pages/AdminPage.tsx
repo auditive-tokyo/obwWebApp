@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/api';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BulkChangeButton from './adminpage/components/BulkChangeButton';
 import { DetailsModal } from './adminpage/components/detailsModal';
 import { confirmApproveDialog, confirmRejectDialog } from './adminpage/components/Dialogs';
@@ -33,7 +33,7 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
   const [roomFilter, setRoomFilter] = useState(() => {
     if (roomId) return roomId;
     const path = window.location.pathname;
-    const parts = path.split('/').filter(Boolean); // ['admin', '123', 'BOOKING']
+    const parts = path.split('/').filter(Boolean);
     if (parts[0] === 'admin') {
       if (parts.length >= 2 && /^\d+$/.test(parts[1])) return parts[1];
     }
@@ -64,8 +64,15 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
   const [bulkCheckInDate, setBulkCheckInDate] = useState<Date | null>(null)
   const [bulkCheckOutDate, setBulkCheckOutDate] = useState<Date | null>(null)
 
-  // clear bookingFilter when roomFilter changes
+  // 前回のroomFilterの値を保持して、本当に変更されたかを比較する
+  const prevRoomFilterRef = useRef(roomFilter);
+
+  // clear bookingFilter when roomFilter changes (値が実際に変更された場合のみ)
   useEffect(() => {
+    if (prevRoomFilterRef.current === roomFilter) {
+      return;
+    }
+    prevRoomFilterRef.current = roomFilter;
     setBookingFilter('');
     setCheckInFilter('');
   }, [roomFilter]);
@@ -183,7 +190,7 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
       {/* タイトル/サマリー（中央寄せ） */}
       <div style={{ textAlign: 'center', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter && statusFilter.length ? statusFilter.join('') : 'すべての状態'}</h3>
-        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>{`Debug: roomFilter=${roomFilter || 'empty'}, statusFilter=${(statusFilter && statusFilter.length) ? statusFilter.join('') : 'empty'}, NumberOfSelectedGuests=${filteredGuests ? filteredGuests.length : 0}`}</div>
+        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>{`Debug: roomFilter=${roomFilter || 'empty'}, bookingFilter=${bookingFilter || 'empty'}, statusFilter=${(statusFilter && statusFilter.length) ? statusFilter.join('') : 'empty'}, NumberOfSelectedGuests=${filteredGuests ? filteredGuests.length : 0}`}</div>
       </div>
 
       <div style={{ marginBottom: 12 }}>

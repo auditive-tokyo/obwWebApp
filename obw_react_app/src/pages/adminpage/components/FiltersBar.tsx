@@ -1,5 +1,5 @@
-import { useMemo, useEffect, useState, useRef } from 'react';
-import type { Guest, ApprovalStatus } from '../types/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ApprovalStatus, Guest } from '../types/types';
 
 interface Props {
   all: Guest[];
@@ -56,16 +56,32 @@ export default function FiltersBar({
     return Array.from(s).sort();
   }, [all, roomFilter, checkInFilter]);
 
-  // clear dependent filters when room changes
+  // 前回のroomFilterの値を保持して、本当に変更されたかを比較する
+  const prevRoomFilterRef = useRef(roomFilter);
+  // 初期bookingFilterの値を保持（URLから来た値は保護する）
+  const initialBookingFilterRef = useRef(bookingFilter);
+
+  // clear dependent filters when room changes (値が実際に変更された場合のみ)
   useEffect(() => {
+    if (prevRoomFilterRef.current === roomFilter) {
+      return;
+    }
+    prevRoomFilterRef.current = roomFilter;
     setBookingFilter('');
     setCheckInFilter('');
   }, [roomFilter, setBookingFilter, setCheckInFilter]);
 
   // keep bookingFilter only if it's still present in bookingOptions
+  // ただし、初期値（URLから来た値）はデータロード完了まで保護する
   useEffect(() => {
     if (!bookingFilter) return;
-    if (!bookingOptions.includes(bookingFilter)) setBookingFilter('');
+    // 初期値と同じ場合で、まだデータが読み込まれていない場合はスキップ
+    if (bookingFilter === initialBookingFilterRef.current && bookingOptions.length === 0) {
+      return;
+    }
+    if (!bookingOptions.includes(bookingFilter)) {
+      setBookingFilter('');
+    }
   }, [bookingOptions, bookingFilter, setBookingFilter]);
 
   const statusOptions: ApprovalStatus[] = [
@@ -125,10 +141,10 @@ export default function FiltersBar({
       </select>
 
       {/* ステータスフィルター（カスタムドロップダウン） */}
-      <div 
+      <div
         ref={statusDropdownRef}
-        style={{ 
-          position: 'relative', 
+        style={{
+          position: 'relative',
           display: 'inline-block',
           marginLeft: 12
         }}
@@ -148,7 +164,7 @@ export default function FiltersBar({
         >
           {getStatusDisplayText()} ▾
         </button>
-        
+
         {isStatusDropdownOpen && (
           <div
             style={{
