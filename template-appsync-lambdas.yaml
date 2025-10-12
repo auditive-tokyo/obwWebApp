@@ -134,11 +134,12 @@ Resources:
             BatchSize: 1
             MaximumBatchingWindowInSeconds: 0
             StartingPosition: LATEST
+              MaximumRetryAttempts: 2
             FilterCriteria:
               Filters:
                 - Pattern: |
                     {
-                      "eventName": ["INSERT", "MODIFY"],
+                      "eventName": ["MODIFY"],
                       "dynamodb": {
                         "NewImage": {
                           "approvalStatus": {
