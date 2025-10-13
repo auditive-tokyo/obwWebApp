@@ -61,10 +61,6 @@ def lambda_handler(event, context):
                 rn = m.get('roomNumber')
                 gid = m.get('guestId')
 
-                # skip rejected members: don't assign session expiry to explicitly rejected guests
-                if m.get('approvalStatus') == 'rejected':
-                    continue
-
                 # skip if it's the same as the already-updated guest (optional)
                 if rn == room_number and gid == guest_id:
                     continue
