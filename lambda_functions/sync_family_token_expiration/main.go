@@ -41,7 +41,7 @@ func getStringAttr(attr events.DynamoDBAttributeValue) string {
 }
 
 // findRepresentativeGuest finds the guest with sessionTokenHash for the given bookingId
-func findRepresentativeGuest(ctx context.Context, bookingId string) (string, error) {
+func findRepresentativeGuest(ctx context.Context, bookingId string) (int64, error) {
 	// Query by bookingId (GSI)
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(tableName),
@@ -54,28 +54,28 @@ func findRepresentativeGuest(ctx context.Context, bookingId string) (string, err
 
 	result, err := dynamoClient.Query(ctx, input)
 	if err != nil {
-		return "", fmt.Errorf("failed to query by bookingId: %w", err)
+		return 0, fmt.Errorf("failed to query by bookingId: %w", err)
 	}
 
 	// Find the guest with sessionTokenHash
 	for _, item := range result.Items {
 		var guest struct {
 			SessionTokenHash      string `dynamodbav:"sessionTokenHash"`
-			SessionTokenExpiresAt string `dynamodbav:"sessionTokenExpiresAt"`
+			SessionTokenExpiresAt int64  `dynamodbav:"sessionTokenExpiresAt"`
 		}
 		if err := attributevalue.UnmarshalMap(item, &guest); err != nil {
 			continue
 		}
-		if guest.SessionTokenHash != "" && guest.SessionTokenExpiresAt != "" {
+		if guest.SessionTokenHash != "" && guest.SessionTokenExpiresAt > 0 {
 			return guest.SessionTokenExpiresAt, nil
 		}
 	}
 
-	return "", fmt.Errorf("no representative guest found for bookingId: %s", bookingId)
+	return 0, fmt.Errorf("no representative guest found for bookingId: %s", bookingId)
 }
 
 // updateGuestTokenExpiration updates sessionTokenExpiresAt for the family member
-func updateGuestTokenExpiration(ctx context.Context, roomNumber string, guestId string, expiresAt string) error {
+func updateGuestTokenExpiration(ctx context.Context, roomNumber string, guestId string, expiresAt int64) error {
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
@@ -84,7 +84,7 @@ func updateGuestTokenExpiration(ctx context.Context, roomNumber string, guestId 
 		},
 		UpdateExpression: aws.String("SET sessionTokenExpiresAt = :expiresAt"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":expiresAt": &types.AttributeValueMemberS{Value: expiresAt},
+			":expiresAt": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", expiresAt)},
 		},
 	}
 
@@ -139,7 +139,7 @@ func HandleRequest(ctx context.Context, event events.DynamoDBEvent) error {
 			return err
 		}
 
-		log.Printf("Found representative's expiresAt: %s", expiresAt)
+		log.Printf("Found representative's expiresAt: %d", expiresAt)
 
 		// Update family member's sessionTokenExpiresAt
 		if err := updateGuestTokenExpiration(ctx, roomNumber, guestId, expiresAt); err != nil {
