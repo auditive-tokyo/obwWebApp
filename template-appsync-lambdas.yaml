@@ -176,9 +176,7 @@ Resources:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
       Policies:
-        - DynamoDBReadPolicy:
-            TableName: !ImportValue Obw-GuestTableName
-        - DynamoDBWritePolicy:
+        - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName
 
 Outputs:
