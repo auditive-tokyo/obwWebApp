@@ -75,11 +75,12 @@ func findRepresentativeGuest(ctx context.Context, bookingId string) (string, err
 }
 
 // updateGuestTokenExpiration updates sessionTokenExpiresAt for the family member
-func updateGuestTokenExpiration(ctx context.Context, guestId string, expiresAt string) error {
+func updateGuestTokenExpiration(ctx context.Context, roomNumber string, guestId string, expiresAt string) error {
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
-			"guestId": &types.AttributeValueMemberS{Value: guestId},
+			"roomNumber": &types.AttributeValueMemberS{Value: roomNumber},
+			"guestId":    &types.AttributeValueMemberS{Value: guestId},
 		},
 		UpdateExpression: aws.String("SET sessionTokenExpiresAt = :expiresAt"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -118,16 +119,17 @@ func HandleRequest(ctx context.Context, event events.DynamoDBEvent) error {
 			continue
 		}
 
-		// Get bookingId and guestId
-		bookingId := getStringAttr(newImage["bookingId"])
+		// Get roomNumber, guestId, bookingId
+		roomNumber := getStringAttr(newImage["roomNumber"])
 		guestId := getStringAttr(newImage["guestId"])
+		bookingId := getStringAttr(newImage["bookingId"])
 
-		if bookingId == "" || guestId == "" {
-			log.Printf("Missing bookingId or guestId, skipping")
+		if bookingId == "" || guestId == "" || roomNumber == "" {
+			log.Printf("Missing bookingId, guestId, or roomNumber, skipping")
 			continue
 		}
 
-		log.Printf("Processing family member: guestId=%s, bookingId=%s", guestId, bookingId)
+		log.Printf("Processing family member: guestId=%s, roomNumber=%s, bookingId=%s", guestId, roomNumber, bookingId)
 
 		// Find representative guest's sessionTokenExpiresAt
 		expiresAt, err := findRepresentativeGuest(ctx, bookingId)
@@ -140,7 +142,7 @@ func HandleRequest(ctx context.Context, event events.DynamoDBEvent) error {
 		log.Printf("Found representative's expiresAt: %s", expiresAt)
 
 		// Update family member's sessionTokenExpiresAt
-		if err := updateGuestTokenExpiration(ctx, guestId, expiresAt); err != nil {
+		if err := updateGuestTokenExpiration(ctx, roomNumber, guestId, expiresAt); err != nil {
 			log.Printf("Error updating sessionTokenExpiresAt: %v", err)
 			// Return error to trigger Lambda retry
 			return err
