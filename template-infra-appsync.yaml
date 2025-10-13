@@ -195,6 +195,7 @@ Resources:
           promoConsent: Boolean
           isFamilyMember: Boolean
           currentLocation: String
+          sessionTokenExpiresAt: Int
         }
 
         input RequestAccessInput {
@@ -434,6 +435,13 @@ Resources:
           #set($setExp = $setExp + ", #approvalStatus = :approvalStatus")
           $util.qr($names.put("#approvalStatus","approvalStatus"))
           $util.qr($values.put(":approvalStatus", { "S": "$ctx.args.input.approvalStatus" }))
+        #end
+
+        ## sessionTokenExpiresAt (Number)
+        #if(!$util.isNull($ctx.args.input.sessionTokenExpiresAt))
+          #set($setExp = $setExp + ", #sessionTokenExpiresAt = :sessionTokenExpiresAt")
+          $util.qr($names.put("#sessionTokenExpiresAt","sessionTokenExpiresAt"))
+          $util.qr($values.put(":sessionTokenExpiresAt", { "N": "$ctx.args.input.sessionTokenExpiresAt" }))
         #end
 
         ## Booleans
