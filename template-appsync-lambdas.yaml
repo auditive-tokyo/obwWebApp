@@ -10,12 +10,6 @@ Globals:
       - x86_64
 
 Parameters:
-  TelegramBotTokenParam:
-    Type: String
-    NoEcho: true
-  TelegramChatIdParam:
-    Type: String
-    NoEcho: true
   SendGridApiKey:
     Type: String
     Description: "SendGrid API Key"
@@ -102,46 +96,6 @@ Resources:
             TableName: !ImportValue Obw-GuestTableName
         - DynamoDBWritePolicy:
             TableName: !ImportValue Obw-GuestTableName
-
-  # 管理者への通知Lambda
-  NotifyAdminOnPendingFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: obw-notify-admin-on-pending
-      CodeUri: lambda_functions/notify_admin/
-      Handler: lambda_handler_notify_admin.handler
-      Runtime: python3.13
-      MemorySize: 256
-      Environment:
-        Variables:
-          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"
-          TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
-          TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSLambdaDynamoDBExecutionRole
-      Events:
-        FromGuestTableStream:
-          Type: DynamoDB
-          Properties:
-            Stream: !ImportValue Obw-GuestTableStreamArn
-            BatchSize: 1
-            MaximumBatchingWindowInSeconds: 0
-            StartingPosition: LATEST
-            MaximumRetryAttempts: 2
-            FilterCriteria:
-              Filters:
-                - Pattern: |
-                    {
-                      "eventName": ["MODIFY"],
-                      "dynamodb": {
-                        "NewImage": {
-                          "approvalStatus": {
-                            "S": ["pending"]
-                          }
-                        }
-                      }
-                    }
 
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function

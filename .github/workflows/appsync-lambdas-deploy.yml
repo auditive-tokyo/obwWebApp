@@ -6,7 +6,6 @@ on:
     paths:
       - 'lambda_functions/admin_approve_guest/**'
       - 'lambda_functions/get_presigned_url/**'
-      - 'lambda_functions/notify_admin/**'
       - 'lambda_functions/request_access/**'
       - 'lambda_functions/transfer_room_guests/**'
       - 'lambda_functions/verify_access/**'
@@ -59,8 +58,6 @@ jobs:
 
       - name: SAM Deploy
         env:
-          TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}
         run: |
           sam deploy \
@@ -70,8 +67,6 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
-              TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
-              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
               SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET" \
             --no-fail-on-empty-changeset
 

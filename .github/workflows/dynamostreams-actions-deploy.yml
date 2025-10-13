@@ -1,0 +1,64 @@
+name: Deploy DynamoDB Streams Triggered Lambda Functions
+
+on:
+  push:
+    branches: [main, feature/*]
+    paths:
+      - 'lambda_functions/notify_admin/**'
+      - '.github/workflows/dynamostreams-actions-deploy.yml'
+      - 'template-dynamostreams-actions.yaml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install AWS SAM CLI
+        run: pip install aws-sam-cli
+
+      - name: Ensure AppSync base stack exists (for DynamoDB Stream export)
+        run: |
+          set -e
+          if ! aws cloudformation describe-stacks --stack-name obw-infra-appsync >/dev/null 2>&1; then
+            echo "ERROR: obw-infra-appsync stack not found. Deploy infra-appsync first."
+            exit 1
+          else
+            echo "obw-infra-appsync exists. Proceeding..."
+          fi
+
+      - name: SAM Build
+        run: sam build --template-file template-dynamostreams-actions.yaml
+
+      - name: SAM Deploy
+        env:
+          TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name obw-dynamostreams-lambdas \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --parameter-overrides \
+              TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
+              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
+            --no-fail-on-empty-changeset
