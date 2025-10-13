@@ -54,8 +54,6 @@ Resources:
       Handler: bootstrap
       Runtime: provided.al2023
       Timeout: 30
-      Architectures:
-        - x86_64
       Environment:
         Variables:
           UPLOAD_BUCKET: !Ref PassportUploadBucket
@@ -174,8 +172,6 @@ Resources:
       Handler: bootstrap
       Runtime: provided.al2023
       Timeout: 60
-      Architectures:
-        - x86_64
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
