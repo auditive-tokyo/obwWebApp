@@ -12,13 +12,32 @@ logger.setLevel(logging.INFO)
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
 
-NON_APPROVED_STATUSES = ["waitingForBasicInfo", "rejected", "waitingForPassportImage", "pending"]
+EXPIRED_CHECK_STATUSES = ["waitingForBasicInfo", "waitingForPassportImage", "pending"]
+
+
+def _fetch_rejected_all():
+    """rejectedステータスのレコードを全件取得（期限チェックなし）"""
+    items = []
+    last_key = None
+    while True:
+        params = {
+            "IndexName": "ApprovalStatusExpiresIndex",
+            "KeyConditionExpression": Key("approvalStatus").eq("rejected"),
+        }
+        if last_key:
+            params["ExclusiveStartKey"] = last_key
+        resp = table.query(**params)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+    return items
 
 
 def _fetch_expired_non_approved(now_ts: int):
     """非承認ステータスで有効期限切れのレコードを全件取得"""
     items = []
-    for status in NON_APPROVED_STATUSES:
+    for status in EXPIRED_CHECK_STATUSES:
         last_key = None
         while True:
             params = {
@@ -33,6 +52,17 @@ def _fetch_expired_non_approved(now_ts: int):
             if not last_key:
                 break
     return items
+
+
+def _collect_rejected_keys(rejected_items) -> Set[Tuple[str, str]]:
+    """rejectedレコードのキーを収集（単独削除、bookingId展開なし）"""
+    keys: Set[Tuple[str, str]] = set()
+    for item in rejected_items:
+        room = item.get("roomNumber")
+        guest = item.get("guestId")
+        if room and guest:
+            keys.add((room, guest))
+    return keys
 
 
 def _collect_keys_to_delete(expired_items) -> Tuple[Set[Tuple[str, str]], int]:
@@ -74,26 +104,36 @@ def _collect_keys_to_delete(expired_items) -> Tuple[Set[Tuple[str, str]], int]:
 def lambda_handler(event, context):
     now_ts = int(time.time())
 
-    expired_items = _fetch_expired_non_approved(now_ts)
-    keys_to_delete, booking_count = _collect_keys_to_delete(expired_items)
+    # 1. rejected: 即削除（期限チェックなし、単独削除）
+    rejected_items = _fetch_rejected_all()
+    rejected_keys = _collect_rejected_keys(rejected_items)
 
-    if keys_to_delete:
+    # 2. 他の非承認ステータス: 期限切れのみ削除（bookingIdグループで削除）
+    expired_items = _fetch_expired_non_approved(now_ts)
+    expired_keys, booking_count = _collect_keys_to_delete(expired_items)
+
+    # 全削除キーを統合
+    all_keys_to_delete = rejected_keys | expired_keys
+
+    if all_keys_to_delete:
         with table.batch_writer() as batch:
-            for room, guest in keys_to_delete:
+            for room, guest in all_keys_to_delete:
                 batch.delete_item(Key={"roomNumber": room, "guestId": guest})
 
     logger.info(
         "Cleanup summary",
         extra={
+            "rejectedRecords": len(rejected_items),
             "expiredNonApproved": len(expired_items),
             "bookingGroupsTouched": booking_count,
-            "deletedRecords": len(keys_to_delete),
+            "deletedRecords": len(all_keys_to_delete),
         },
     )
 
     return {
+        "rejectedRecords": len(rejected_items),
         "expiredNonApproved": len(expired_items),
         "bookingGroupsTouched": booking_count,
-        "deletedRecords": len(keys_to_delete),
+        "deletedRecords": len(all_keys_to_delete),
         "timestamp": now_ts,
     }
