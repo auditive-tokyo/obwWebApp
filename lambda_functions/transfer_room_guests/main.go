@@ -315,12 +315,34 @@ func hashToken(token string) string {
 }
 
 // SendGrid経由でメール送信
-func sendEmail(ctx context.Context, toEmail, guestName, roomNumber, token string) error {
+func sendEmail(ctx context.Context, toEmail, guestName, roomNumber, guestID, token, nationality string) error {
 	if sendGridAPIKey == "" {
 		return fmt.Errorf("SENDGRID_API_KEY is not configured")
 	}
 
-	verifyURL := fmt.Sprintf("%s/verify?token=%s", appBaseURL, token)
+	verifyURL := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s", appBaseURL, roomNumber, guestID, token)
+
+	// 国籍に応じてメッセージを切り替え
+	var subject, htmlContent string
+	if nationality == "Japan" {
+		subject = "部屋移動のお知らせ"
+		htmlContent = fmt.Sprintf(`
+			<h2>部屋移動のお知らせ</h2>
+			<p>%s 様</p>
+			<p>お部屋が <strong>%s</strong> に変更されました。</p>
+			<p>新しいお部屋でのアクセスを有効にするため、以下のリンクをクリックしてください：</p>
+			<p><a href="%s">アクセスを確認する</a></p>
+		`, guestName, roomNumber, verifyURL)
+	} else {
+		subject = "Room Transfer Notification"
+		htmlContent = fmt.Sprintf(`
+			<h2>Room Transfer Notice</h2>
+			<p>Dear %s,</p>
+			<p>Your room has been changed to <strong>%s</strong>.</p>
+			<p>Please click the link below to activate access for your new room:</p>
+			<p><a href="%s">Verify Access</a></p>
+		`, guestName, roomNumber, verifyURL)
+	}
 
 	// SendGrid API v3 のペイロード
 	payload := map[string]interface{}{
@@ -329,7 +351,7 @@ func sendEmail(ctx context.Context, toEmail, guestName, roomNumber, token string
 				"to": []map[string]string{
 					{"email": toEmail},
 				},
-				"subject": "部屋移動のお知らせ / Room Transfer Notification",
+				"subject": subject,
 			},
 		},
 		"from": map[string]string{
@@ -339,18 +361,7 @@ func sendEmail(ctx context.Context, toEmail, guestName, roomNumber, token string
 		"content": []map[string]string{
 			{
 				"type": "text/html",
-				"value": fmt.Sprintf(`
-					<h2>部屋移動のお知らせ / Room Transfer Notice</h2>
-					<p>%s 様</p>
-					<p>お部屋が <strong>%s</strong> に変更されました。</p>
-					<p>新しいお部屋でのアクセスを有効にするため、以下のリンクをクリックしてください：</p>
-					<p><a href="%s">アクセスを確認する / Verify Access</a></p>
-					<hr>
-					<p>Dear %s,</p>
-					<p>Your room has been changed to <strong>%s</strong>.</p>
-					<p>Please click the link below to activate access for your new room:</p>
-					<p><a href="%s">Verify Access</a></p>
-				`, guestName, roomNumber, verifyURL, guestName, roomNumber, verifyURL),
+				"value": htmlContent,
 			},
 		},
 	}
@@ -384,13 +395,22 @@ func sendEmail(ctx context.Context, toEmail, guestName, roomNumber, token string
 }
 
 // AWS SNS経由でSMS送信
-func sendSMS(ctx context.Context, phone, guestName, roomNumber, token string) error {
-	verifyURL := fmt.Sprintf("%s/verify?token=%s", appBaseURL, token)
+func sendSMS(ctx context.Context, phone, guestName, roomNumber, guestID, token, nationality string) error {
+	verifyURL := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s&source=sms", appBaseURL, roomNumber, guestID, token)
 
-	message := fmt.Sprintf(
-		"[Osaka Bay Wheel] %s様、お部屋が%sに変更されました。新しいアクセスを有効にするため、こちらをクリックしてください: %s",
-		guestName, roomNumber, verifyURL,
-	)
+	// 国籍に応じてメッセージを切り替え
+	var message string
+	if nationality == "Japan" {
+		message = fmt.Sprintf(
+			"【Osaka Bay Wheel】\n%s様、お部屋が%sに変更されました。新しいアクセスを有効にするため、こちらをクリックしてください: %s",
+			guestName, roomNumber, verifyURL,
+		)
+	} else {
+		message = fmt.Sprintf(
+			"[Osaka Bay Wheel]\nDear %s, your room has been changed to %s. Please click to activate access: %s",
+			guestName, roomNumber, verifyURL,
+		)
+	}
 
 	_, err := snsClient.Publish(ctx, &sns.PublishInput{
 		PhoneNumber: aws.String(phone),
@@ -407,19 +427,25 @@ func sendSMS(ctx context.Context, phone, guestName, roomNumber, token string) er
 
 // 部屋移動通知を送信
 func notifyRoomTransfer(ctx context.Context, guest GuestRecord, newRoomNumber, token string) error {
+	// 国籍を取得（デフォルトは空文字列）
+	nationality := ""
+	if guest.Nationality != nil {
+		nationality = *guest.Nationality
+	}
+
 	// contactChannel が "sms" の場合は SMS で送信
 	if guest.ContactChannel != nil && *guest.ContactChannel == "sms" {
 		if guest.Phone == nil || *guest.Phone == "" {
 			return fmt.Errorf("phone number is missing for SMS notification (guestId: %s)", guest.GuestID)
 		}
-		return sendSMS(ctx, *guest.Phone, guest.GuestName, newRoomNumber, token)
+		return sendSMS(ctx, *guest.Phone, guest.GuestName, newRoomNumber, guest.GuestID, token, nationality)
 	}
-	
+
 	// contactChannel が空または "sms" 以外の場合は Email で送信
 	if guest.Email != nil && *guest.Email != "" {
-		return sendEmail(ctx, *guest.Email, guest.GuestName, newRoomNumber, token)
+		return sendEmail(ctx, *guest.Email, guest.GuestName, newRoomNumber, guest.GuestID, token, nationality)
 	}
-	
+
 	// Email も Phone もない場合はエラー（通常は発生しないはず）
 	return fmt.Errorf("no contact method available for guest %s (guestId: %s) - both email and phone are missing", guest.GuestName, guest.GuestID)
 }
