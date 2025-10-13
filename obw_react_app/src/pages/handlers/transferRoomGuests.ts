@@ -1,5 +1,6 @@
 import type { GraphQLResult } from '@aws-amplify/api-graphql';
 import type { V6Client } from '@aws-amplify/api-graphql';
+import { dbg } from '@/utils/debugLogger';
 
 interface TransferRoomGuestsInput {
   oldRoomNumber: string;
@@ -38,7 +39,7 @@ export async function transferRoomGuests({
   onError
 }: TransferRoomGuestsParams): Promise<void> {
   try {
-    console.log(`🔄 部屋移動開始: ${oldRoomNumber} → ${newRoomNumber}`);
+    dbg(`🔄 部屋移動開始: ${oldRoomNumber} → ${newRoomNumber}`);
 
     const variables: { input: TransferRoomGuestsInput } = {
       input: {
@@ -52,9 +53,10 @@ export async function transferRoomGuests({
       variables
     }) as GraphQLResult<{ transferRoomGuests: TransferRoomResult }>;
 
-    if (result.errors) {
-      console.error('❌ GraphQL errors:', result.errors);
-      throw new Error(result.errors[0]?.message || '部屋移動に失敗しました');
+    if (result.errors && result.errors.length > 0) {
+      const errorMessage = result.errors.map(e => e.message || 'Unknown error').join(', ');
+      console.error('❌ 部屋移動失敗 (GraphQL errors):', errorMessage);
+      throw new Error(errorMessage);
     }
 
     const data = result.data?.transferRoomGuests;
@@ -63,16 +65,36 @@ export async function transferRoomGuests({
     }
 
     if (!data.success) {
+      console.error('❌ 部屋移動失敗:', data.message);
       throw new Error(data.message || '部屋移動に失敗しました');
     }
 
-    console.log(`✅ 部屋移動成功: ${data.transferredCount}件のゲストを移動しました`);
+    dbg(`✅ 部屋移動成功: ${data.transferredCount}件のゲストを移動しました`);
     
     if (onSuccess) {
       onSuccess(data);
     }
   } catch (error) {
-    console.error('❌ 部屋移動エラー:', error);
+    // GraphQL エラーレスポンスの可能性をチェック
+    if (error && typeof error === 'object' && 'errors' in error) {
+      const graphqlError = error as { errors?: Array<{ message?: string }> };
+      if (graphqlError.errors && graphqlError.errors.length > 0) {
+        const errorMessages = graphqlError.errors
+          .map(e => e.message || 'Unknown error')
+          .join(', ');
+        console.error('❌ 部屋移動失敗 (onError):', errorMessages);
+        const finalError = new Error(errorMessages);
+        if (onError) {
+          onError(finalError);
+        } else {
+          throw finalError;
+        }
+        return;
+      }
+    }
+    
+    console.error('❌ 部屋移動失敗 (catch):', error instanceof Error ? error.message : String(error));
+    
     if (onError) {
       onError(error instanceof Error ? error : new Error('不明なエラーが発生しました'));
     } else {
