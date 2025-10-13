@@ -1,4 +1,5 @@
 import type { Guest } from '../adminpage/types/types';
+import { dbg } from '@/utils/debugLogger';
 
 interface UpdateGuestParams {
   // The Amplify-generated client shape is complex; suppress the explicit-any rule here
@@ -69,7 +70,7 @@ export async function updateGuest({
       variables
     });
 
-    console.info('✅ Guest updated successfully:', result.data.updateGuest);
+    dbg('✅ Guest updated successfully:', result.data.updateGuest);
     
     if (onSuccess) {
       onSuccess();
