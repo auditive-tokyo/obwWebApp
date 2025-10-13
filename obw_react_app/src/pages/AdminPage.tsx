@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/api';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import BulkChangeButton from './adminpage/components/BulkChangeButton';
 import { DetailsModal } from './adminpage/components/detailsModal';
 import { confirmApproveDialog, confirmRejectDialog } from './adminpage/components/Dialogs';
@@ -63,19 +63,6 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
   const [bulkModalOpen, setBulkModalOpen] = useState(false)
   const [bulkCheckInDate, setBulkCheckInDate] = useState<Date | null>(null)
   const [bulkCheckOutDate, setBulkCheckOutDate] = useState<Date | null>(null)
-
-  // 前回のroomFilterの値を保持して、本当に変更されたかを比較する
-  const prevRoomFilterRef = useRef(roomFilter);
-
-  // clear bookingFilter when roomFilter changes (値が実際に変更された場合のみ)
-  useEffect(() => {
-    if (prevRoomFilterRef.current === roomFilter) {
-      return;
-    }
-    prevRoomFilterRef.current = roomFilter;
-    setBookingFilter('');
-    setCheckInFilter('');
-  }, [roomFilter]);
 
   // フィルタリングロジック
   const filteredGuests = useMemo(() => {
