@@ -32,6 +32,10 @@ Parameters:
     Type: String
     Description: ARN of the AdminApproveGuest Lambda function
     Default: ""
+  TransferRoomGuestsFunctionArn:
+    Type: String
+    Description: ARN of the TransferRoomGuests Lambda function
+    Default: ""
 
 Conditions:
   DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
@@ -218,6 +222,17 @@ Resources:
           guestId: String!
         }
 
+        input TransferRoomInput {
+          oldRoomNumber: String!
+          newRoomNumber: String!
+        }
+
+        type TransferRoomResult {
+          success: Boolean!
+          transferredCount: Int!
+          message: String
+        }
+
         type VerifyTokenResult {
           success: Boolean!
           guest: Guest
@@ -236,6 +251,7 @@ Resources:
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
           adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
+          transferRoomGuests(input: TransferRoomInput!): TransferRoomResult @aws_cognito_user_pools
         }
 
         type Query {
@@ -310,6 +326,17 @@ Resources:
       ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
       LambdaConfig:
         LambdaFunctionArn: !Ref AdminApproveGuestFunctionArn
+
+  TransferRoomGuestsLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: transferRoomGuestsLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !Ref TransferRoomGuestsFunctionArn
 
   AppSyncDynamoDBRole:
     Type: AWS::IAM::Role
@@ -776,6 +803,26 @@ Resources:
       TypeName: Mutation
       FieldName: adminApproveGuest
       DataSourceName: !GetAtt AdminApproveGuestLambdaDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
+
+  TransferRoomGuestsResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - TransferRoomGuestsLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: transferRoomGuests
+      DataSourceName: !GetAtt TransferRoomGuestsLambdaDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",

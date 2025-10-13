@@ -167,6 +167,32 @@ Resources:
         - DynamoDBWritePolicy:
             TableName: !ImportValue Obw-GuestTableName
 
+  TransferRoomGuestsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+      BuildProperties:
+        BuildFlags:
+          - -tags
+          - lambda.norpc
+        Env:
+          - CGO_ENABLED=0
+    Properties:
+      FunctionName: obw-transfer-room-guests-function
+      MemorySize: 256
+      CodeUri: lambda_functions/transfer_room_guests/
+      Handler: main
+      Runtime: go1.x
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue Obw-GuestTableName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue Obw-GuestTableName
+        - DynamoDBWritePolicy:
+            TableName: !ImportValue Obw-GuestTableName
+
 Outputs:
   PassportUploadBucketName:
     Description: "S3 bucket for passport uploads"
@@ -191,3 +217,8 @@ Outputs:
     Value: !GetAtt AdminApproveGuestFunction.Arn
     Export:
       Name: Obw-AdminApproveGuestFunctionArn
+  TransferRoomGuestsFunctionArn:
+    Description: "ARN for transfer-room-guests Lambda"
+    Value: !GetAtt TransferRoomGuestsFunction.Arn
+    Export:
+      Name: Obw-TransferRoomGuestsFunctionArn

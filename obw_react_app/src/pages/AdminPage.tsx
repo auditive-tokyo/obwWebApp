@@ -13,6 +13,7 @@ import { approveGuest } from './handlers/approveGuest';
 import { fetchGuests } from './handlers/fetchGuests';
 import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
 import { rejectGuest } from './handlers/rejectGuest';
+import { transferRoomGuests } from './handlers/transferRoomGuests';
 import { updateGuest } from './handlers/updateGuest';
 
 // AdminはUser Pool固定（ここで明示）
@@ -228,9 +229,58 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
           bulkProcessing={bulkProcessing}
           title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
           onClick={async () => {
-            if (!canBulk) return;
-            // TODO: 部屋移動の実装
-            alert('部屋移動機能は開発中です');
+            if (!canBulk || !roomFilter) return;
+            
+            // 移動先の部屋番号を入力
+            const newRoomNumber = prompt(
+              `現在の部屋: ${roomFilter}\n` +
+              `対象ゲスト数: ${affectedCount}件\n\n` +
+              `移動先の部屋番号を入力してください:`
+            );
+            
+            if (!newRoomNumber) return; // キャンセル
+            
+            // 同じ部屋番号チェック
+            if (newRoomNumber === roomFilter) {
+              alert('移動先が同じ部屋番号です。異なる部屋番号を指定してください。');
+              return;
+            }
+            
+            // 確認ダイアログ
+            const confirmed = confirm(
+              `${affectedCount}件のゲストを\n` +
+              `部屋 ${roomFilter} から 部屋 ${newRoomNumber} に移動します。\n\n` +
+              `よろしいですか？`
+            );
+            
+            if (!confirmed) return;
+            
+            // 部屋移動実行
+            setBulkProcessing(true);
+            try {
+              await transferRoomGuests({
+                client,
+                oldRoomNumber: roomFilter,
+                newRoomNumber: newRoomNumber,
+                onSuccess: (result) => {
+                  alert(
+                    `✅ 部屋移動完了\n\n` +
+                    `${result.transferredCount}件のゲストを移動しました。\n` +
+                    `部屋 ${roomFilter} → 部屋 ${newRoomNumber}`
+                  );
+                  // データを再読み込み
+                  loadData();
+                },
+                onError: (error) => {
+                  alert(`❌ 部屋移動に失敗しました\n\n${error.message}`);
+                }
+              });
+            } catch (error) {
+              console.error('部屋移動エラー:', error);
+              alert(`❌ 部屋移動に失敗しました\n\n${error instanceof Error ? error.message : '不明なエラー'}`);
+            } finally {
+              setBulkProcessing(false);
+            }
           }}
         />
 
