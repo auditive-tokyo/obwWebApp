@@ -18,6 +18,16 @@ import { updateGuest } from './handlers/updateGuest';
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
 
+// checkOutDate (YYYY-MM-DD) から sessionTokenExpiresAt (Unix epoch秒) を計算
+// チェックアウト日の日本時間正午（12:00 JST = 03:00 UTC）に設定
+const calculateSessionExpiry = (checkOutDate: string): number => {
+  const checkOut = new Date(checkOutDate);
+  // 日本時間の正午 = UTC 03:00
+  checkOut.setUTCHours(3, 0, 0, 0);
+  // Unix epoch (秒単位)
+  return Math.floor(checkOut.getTime() / 1000);
+};
+
 // Props interface を追加
 interface AdminPageProps {
   roomId?: string;
@@ -263,7 +273,13 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
                     let fail = 0;
 
                     for (const g of affected) {
-                      const updatedGuest: Guest = { ...g, checkInDate: newCheckIn, checkOutDate: newCheckOut };
+                      const sessionTokenExpiresAt = calculateSessionExpiry(newCheckOut);
+                      const updatedGuest: Guest = { 
+                        ...g, 
+                        checkInDate: newCheckIn, 
+                        checkOutDate: newCheckOut,
+                        sessionTokenExpiresAt
+                      };
                       try {
                         await updateGuest({
                           client,

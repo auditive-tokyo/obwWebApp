@@ -35,6 +35,7 @@ export async function updateGuest({
           promoConsent
           isFamilyMember
           currentLocation
+          sessionTokenExpiresAt
           createdAt
           updatedAt
         }
@@ -59,6 +60,7 @@ export async function updateGuest({
         // promoConsent は Guest型に未定義
         // isFamilyMember は Guest型に未定義
         currentLocation: guest.currentLocation || undefined,
+        sessionTokenExpiresAt: guest.sessionTokenExpiresAt || undefined,
       }
     };
 
