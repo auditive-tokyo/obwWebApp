@@ -45,7 +45,7 @@ func findRepresentativeGuest(ctx context.Context, bookingId string) (string, err
 	// Query by bookingId (GSI)
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(tableName),
-		IndexName:              aws.String("BookingIdIndex"),
+		IndexName:              aws.String("BookingIndex"),
 		KeyConditionExpression: aws.String("bookingId = :bookingId"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":bookingId": &types.AttributeValueMemberS{Value: bookingId},
