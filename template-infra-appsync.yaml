@@ -227,7 +227,7 @@ Resources:
           newRoomNumber: String!
         }
 
-        type TransferRoomResult {
+        type TransferRoomResult @aws_cognito_user_pools {
           success: Boolean!
           transferredCount: Int!
           message: String
