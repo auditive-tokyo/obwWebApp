@@ -175,9 +175,17 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
+          SENDGRID_API_KEY: !Ref SendGridApiKey
+          APP_BASE_URL: "https://app.osakabaywheel.com"
+          MAIL_FROM: "osakabaywheel4224@gmail.com"
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: "*"
 
 Outputs:
   PassportUploadBucketName:
