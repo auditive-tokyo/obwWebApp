@@ -46,20 +46,16 @@ Resources:
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: go1.x
-      BuildProperties:
-        BuildFlags:
-          - -tags
-          - lambda.norpc
-        Env:
-          - CGO_ENABLED=0
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-get-presigned-url-function
       MemorySize: 128
       CodeUri: lambda_functions/get_presigned_url/
-      Handler: main
-      Runtime: go1.x
+      Handler: bootstrap
+      Runtime: provided.al2023
       Timeout: 30
+      Architectures:
+        - x86_64
       Environment:
         Variables:
           UPLOAD_BUCKET: !Ref PassportUploadBucket
@@ -170,20 +166,16 @@ Resources:
   TransferRoomGuestsFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: go1.x
-      BuildProperties:
-        BuildFlags:
-          - -tags
-          - lambda.norpc
-        Env:
-          - CGO_ENABLED=0
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-transfer-room-guests-function
       MemorySize: 256
       CodeUri: lambda_functions/transfer_room_guests/
-      Handler: main
-      Runtime: go1.x
+      Handler: bootstrap
+      Runtime: provided.al2023
       Timeout: 60
+      Architectures:
+        - x86_64
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
