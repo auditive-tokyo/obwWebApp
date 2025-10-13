@@ -74,6 +74,20 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
   const [bulkModalOpen, setBulkModalOpen] = useState(false)
   const [bulkCheckInDate, setBulkCheckInDate] = useState<Date | null>(null)
   const [bulkCheckOutDate, setBulkCheckOutDate] = useState<Date | null>(null)
+  const [transferModalOpen, setTransferModalOpen] = useState(false)
+  const [transferTargetRoom, setTransferTargetRoom] = useState('')
+
+  // 部屋番号のオプション（FiltersBarと同じロジック）
+  const roomOptions = useMemo(() => {
+    const set = new Set<string>(all.map(g => g.roomNumber).filter(Boolean));
+    for (let floor = 2; floor <= 8; floor++) {
+      for (let room = 1; room <= 4; room++) {
+        const roomNumber = `${floor}${String(room).padStart(2, '0')}`;
+        set.add(roomNumber);
+      }
+    }
+    return Array.from(set).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  }, [all]);
 
   // フィルタリングロジック
   const filteredGuests = useMemo(() => {
@@ -228,59 +242,10 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
           canBulk={canBulk}
           bulkProcessing={bulkProcessing}
           title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
-          onClick={async () => {
+          onClick={() => {
             if (!canBulk || !roomFilter) return;
-            
-            // 移動先の部屋番号を入力
-            const newRoomNumber = prompt(
-              `現在の部屋: ${roomFilter}\n` +
-              `対象ゲスト数: ${affectedCount}件\n\n` +
-              `移動先の部屋番号を入力してください:`
-            );
-            
-            if (!newRoomNumber) return; // キャンセル
-            
-            // 同じ部屋番号チェック
-            if (newRoomNumber === roomFilter) {
-              alert('移動先が同じ部屋番号です。異なる部屋番号を指定してください。');
-              return;
-            }
-            
-            // 確認ダイアログ
-            const confirmed = confirm(
-              `${affectedCount}件のゲストを\n` +
-              `部屋 ${roomFilter} から 部屋 ${newRoomNumber} に移動します。\n\n` +
-              `よろしいですか？`
-            );
-            
-            if (!confirmed) return;
-            
-            // 部屋移動実行
-            setBulkProcessing(true);
-            try {
-              await transferRoomGuests({
-                client,
-                oldRoomNumber: roomFilter,
-                newRoomNumber: newRoomNumber,
-                onSuccess: (result) => {
-                  alert(
-                    `✅ 部屋移動完了\n\n` +
-                    `${result.transferredCount}件のゲストを移動しました。\n` +
-                    `部屋 ${roomFilter} → 部屋 ${newRoomNumber}`
-                  );
-                  // データを再読み込み
-                  loadData();
-                },
-                onError: (error) => {
-                  alert(`❌ 部屋移動に失敗しました\n\n${error.message}`);
-                }
-              });
-            } catch (error) {
-              console.error('部屋移動エラー:', error);
-              alert(`❌ 部屋移動に失敗しました\n\n${error instanceof Error ? error.message : '不明なエラー'}`);
-            } finally {
-              setBulkProcessing(false);
-            }
+            setTransferTargetRoom('');
+            setTransferModalOpen(true);
           }}
         />
 
@@ -360,6 +325,115 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
                   }}
                   disabled={bulkProcessing}
                   style={{ backgroundColor: '#1976d2', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4 }}
+                >
+                  {bulkProcessing ? '処理中…' : '実行'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 部屋移動モーダル */}
+        {transferModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 mx-auto shadow-2xl" style={{ width: 'min(90%,480px)' }}>
+              <h4 style={{ marginTop: 0 }}>部屋移動</h4>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 8, color: '#666' }}>
+                  現在の部屋: <strong>{roomFilter}</strong><br />
+                  対象ゲスト数: <strong>{affectedCount}件</strong>
+                </div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
+                  移動先の部屋番号:
+                </label>
+                <select
+                  value={transferTargetRoom}
+                  onChange={(e) => setTransferTargetRoom(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 4,
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">選択してください</option>
+                  {roomOptions
+                    .filter(r => r !== roomFilter) // 現在の部屋を除外
+                    .map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                </select>
+              </div>
+              {transferTargetRoom && (
+                <div style={{ marginBottom: 12, padding: 12, backgroundColor: '#f0f9ff', borderRadius: 4, border: '1px solid #bae6fd' }}>
+                  <strong>{affectedCount}件</strong>のゲストを<br />
+                  部屋 <strong>{roomFilter}</strong> から 部屋 <strong>{transferTargetRoom}</strong> に移動します。
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  onClick={() => {
+                    setTransferModalOpen(false);
+                    setTransferTargetRoom('');
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!transferTargetRoom) {
+                      alert('移動先の部屋番号を選択してください');
+                      return;
+                    }
+
+                    // 確認ダイアログ
+                    const confirmed = confirm(
+                      `${affectedCount}件のゲストを\n` +
+                      `部屋 ${roomFilter} から 部屋 ${transferTargetRoom} に移動します。\n\n` +
+                      `よろしいですか？`
+                    );
+
+                    if (!confirmed) return;
+
+                    // 部屋移動実行
+                    setBulkProcessing(true);
+                    try {
+                      await transferRoomGuests({
+                        client,
+                        oldRoomNumber: roomFilter,
+                        newRoomNumber: transferTargetRoom,
+                        onSuccess: (result) => {
+                          setTransferModalOpen(false);
+                          setTransferTargetRoom('');
+                          alert(
+                            `✅ 部屋移動完了\n\n` +
+                            `${result.transferredCount}件のゲストを移動しました。\n` +
+                            `部屋 ${roomFilter} → 部屋 ${transferTargetRoom}`
+                          );
+                          // データを再読み込み
+                          loadData();
+                        },
+                        onError: (error) => {
+                          alert(`❌ 部屋移動に失敗しました\n\n${error.message}`);
+                        }
+                      });
+                    } catch (error) {
+                      console.error('部屋移動エラー:', error);
+                      alert(`❌ 部屋移動に失敗しました\n\n${error instanceof Error ? error.message : '不明なエラー'}`);
+                    } finally {
+                      setBulkProcessing(false);
+                    }
+                  }}
+                  disabled={!transferTargetRoom || bulkProcessing}
+                  style={{
+                    backgroundColor: transferTargetRoom && !bulkProcessing ? '#1976d2' : '#ccc',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: transferTargetRoom && !bulkProcessing ? 'pointer' : 'not-allowed'
+                  }}
                 >
                   {bulkProcessing ? '処理中…' : '実行'}
                 </button>
