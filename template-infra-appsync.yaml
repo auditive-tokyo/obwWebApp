@@ -111,13 +111,11 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        # 承認状態 × チェックイン日順（管理画面用）  
+        # 承認状態（管理画面用）  
         - IndexName: ApprovalStatusCheckInIndex
           KeySchema:
             - AttributeName: approvalStatus
               KeyType: HASH
-            - AttributeName: checkInDate
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
         # 承認状態 × 有効期限順（自動クリーンアップ用）
@@ -616,8 +614,7 @@ Resources:
             "expressionValues": {
               ":status": $util.dynamodb.toDynamoDBJson($ctx.args.approvalStatus)
             }
-          },
-          "scanIndexForward": true
+          }
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result.items)
