@@ -134,9 +134,11 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">
-        {getMessage("enterBasicInfo")}
-      </h2>
+      {!isAdmin && (
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">
+          {getMessage("enterBasicInfo")}
+        </h2>
+      )}
 
       {/* 家族の場合は案内メッセージを表示 */}
       {isRepresentativeFamily && (
