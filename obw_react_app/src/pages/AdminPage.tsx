@@ -399,10 +399,15 @@ export default function AdminPage({ roomId, bookingFilter: initialBookingFilter 
                     // 部屋移動実行
                     setBulkProcessing(true);
                     try {
+                      // bookingFilterが指定されている場合はそれを使う（単一）
+                      // 指定されていない場合はundefined = 全ゲスト移動
+                      const bookingIds = bookingFilter ? [bookingFilter] : undefined;
+
                       await transferRoomGuests({
                         client,
                         oldRoomNumber: roomFilter,
                         newRoomNumber: transferTargetRoom,
+                        bookingIds,
                         onSuccess: (result) => {
                           setTransferModalOpen(false);
                           setTransferTargetRoom('');

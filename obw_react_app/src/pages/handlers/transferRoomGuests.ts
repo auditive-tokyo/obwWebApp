@@ -5,6 +5,7 @@ import { dbg } from '@/utils/debugLogger';
 interface TransferRoomGuestsInput {
   oldRoomNumber: string;
   newRoomNumber: string;
+  bookingIds?: string[];  // 複数のbookingIdに対応
 }
 
 interface TransferRoomResult {
@@ -27,6 +28,7 @@ interface TransferRoomGuestsParams {
   client: V6Client<never>;
   oldRoomNumber: string;
   newRoomNumber: string;
+  bookingIds?: string[];  // 複数のbookingIdに対応
   onSuccess?: (result: TransferRoomResult) => void;
   onError?: (error: Error) => void;
 }
@@ -35,16 +37,18 @@ export async function transferRoomGuests({
   client,
   oldRoomNumber,
   newRoomNumber,
+  bookingIds,
   onSuccess,
   onError
 }: TransferRoomGuestsParams): Promise<void> {
   try {
-    dbg(`🔄 部屋移動開始: ${oldRoomNumber} → ${newRoomNumber}`);
+    dbg(`🔄 部屋移動開始: ${oldRoomNumber} → ${newRoomNumber}`, bookingIds ? `bookingIds: ${bookingIds.join(', ')}` : 'all guests');
 
     const variables: { input: TransferRoomGuestsInput } = {
       input: {
         oldRoomNumber,
-        newRoomNumber
+        newRoomNumber,
+        ...(bookingIds && bookingIds.length > 0 && { bookingIds })
       }
     };
 

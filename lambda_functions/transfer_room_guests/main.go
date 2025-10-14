@@ -32,8 +32,9 @@ type AppSyncEvent struct {
 
 // GraphQL Input 型
 type TransferRoomInput struct {
-	OldRoomNumber string `json:"oldRoomNumber"`
-	NewRoomNumber string `json:"newRoomNumber"`
+	OldRoomNumber string   `json:"oldRoomNumber"`
+	NewRoomNumber string   `json:"newRoomNumber"`
+	BookingIDs    []string `json:"bookingIds,omitempty"` // 複数のbookingIDに対応
 }
 
 // GraphQL Result 型
@@ -109,7 +110,12 @@ func init() {
 // Lambda ハンドラー
 func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult, error) {
 	input := event.Arguments.Input
-	log.Printf("🔄 部屋移動開始: %s → %s", input.OldRoomNumber, input.NewRoomNumber)
+	
+	if len(input.BookingIDs) > 0 {
+		log.Printf("🔄 部屋移動開始: %s → %s (bookingIds: %v)", input.OldRoomNumber, input.NewRoomNumber, input.BookingIDs)
+	} else {
+		log.Printf("🔄 部屋移動開始: %s → %s (全ゲスト)", input.OldRoomNumber, input.NewRoomNumber)
+	}
 
 	// 入力バリデーション
 	if input.OldRoomNumber == "" || input.NewRoomNumber == "" {
@@ -127,13 +133,35 @@ func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult,
 	}
 
 	// 旧部屋のゲストを全件取得
-	guests, err := queryGuestsByRoom(ctx, input.OldRoomNumber)
+	allGuests, err := queryGuestsByRoom(ctx, input.OldRoomNumber)
 	if err != nil {
 		log.Printf("❌ Query failed: %v", err)
 		return TransferRoomResult{
 			Success: false,
 			Message: fmt.Sprintf("ゲスト情報の取得に失敗しました: %v", err),
 		}, err
+	}
+
+	// bookingIds が指定されている場合はフィルタリング
+	var guests []GuestRecord
+	if len(input.BookingIDs) > 0 {
+		bookingIDSet := make(map[string]bool)
+		for _, id := range input.BookingIDs {
+			bookingIDSet[id] = true
+		}
+
+		for _, guest := range allGuests {
+			// bookingId が指定された bookingIds のいずれかに一致する場合のみ含める
+			if guest.BookingID != nil && bookingIDSet[*guest.BookingID] {
+				guests = append(guests, guest)
+			}
+		}
+
+		log.Printf("📋 フィルタリング結果: %d/%d 件のゲストが対象", len(guests), len(allGuests))
+	} else {
+		// bookingIds 指定なしの場合は全ゲストを対象
+		guests = allGuests
+		log.Printf("📋 全 %d 件のゲストを対象", len(guests))
 	}
 
 	if len(guests) == 0 {
