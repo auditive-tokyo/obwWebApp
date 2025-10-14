@@ -286,32 +286,34 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
           </>
         )}
 
-        {/* 次へボタン */}
-        <div className="pt-4">
-          <button
-            onClick={onNext}
-            disabled={!isAdmin && !isInfoComplete}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
-          >
-            {getMessage("proceedToPassportImageUpload")}
-          </button>
+        {/* 次へボタン（Adminモード時は非表示） */}
+        {!isAdmin && (
+          <div className="pt-4">
+            <button
+              onClick={onNext}
+              disabled={!isInfoComplete}
+              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+            >
+              {getMessage("proceedToPassportImageUpload")}
+            </button>
 
-          {/* 不足項目リスト（Adminモード時は非表示） */}
-          {!isAdmin && !isInfoComplete && missingFields.length > 0 && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-700 mb-2">
-                {getMessage("missingFieldsPrompt")}
-              </p>
-              <ul className="list-disc list-inside space-y-1">
-                {missingFields.map((field, index) => (
-                  <li key={index} className="text-sm text-red-600">
-                    {field}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+            {/* 不足項目リスト */}
+            {!isInfoComplete && missingFields.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-700 mb-2">
+                  {getMessage("missingFieldsPrompt")}
+                </p>
+                <ul className="list-disc list-inside space-y-1">
+                  {missingFields.map((field, index) => (
+                    <li key={index} className="text-sm text-red-600">
+                      {field}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
