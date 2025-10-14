@@ -111,11 +111,20 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        # 承認状態（管理画面用）  
+        # 承認状態（管理画面用）- Range Keyなし
+        - IndexName: ApprovalStatusIndex
+          KeySchema:
+            - AttributeName: approvalStatus
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        # 承認状態 × チェックイン日順（旧GSI - 削除予定）
         - IndexName: ApprovalStatusCheckInIndex
           KeySchema:
             - AttributeName: approvalStatus
               KeyType: HASH
+            - AttributeName: checkInDate
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
         # 承認状態 × 有効期限順（自動クリーンアップ用）
@@ -608,7 +617,7 @@ Resources:
         {
           "version": "2017-02-28",
           "operation": "Query",
-          "index": "ApprovalStatusCheckInIndex",
+          "index": "ApprovalStatusIndex",
           "query": {
             "expression": "approvalStatus = :status",
             "expressionValues": {
