@@ -223,6 +223,7 @@ Resources:
         input TransferRoomInput {
           oldRoomNumber: String!
           newRoomNumber: String!
+          bookingIds: [String!]
         }
 
         type TransferRoomResult @aws_cognito_user_pools {
