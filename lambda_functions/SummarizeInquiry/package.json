@@ -1,6 +1,7 @@
 {
   "name": "summarize-inquiry",
   "version": "1.0.0",
+  "type": "module",
   "description": "Lambda function for summarizing user inquiries when human operator is needed",
   "main": "dist/handler.js",
   "scripts": {

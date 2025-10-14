@@ -63,6 +63,8 @@ async function sendTelegram(text: string): Promise<void> {
  */
 export const handler: Handler<TelegramNotificationEvent, { success: boolean }> = async (event: TelegramNotificationEvent, context: Context) => {
     const userInfo = event.userInfo || {};
+    // Reference `context` to avoid "declared but its value is never read" / eslint no-unused-vars
+    void context;
     
     console.info('🚨 Human operator notification received:', {
         roomId: event.roomId,
