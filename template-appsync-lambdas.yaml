@@ -59,13 +59,15 @@ Resources:
 
   RequestAccessFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-request-access-function
-      Handler: lambda_handler_request_access.lambda_handler
-      Runtime: python3.13
-      Timeout: 30
       MemorySize: 128
       CodeUri: lambda_functions/request_access/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 30
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
