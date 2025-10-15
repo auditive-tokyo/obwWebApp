@@ -83,13 +83,15 @@ Resources:
 
   VerifyAccessTokenFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-verify-access-token-function
-      Handler: lambda_handler_verify_access.lambda_handler
-      Runtime: python3.13
-      Timeout: 30
       MemorySize: 128
       CodeUri: lambda_functions/verify_access/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 30
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
