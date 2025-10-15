@@ -1,4 +1,4 @@
-module github.com/auditive-tokyo/obwWebApp/verify_access
+module github.com/auditive-tokyo/obwWebApp/verify_access_token
 
 go 1.25.1
 

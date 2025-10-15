@@ -88,7 +88,7 @@ Resources:
     Properties:
       FunctionName: obw-verify-access-token-function
       MemorySize: 128
-      CodeUri: lambda_functions/verify_access/
+      CodeUri: lambda_functions/verify_access_token/
       Handler: bootstrap
       Runtime: provided.al2023
       Timeout: 30
