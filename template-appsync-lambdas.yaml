@@ -101,13 +101,15 @@ Resources:
 
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-admin-approve-guest-function
-      CodeUri: lambda_functions/admin_approve_guest/
-      Handler: lambda_handler_admin_approve_guest.lambda_handler
-      Runtime: python3.13
-      Timeout: 30
       MemorySize: 128
+      CodeUri: lambda_functions/admin_approve_guest/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 30
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
