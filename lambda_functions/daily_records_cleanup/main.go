@@ -28,9 +28,10 @@ type GuestKey struct {
 }
 
 type GuestItem struct {
-	RoomNumber string `dynamodbav:"roomNumber"`
-	GuestID    string `dynamodbav:"guestId"`
-	BookingID  string `dynamodbav:"bookingId"`
+	RoomNumber     string `dynamodbav:"roomNumber"`
+	GuestID        string `dynamodbav:"guestId"`
+	BookingID      string `dynamodbav:"bookingId"`
+	ApprovalStatus string `dynamodbav:"approvalStatus"`
 }
 
 type Response struct {
@@ -148,6 +149,10 @@ func collectKeysToDelete(ctx context.Context, expiredItems []GuestItem) (map[Gue
 
 	// Collect initial keys and bookingIds
 	for _, item := range expiredItems {
+		// Skip approved guests - they should never be deleted
+		if item.ApprovalStatus == "approved" {
+			continue
+		}
 		if item.RoomNumber != "" && item.GuestID != "" {
 			keys[GuestKey{RoomNumber: item.RoomNumber, GuestID: item.GuestID}] = true
 		}
@@ -187,6 +192,10 @@ func collectKeysToDelete(ctx context.Context, expiredItems []GuestItem) (map[Gue
 
 			for _, related := range relatedItems {
 				if related.RoomNumber != "" && related.GuestID != "" {
+					// Skip approved guests - they should never be deleted
+					if related.ApprovalStatus == "approved" {
+						continue
+					}
 					keys[GuestKey{RoomNumber: related.RoomNumber, GuestID: related.GuestID}] = true
 				}
 			}
