@@ -1,44 +1,69 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import BulkChangeButton from './adminpage/components/BulkChangeButton';
+import { DetailsModal } from './adminpage/components/detailsModal';
+import { confirmApproveDialog, confirmRejectDialog } from './adminpage/components/Dialogs';
+import FiltersBar from './adminpage/components/FiltersBar';
+import GuestList from './adminpage/components/GuestList';
+import RoomTransferButton from './adminpage/components/RoomTransferButton';
 import type { Guest } from './adminpage/types/types';
+import { computeFilteredGuests } from './adminpage/utils/guestFilters';
+import { BasicCheckInOutDate } from './components/BasicCheckInOutDate';
+import { approveGuest } from './handlers/approveGuest';
+import { fetchGuests } from './handlers/fetchGuests';
 import { fetchPassportSignedUrl } from './handlers/fetchPassportSignedUrl';
 import { rejectGuest } from './handlers/rejectGuest';
-import { approveGuest } from './handlers/approveGuest';
-import { confirmApproveDialog, confirmRejectDialog } from './adminpage/components/Dialogs';
-import { fetchGuests } from './handlers/fetchGuests';
+import { transferRoomGuests } from './handlers/transferRoomGuests';
 import { updateGuest } from './handlers/updateGuest';
-import { DetailsModal } from './adminpage/components/detailsModal';
-import GuestList from './adminpage/components/GuestList';
-import FiltersBar from './adminpage/components/FiltersBar';
-import { computeFilteredGuests } from './adminpage/utils/guestFilters';
-import BulkChangeButton from './adminpage/components/BulkChangeButton';
 
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: 'userPool' })
 
+// checkOutDate (YYYY-MM-DD) から sessionTokenExpiresAt (Unix epoch秒) を計算
+// チェックアウト日の日本時間正午（12:00 JST = 03:00 UTC）に設定
+const calculateSessionExpiry = (checkOutDate: string): number => {
+  const checkOut = new Date(checkOutDate);
+  // 日本時間の正午 = UTC 03:00
+  checkOut.setUTCHours(3, 0, 0, 0);
+  // Unix epoch (秒単位)
+  return Math.floor(checkOut.getTime() / 1000);
+};
+
 // Props interface を追加
 interface AdminPageProps {
   roomId?: string;
+  bookingFilter?: string | null;
 }
 
-export default function AdminPage({ roomId }: AdminPageProps) {
+export default function AdminPage({ roomId, bookingFilter: initialBookingFilter }: AdminPageProps) {
   const [all, setAll] = useState<Guest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   // URL解析でroomIdを取得（propsを優先、フォールバックでURL解析）
   const [roomFilter, setRoomFilter] = useState(() => {
-    // 1. Propsで渡された値を優先
     if (roomId) return roomId;
-    
-    // 2. フォールバック: URL解析（既存ロジック）
     const path = window.location.pathname;
-    const match = path.match(/\/admin\/(\d+)$/);
-    return match ? match[1] : ''; // 空文字 = フィルターなし
+    const parts = path.split('/').filter(Boolean);
+    if (parts[0] === 'admin') {
+      if (parts.length >= 2 && /^\d+$/.test(parts[1])) return parts[1];
+    }
+    return '';
   });
-  
-  const [statusFilter, setStatusFilter] = useState('pending')
-  const [bookingFilter, setBookingFilter] = useState('')
+
+  const [statusFilter, setStatusFilter] = useState<string[]>(['pending'])
+  // bookingFilter は props の初期値を優先して設定。propsが無ければURLから解析。
+  const [bookingFilter, setBookingFilter] = useState(() => {
+    if (initialBookingFilter) return initialBookingFilter;
+    const path = window.location.pathname;
+    const parts = path.split('/').filter(Boolean);
+    // /admin/:room/:booking  または  /admin/:booking
+    if (parts[0] === 'admin') {
+      if (parts.length >= 3 && parts[2]) return parts[2];
+      if (parts.length === 2 && !/^\d+$/.test(parts[1])) return parts[1];
+    }
+    return '';
+  })
   const [checkInFilter, setCheckInFilter] = useState('')
   const [detail, setDetail] = useState<Guest | null>(null)
   const [signedPassportUrl, setSignedPassportUrl] = useState<string | null>(null)
@@ -46,12 +71,23 @@ export default function AdminPage({ roomId }: AdminPageProps) {
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [bulkProcessing, setBulkProcessing] = useState(false)
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [bulkCheckInDate, setBulkCheckInDate] = useState<Date | null>(null)
+  const [bulkCheckOutDate, setBulkCheckOutDate] = useState<Date | null>(null)
+  const [transferModalOpen, setTransferModalOpen] = useState(false)
+  const [transferTargetRoom, setTransferTargetRoom] = useState('')
 
-  // clear bookingFilter when roomFilter changes
-  useEffect(() => {
-    setBookingFilter('');
-    setCheckInFilter('');
-  }, [roomFilter]);
+  // 部屋番号のオプション（FiltersBarと同じロジック）
+  const roomOptions = useMemo(() => {
+    const set = new Set<string>(all.map(g => g.roomNumber).filter(Boolean));
+    for (let floor = 2; floor <= 8; floor++) {
+      for (let room = 1; room <= 4; room++) {
+        const roomNumber = `${floor}${String(room).padStart(2, '0')}`;
+        set.add(roomNumber);
+      }
+    }
+    return Array.from(set).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  }, [all]);
 
   // フィルタリングロジック
   const filteredGuests = useMemo(() => {
@@ -62,13 +98,16 @@ export default function AdminPage({ roomId }: AdminPageProps) {
 
   // 宿泊日変更ボタンがアクティブになれる条件
   const canBulk = Boolean(roomFilter && (checkInFilter || bookingFilter));
+  const previewNewCheckIn = bulkCheckInDate ? bulkCheckInDate.toISOString().slice(0, 10) : ''
+  const previewNewCheckOut = bulkCheckOutDate ? bulkCheckOutDate.toISOString().slice(0, 10) : ''
+  const affectedCount = filteredGuests ? filteredGuests.length : 0
 
   // データ読み込み関数を作成
   const loadData = useCallback(async () => {
-    await fetchGuests({ 
-      client, 
-      setAll, 
-      setLoading, 
+    await fetchGuests({
+      client,
+      setAll,
+      setLoading,
       setError,
       roomFilter: roomFilter || undefined,
       statusFilter: statusFilter || undefined
@@ -138,17 +177,17 @@ export default function AdminPage({ roomId }: AdminPageProps) {
       guest: updatedGuest,
       onSuccess: () => {
         // ローカル状態を更新
-        setAll(prev => prev.map(g => 
+        setAll(prev => prev.map(g =>
           g.roomNumber === updatedGuest.roomNumber && g.guestId === updatedGuest.guestId
             ? updatedGuest
             : g
         ));
-        
+
         // 詳細モーダルの表示も更新
         if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
           setDetail(updatedGuest);
         }
-        
+
         alert('更新しました！');
       },
       onError: (error) => {
@@ -162,8 +201,8 @@ export default function AdminPage({ roomId }: AdminPageProps) {
     <div style={{ padding: '2rem' }}>
       {/* タイトル/サマリー（中央寄せ） */}
       <div style={{ textAlign: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter || 'すべての状態'}</h3>
-        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>Debug: roomFilter={roomFilter || 'empty'}, statusFilter={statusFilter || 'empty'}, roomId prop={roomId || 'none'}</div>
+        <h3 style={{ margin: 0, fontWeight: 600 }}>表示中: {roomFilter ? `部屋${roomFilter}のみ` : '全部屋'} / {statusFilter && statusFilter.length ? statusFilter.join('') : 'すべての状態'}</h3>
+        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 6 }}>{`Debug: roomFilter=${roomFilter || 'empty'}, bookingFilter=${bookingFilter || 'empty'}, statusFilter=${(statusFilter && statusFilter.length) ? statusFilter.join('') : 'empty'}, NumberOfSelectedGuests=${filteredGuests ? filteredGuests.length : 0}`}</div>
       </div>
 
       <div style={{ marginBottom: 12 }}>
@@ -173,7 +212,7 @@ export default function AdminPage({ roomId }: AdminPageProps) {
         >
           {loading ? '更新中…' : '更新'}
         </button>
-        
+
         <FiltersBar
           all={all}
           roomFilter={roomFilter}
@@ -191,58 +230,222 @@ export default function AdminPage({ roomId }: AdminPageProps) {
           canBulk={canBulk}
           bulkProcessing={bulkProcessing}
           title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
-          onClick={async () => {
+          onClick={() => {
             if (!canBulk) return;
-            // prompt for new dates
-            const newCheckIn = window.prompt('新しいチェックイン日を入力してください (YYYY-MM-DD)', '');
-            if (!newCheckIn) return;
-            const newCheckOut = window.prompt('新しいチェックアウト日を入力してください (YYYY-MM-DD)', '');
-            if (!newCheckOut) return;
-
-            // affected guests are those currently filtered
-            const affected = filteredGuests;
-            if (!affected || affected.length === 0) {
-              alert('該当するゲストがいません。');
-              return;
-            }
-
-            if (!confirm(`${affected.length} 件のゲストの宿泊日を ${newCheckIn} ～ ${newCheckOut} に変更します。よろしいですか？`)) return;
-
-            setBulkProcessing(true);
-            let success = 0;
-            let fail = 0;
-
-            for (const g of affected) {
-              const updatedGuest: Guest = { ...g, checkInDate: newCheckIn, checkOutDate: newCheckOut };
-              try {
-                // call low-level updateGuest handler but suppress per-item alerts
-                // we await each one to keep rate reasonable and preserve order
-                 
-                await updateGuest({
-                  client,
-                  guest: updatedGuest,
-                  onSuccess: () => {
-                    setAll(prev => prev.map(p => p.roomNumber === updatedGuest.roomNumber && p.guestId === updatedGuest.guestId ? updatedGuest : p));
-                    if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
-                      setDetail(updatedGuest);
-                    }
-                    success += 1;
-                  },
-                  onError: (err) => {
-                    console.error('bulk update failed for', g, err);
-                    fail += 1;
-                  }
-                });
-              } catch (err) {
-                console.error('bulk update exception', err);
-                fail += 1;
-              }
-            }
-
-            setBulkProcessing(false);
-            alert(`完了: 成功 ${success} 件、失敗 ${fail} 件`);
+            // open modal to pick dates
+            setBulkModalOpen(true)
           }}
         />
+
+        {/* 部屋移動ボタン */}
+        <RoomTransferButton
+          canBulk={canBulk}
+          bulkProcessing={bulkProcessing}
+          title={'部屋を選択し、チェックイン日または予約IDを選択してください'}
+          onClick={() => {
+            if (!canBulk || !roomFilter) return;
+            setTransferTargetRoom('');
+            setTransferModalOpen(true);
+          }}
+        />
+
+        {/* Bulk change modal */}
+        {bulkModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 mx-auto shadow-2xl" style={{ width: 'min(90%,680px)' }}>
+              <h4 style={{ marginTop: 0 }}>宿泊日を一括変更</h4>
+              <div style={{ marginBottom: 12 }}>
+                <BasicCheckInOutDate
+                  checkInDate={bulkCheckInDate}
+                  setCheckInDate={setBulkCheckInDate}
+                  checkOutDate={bulkCheckOutDate}
+                  setCheckOutDate={setBulkCheckOutDate}
+                />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                {/* 確認文言をモーダル内に表示して1つのモーダルで完結させる */}
+                <div style={{ marginBottom: 8 }}>
+                  {affectedCount} 件のゲストの宿泊日を {previewNewCheckIn || '---'} ～ {previewNewCheckOut || '---'} に変更します。よろしいですか？
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button onClick={() => { setBulkModalOpen(false); setBulkCheckInDate(null); setBulkCheckOutDate(null); }}>
+                  キャンセル
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!bulkCheckInDate || !bulkCheckOutDate) return alert('チェックイン/チェックアウト日を選択してください');
+                    const newCheckIn = bulkCheckInDate.toISOString().slice(0, 10)
+                    const newCheckOut = bulkCheckOutDate.toISOString().slice(0, 10)
+                    const affected = filteredGuests;
+                    if (!affected || affected.length === 0) {
+                      alert('該当するゲストがいません。');
+                      return;
+                    }
+
+                    setBulkProcessing(true);
+                    let success = 0;
+                    let fail = 0;
+
+                    for (const g of affected) {
+                      const sessionTokenExpiresAt = calculateSessionExpiry(newCheckOut);
+                      const updatedGuest: Guest = { 
+                        ...g, 
+                        checkInDate: newCheckIn, 
+                        checkOutDate: newCheckOut,
+                        sessionTokenExpiresAt
+                      };
+                      try {
+                        await updateGuest({
+                          client,
+                          guest: updatedGuest,
+                          onSuccess: () => {
+                            setAll(prev => prev.map(p => p.roomNumber === updatedGuest.roomNumber && p.guestId === updatedGuest.guestId ? updatedGuest : p));
+                            if (detail && detail.roomNumber === updatedGuest.roomNumber && detail.guestId === updatedGuest.guestId) {
+                              setDetail(updatedGuest);
+                            }
+                            success += 1;
+                          },
+                          onError: (err) => {
+                            console.error('bulk update failed for', g, err);
+                            fail += 1;
+                          }
+                        });
+                      } catch (err) {
+                        console.error('bulk update exception', err);
+                        fail += 1;
+                      }
+                    }
+
+                    setBulkProcessing(false);
+                    setBulkModalOpen(false);
+                    setBulkCheckInDate(null);
+                    setBulkCheckOutDate(null);
+                    alert(`完了: 成功 ${success} 件、失敗 ${fail} 件`);
+                  }}
+                  disabled={bulkProcessing}
+                  style={{ backgroundColor: '#1976d2', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4 }}
+                >
+                  {bulkProcessing ? '処理中…' : '実行'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 部屋移動モーダル */}
+        {transferModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 mx-auto shadow-2xl" style={{ width: 'min(90%,480px)' }}>
+              <h4 style={{ marginTop: 0 }}>部屋移動</h4>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 8, color: '#666' }}>
+                  現在の部屋: <strong>{roomFilter}</strong><br />
+                  対象ゲスト数: <strong>{affectedCount}件</strong>
+                </div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
+                  移動先の部屋番号:
+                </label>
+                <select
+                  value={transferTargetRoom}
+                  onChange={(e) => setTransferTargetRoom(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ccc',
+                    borderRadius: 4,
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">選択してください</option>
+                  {roomOptions
+                    .filter(r => r !== roomFilter) // 現在の部屋を除外
+                    .map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                </select>
+              </div>
+              {transferTargetRoom && (
+                <div style={{ marginBottom: 12, padding: 12, backgroundColor: '#f0f9ff', borderRadius: 4, border: '1px solid #bae6fd' }}>
+                  <strong>{affectedCount}件</strong>のゲストを<br />
+                  部屋 <strong>{roomFilter}</strong> から 部屋 <strong>{transferTargetRoom}</strong> に移動します。
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  onClick={() => {
+                    setTransferModalOpen(false);
+                    setTransferTargetRoom('');
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!transferTargetRoom) {
+                      alert('移動先の部屋番号を選択してください');
+                      return;
+                    }
+
+                    // 確認ダイアログ
+                    const confirmed = confirm(
+                      `${affectedCount}件のゲストを\n` +
+                      `部屋 ${roomFilter} から 部屋 ${transferTargetRoom} に移動します。\n\n` +
+                      `よろしいですか？`
+                    );
+
+                    if (!confirmed) return;
+
+                    // 部屋移動実行
+                    setBulkProcessing(true);
+                    try {
+                      // bookingFilterが指定されている場合はそれを使う（単一）
+                      // 指定されていない場合はundefined = 全ゲスト移動
+                      const bookingIds = bookingFilter ? [bookingFilter] : undefined;
+
+                      await transferRoomGuests({
+                        client,
+                        oldRoomNumber: roomFilter,
+                        newRoomNumber: transferTargetRoom,
+                        bookingIds,
+                        onSuccess: (result) => {
+                          setTransferModalOpen(false);
+                          setTransferTargetRoom('');
+                          alert(
+                            `✅ 部屋移動完了\n\n` +
+                            `${result.transferredCount}件のゲストを移動しました。\n` +
+                            `部屋 ${roomFilter} → 部屋 ${transferTargetRoom}`
+                          );
+                          // データを再読み込み
+                          loadData();
+                        },
+                        onError: (error) => {
+                          alert(`❌ 部屋移動に失敗しました\n\n${error.message}`);
+                        }
+                      });
+                    } catch (error) {
+                      console.error('部屋移動エラー:', error);
+                      alert(`❌ 部屋移動に失敗しました\n\n${error instanceof Error ? error.message : '不明なエラー'}`);
+                    } finally {
+                      setBulkProcessing(false);
+                    }
+                  }}
+                  disabled={!transferTargetRoom || bulkProcessing}
+                  style={{
+                    backgroundColor: transferTargetRoom && !bulkProcessing ? '#1976d2' : '#ccc',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: transferTargetRoom && !bulkProcessing ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {bulkProcessing ? '処理中…' : '実行'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* status display moved above (in centered header) */}
@@ -251,7 +454,7 @@ export default function AdminPage({ roomId }: AdminPageProps) {
         guests={filteredGuests}
         loading={loading}
         error={error}
-        
+
         setDetail={setDetail}
         approvingId={approvingId}
         rejectingId={rejectingId}

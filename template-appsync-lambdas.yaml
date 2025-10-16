@@ -10,12 +10,6 @@ Globals:
       - x86_64
 
 Parameters:
-  TelegramBotTokenParam:
-    Type: String
-    NoEcho: true
-  TelegramChatIdParam:
-    Type: String
-    NoEcho: true
   SendGridApiKey:
     Type: String
     Description: "SendGrid API Key"
@@ -45,12 +39,14 @@ Resources:
   # 署名付きURL用Lambda
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-get-presigned-url-function
       MemorySize: 128
       CodeUri: lambda_functions/get_presigned_url/
-      Handler: lambda_handler_get_presigned_url.lambda_handler
-      Runtime: python3.13
+      Handler: bootstrap
+      Runtime: provided.al2023
       Timeout: 30
       Environment:
         Variables:
@@ -63,13 +59,15 @@ Resources:
 
   RequestAccessFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-request-access-function
-      Handler: lambda_handler_request_access.lambda_handler
-      Runtime: python3.13
-      Timeout: 30
       MemorySize: 128
       CodeUri: lambda_functions/request_access/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 30
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
@@ -85,13 +83,15 @@ Resources:
 
   VerifyAccessTokenFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-verify-access-token-function
-      Handler: lambda_handler_verify_access.lambda_handler
-      Runtime: python3.13
-      Timeout: 30
       MemorySize: 128
-      CodeUri: lambda_functions/verify_access/
+      CodeUri: lambda_functions/verify_access_token/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 30
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
@@ -100,55 +100,18 @@ Resources:
             TableName: !ImportValue Obw-GuestTableName
         - DynamoDBWritePolicy:
             TableName: !ImportValue Obw-GuestTableName
-
-  # 管理者への通知Lambda
-  NotifyAdminOnPendingFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: obw-notify-admin-on-pending
-      CodeUri: lambda_functions/notify_admin/
-      Handler: lambda_handler_notify_admin.handler
-      Runtime: python3.13
-      MemorySize: 256
-      Environment:
-        Variables:
-          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"
-          TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
-          TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSLambdaDynamoDBExecutionRole
-      Events:
-        FromGuestTableStream:
-          Type: DynamoDB
-          Properties:
-            Stream: !ImportValue Obw-GuestTableStreamArn
-            BatchSize: 1
-            MaximumBatchingWindowInSeconds: 0
-            StartingPosition: LATEST
-            FilterCriteria:
-              Filters:
-                - Pattern: |
-                    {
-                      "eventName": ["INSERT", "MODIFY"],
-                      "dynamodb": {
-                        "NewImage": {
-                          "approvalStatus": {
-                            "S": ["pending"]
-                          }
-                        }
-                      }
-                    }
 
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-admin-approve-guest-function
-      CodeUri: lambda_functions/admin_approve_guest/
-      Handler: lambda_handler_admin_approve_guest.lambda_handler
-      Runtime: python3.13
-      Timeout: 30
       MemorySize: 128
+      CodeUri: lambda_functions/admin_approve_guest/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 30
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
@@ -157,6 +120,32 @@ Resources:
             TableName: !ImportValue Obw-GuestTableName
         - DynamoDBWritePolicy:
             TableName: !ImportValue Obw-GuestTableName
+
+  TransferRoomGuestsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: obw-transfer-room-guests-function
+      MemorySize: 256
+      CodeUri: lambda_functions/transfer_room_guests/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue Obw-GuestTableName
+          SENDGRID_API_KEY: !Ref SendGridApiKey
+          APP_BASE_URL: "https://app.osakabaywheel.com"
+          MAIL_FROM: "osakabaywheel4224@gmail.com"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue Obw-GuestTableName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: "*"
 
 Outputs:
   PassportUploadBucketName:
@@ -182,3 +171,8 @@ Outputs:
     Value: !GetAtt AdminApproveGuestFunction.Arn
     Export:
       Name: Obw-AdminApproveGuestFunctionArn
+  TransferRoomGuestsFunctionArn:
+    Description: "ARN for transfer-room-guests Lambda"
+    Value: !GetAtt TransferRoomGuestsFunction.Arn
+    Export:
+      Name: Obw-TransferRoomGuestsFunctionArn

@@ -53,8 +53,8 @@ type FetchParams = {
   setAll: React.Dispatch<React.SetStateAction<Guest[]>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
-  roomFilter?: string;      // 部屋番号フィルター
-  statusFilter?: string;    // 承認状態フィルター
+  roomFilter?: string;           // 部屋番号フィルター
+  statusFilter?: string | string[];  // 承認状態フィルター（単一または複数）
 };
 
 export async function fetchGuests({
@@ -76,8 +76,15 @@ export async function fetchGuests({
 
     let items: Guest[] = [];
 
+    // statusFilter を配列に正規化
+    const statusFilters = Array.isArray(statusFilter) 
+      ? statusFilter 
+      : statusFilter 
+        ? [statusFilter] 
+        : [];
+
     // 効率的なクエリ選択ロジック
-    if (roomFilter && statusFilter) {
+    if (roomFilter && statusFilters.length > 0) {
       // 両方指定: 部屋で絞り込み + クライアント側で状態フィルター
       dbg('Using room query with client-side status filter');
       const res = await client.graphql({ 
@@ -86,9 +93,9 @@ export async function fetchGuests({
       } as GraphParams);
       const resObj = res as unknown as GraphqlResponse<{ listGuestsByRoom?: unknown[] }>
       const roomItems = (resObj.data?.listGuestsByRoom ?? []) as unknown[]
-      items = roomItems.map(i => i as unknown as Guest).filter(g => g.approvalStatus === statusFilter)
+      items = roomItems.map(i => i as unknown as Guest).filter(g => statusFilters.includes(g.approvalStatus || ''))
       
-    } else if (roomFilter && !statusFilter) {
+    } else if (roomFilter && statusFilters.length === 0) {
       // 部屋のみ指定: 部屋クエリのみ
       dbg('Using room query only');
       const res = await client.graphql({ 
@@ -99,16 +106,27 @@ export async function fetchGuests({
       const roomItems = (resObj.data?.listGuestsByRoom ?? []) as unknown[]
       items = roomItems.map(i => i as unknown as Guest)
       
-    } else if (!roomFilter && statusFilter) {
-      // 状態のみ指定: 状態クエリのみ
-      dbg('Using status query only');
-      const res = await client.graphql({ 
-        query: queryByStatus,
-        variables: { approvalStatus: statusFilter }
-      } as GraphParams);
-      const resObj = res as unknown as GraphqlResponse<{ listGuestsByApprovalStatus?: unknown[] }>
-      const statusItems = (resObj.data?.listGuestsByApprovalStatus ?? []) as unknown[]
-      items = statusItems.map(i => i as unknown as Guest)
+    } else if (!roomFilter && statusFilters.length > 0) {
+      // 状態のみ指定: 複数の状態を並列取得
+      dbg('Using status query for selected statuses:', statusFilters);
+      
+      const promises: Promise<unknown[]>[] = statusFilters.map(async (status) => {
+        try {
+          const res = await client.graphql({
+            query: queryByStatus,
+            variables: { approvalStatus: status }
+          } as GraphParams);
+          const obj = res as unknown as GraphqlResponse<{ listGuestsByApprovalStatus?: unknown[] }>;
+          return (obj.data?.listGuestsByApprovalStatus ?? []) as unknown[];
+        } catch (err: unknown) {
+          dbg(`Failed to fetch ${status}:`, err);
+          return [];
+        }
+      });
+
+      const results = await Promise.all(promises);
+      const flat: unknown[] = results.flat();
+      items = flat.map((i: unknown) => i as Guest)
       
     } else {
       // 両方とも未指定: 全ステータスを並列取得

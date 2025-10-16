@@ -25,6 +25,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     scrollToBottom();
@@ -52,6 +53,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages(prev => [...prev, newUserMessage, newAiMessage]);
     });
     setInput('');
+    
+    // スマホのキーボードを下げる
+    inputRef.current?.blur();
 
     // AIストリーム受信時の更新（final時に images をトップレベルへ正規化）
     const handleStreamDelta = (
@@ -112,6 +116,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       handleSend={handleSendMessage}
       handleCompositionStart={handleCompositionStart}
       handleCompositionEnd={handleCompositionEnd}
+      inputRef={inputRef}
     />
   )
 }

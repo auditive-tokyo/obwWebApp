@@ -20,4 +20,5 @@ export type Guest = {
   nationality?: string;
   passportImageUrl?: string;
   currentLocation?: string;
+  sessionTokenExpiresAt?: number;  // Unix epoch (秒単位)
 };

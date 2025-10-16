@@ -1,11 +1,11 @@
-import CountrySelect from './CountrySelect'
-import StructuredAddressInput from './StructuredAddressInput'
-import { BasicCheckInOutDate } from './BasicCheckInOutDate'
+import { getMessage } from '@/i18n/messages'
+import StructuredAddressInput from '@/pages/components/StructuredAddressInput'
+import type { InputHTMLAttributes } from 'react'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
-import { getMessage } from '@/i18n/messages'
-import { parseAddressFields } from '../utils/formValidation'
-import type { InputHTMLAttributes } from 'react'
+import { parseAddressFields } from '../roompage/utils/formValidation'
+import { BasicCheckInOutDate } from './BasicCheckInOutDate'
+import CountrySelect from './CountrySelect'
 
 type BasicInfoFormProps = {
   name: string
@@ -30,6 +30,7 @@ type BasicInfoFormProps = {
   onNext: () => void
   isRepresentativeFamily?: boolean
   hasRoomCheckDates?: boolean
+  isAdmin?: boolean  // Admin編集時は必須項目チェックをスキップし、必須マークを非表示にする
 }
 
 function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
@@ -56,6 +57,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
     isInfoComplete, onNext,
     isRepresentativeFamily = false,
     hasRoomCheckDates = false,
+    isAdmin = false,
   } = props
 
   const phoneError =
@@ -68,7 +70,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
 
   // 不足している項目のリスト
   const missingFields: string[] = []
-  
+
   if (isRepresentativeFamily) {
     // 代表者の家族の場合：名前のみ必須
     if (!name.trim()) {
@@ -82,7 +84,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
     if (!email.trim()) {
       missingFields.push(getMessage("email") as string)
     }
-    
+
     // 住所の個別フィールドチェック
     const parsedAddress = parseAddressFields(address)
     if (parsedAddress) {
@@ -109,7 +111,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
       missingFields.push(getMessage("country") as string)
       missingFields.push(getMessage("zipcode") as string)
     }
-    
+
     if (!phone.trim()) {
       missingFields.push(getMessage("phone") as string)
     }
@@ -132,9 +134,11 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">
-        {getMessage("enterBasicInfo")}
-      </h2>
+      {!isAdmin && (
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">
+          {getMessage("enterBasicInfo")}
+        </h2>
+      )}
 
       {/* 家族の場合は案内メッセージを表示 */}
       {isRepresentativeFamily && (
@@ -149,7 +153,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         {/* 名前 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {getMessage("name")}<span className="text-red-500">*</span>
+            {getMessage("name")}{!isAdmin && <span className="text-red-500">*</span>}
           </label>
           <input
             type="text"
@@ -166,7 +170,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {getMessage("email")}<span className="text-red-500">*</span>
+                {getMessage("email")}{!isAdmin && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="email"
@@ -174,57 +178,60 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
                 onChange={e => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 placeholder="sample@example.com"
-                required
+                required={!isAdmin}
               />
               {emailError && (
                 <p className="mt-2 text-sm text-red-600">{emailError}</p>
               )}
             </div>
 
-            {/* プロモーション同意 */}
-            <div
-              className={
-                `rounded-md border border-gray-200 px-3 py-2 ` +
-                (promoConsent ? 'bg-green-50' : 'bg-gray-50')
-              }
-            >
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={promoConsent}
-                  onChange={e => setPromoConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  aria-describedby="promo-consent-help"
-                />
-                <div className="text-xs text-gray-700">
-                  <div className="font-medium flex items-center gap-1">
-                    <span role="img" aria-label="mail">📩</span>
-                    {getMessage("emailConsent")}
+            {/* プロモーション同意（isAdminがfalseの場合のみ表示） */}
+            {!isAdmin && (
+              <div
+                className={
+                  `rounded-md border border-gray-200 px-3 py-2 ` +
+                  (promoConsent ? 'bg-green-50' : 'bg-gray-50')
+                }
+              >
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={promoConsent}
+                    onChange={e => setPromoConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    aria-describedby="promo-consent-help"
+                  />
+                  <div className="text-xs text-gray-700">
+                    <div className="font-medium flex items-center gap-1">
+                      <span role="img" aria-label="mail">📩</span>
+                      {getMessage("emailConsent")}
+                    </div>
+                    <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
+                      {(getMessage("promoConsent") as string).split('\n').map((line, i) => (
+                        <span key={i}>
+                          {line}
+                          <br />
+                        </span>
+                      ))}
+                    </p>
                   </div>
-                  <p id="promo-consent-help" className="mt-1 text-[10px] text-gray-500 leading-snug">
-                    {(getMessage("promoConsent") as string).split('\n').map((line, i) => (
-                      <span key={i}>
-                        {line}
-                        <br />
-                      </span>
-                    ))}
-                  </p>
-                </div>
-              </label>
-            </div>
+                </label>
+              </div>
+            )}
 
             {/* 住所 */}
             <div>
               <StructuredAddressInput
                 value={address}
                 onChange={setAddress}
+                isAdmin={isAdmin}
               />
             </div>
 
             {/* 電話番号 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {getMessage("phone")}<span className="text-red-500">*</span>
+                {getMessage("phone")}{!isAdmin && <span className="text-red-500">*</span>}
               </label>
               <PhoneInput
                 international
@@ -246,7 +253,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             {/* 職業 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {getMessage("occupation")}<span className="text-red-500">*</span>
+                {getMessage("occupation")}{!isAdmin && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="text"
@@ -260,7 +267,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             {/* 国籍 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {getMessage("nationality")}<span className="text-red-500">*</span>
+                {getMessage("nationality")}{!isAdmin && <span className="text-red-500">*</span>}
               </label>
               <CountrySelect
                 value={nationality}
@@ -281,32 +288,34 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
           </>
         )}
 
-        {/* 次へボタン */}
-        <div className="pt-4">
-          <button
-            onClick={onNext}
-            disabled={!isInfoComplete}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
-          >
-            {getMessage("proceedToPassportImageUpload")}
-          </button>
+        {/* 次へボタン（Adminモード時は非表示） */}
+        {!isAdmin && (
+          <div className="pt-4">
+            <button
+              onClick={onNext}
+              disabled={!isInfoComplete}
+              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+            >
+              {getMessage("proceedToPassportImageUpload")}
+            </button>
 
-          {/* 不足項目リスト */}
-          {!isInfoComplete && missingFields.length > 0 && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-700 mb-2">
-                {getMessage("missingFieldsPrompt")}
-              </p>
-              <ul className="list-disc list-inside space-y-1">
-                {missingFields.map((field, index) => (
-                  <li key={index} className="text-sm text-red-600">
-                    {field}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+            {/* 不足項目リスト */}
+            {!isInfoComplete && missingFields.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-700 mb-2">
+                  {getMessage("missingFieldsPrompt")}
+                </p>
+                <ul className="list-disc list-inside space-y-1">
+                  {missingFields.map((field, index) => (
+                    <li key={index} className="text-sm text-red-600">
+                      {field}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

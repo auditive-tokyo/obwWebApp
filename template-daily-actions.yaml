@@ -5,12 +5,14 @@ Description: Daily actions for obwWebApp
 Resources:
   DailyRecordsCleanupFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: obw-daily-records-cleanup
-      Runtime: python3.13
-      Handler: daily_records_cleanup.lambda_handler
-      CodeUri: lambda_functions/daily_records_cleanup/
       MemorySize: 256
+      CodeUri: lambda_functions/daily_records_cleanup/
+      Handler: bootstrap
+      Runtime: provided.al2023
       Timeout: 180
       Environment:
         Variables:
@@ -22,9 +24,16 @@ Resources:
         MidnightJSTTrigger:
           Type: Schedule
           Properties:
-            Schedule: cron(0 15 * * ? *)   # 00:00 JST (UTC+9)
-            Name: obw-daily-records-cleanup-schedule
-            Description: Run guest cleanup at 00:00 JST
+            Schedule: cron(5 15 * * ? *)   # 00:05 JST (UTC+9)
+            Name: obw-daily-records-cleanup-midnight
+            Description: Run guest cleanup at 00:05 JST
+            Enabled: true
+        NoonJSTTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: cron(5 3 * * ? *)    # 12:05 JST (UTC+9)
+            Name: obw-daily-records-cleanup-noon
+            Description: Run guest cleanup at 12:05 JST
             Enabled: true
 
 Outputs:

@@ -30,12 +30,31 @@ export function GuestList({
         {guests.map(g => (
           <li
             key={`${g.roomNumber}:${g.guestId}`}
-            style={{ marginBottom: 8, display: 'flex', alignItems: 'center' }}
+            className={
+              g.approvalStatus === 'approved'
+                ? 'bg-green-100'
+                : g.approvalStatus === 'rejected'
+                ? 'bg-red-100'
+                : g.approvalStatus === 'pending'
+                ? 'bg-yellow-100'
+                : g.approvalStatus === 'waitingForBasicInfo'
+                ? 'bg-indigo-100'
+                : 'bg-blue-100'
+            }
+            style={{ 
+              marginBottom: 8, 
+              display: 'flex', 
+              alignItems: 'center', 
+              padding: '12px',
+              borderRadius: '8px'
+            }}
           >
-            <strong>Room {g.roomNumber}</strong> — {g.guestName}
-            {g.bookingId && <> ／ 予約ID: {g.bookingId}</>}
-            {g.checkInDate && g.checkOutDate && <> ／ 滞在: {g.checkInDate} ~ {g.checkOutDate}</>}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <strong>Room {g.roomNumber}</strong> — {g.guestName}
+              {g.bookingId && <> ／ 予約ID: {g.bookingId}</>}
+              {g.checkInDate && g.checkOutDate && <> ／ 滞在: {g.checkInDate} ~ {g.checkOutDate}</>}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
                 style={{

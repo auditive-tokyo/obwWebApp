@@ -1,4 +1,5 @@
 import type { Guest } from '../adminpage/types/types';
+import { dbg } from '@/utils/debugLogger';
 
 interface UpdateGuestParams {
   // The Amplify-generated client shape is complex; suppress the explicit-any rule here
@@ -35,6 +36,7 @@ export async function updateGuest({
           promoConsent
           isFamilyMember
           currentLocation
+          sessionTokenExpiresAt
           createdAt
           updatedAt
         }
@@ -59,6 +61,7 @@ export async function updateGuest({
         // promoConsent は Guest型に未定義
         // isFamilyMember は Guest型に未定義
         currentLocation: guest.currentLocation || undefined,
+        sessionTokenExpiresAt: guest.sessionTokenExpiresAt || undefined,
       }
     };
 
@@ -67,7 +70,7 @@ export async function updateGuest({
       variables
     });
 
-    console.info('✅ Guest updated successfully:', result.data.updateGuest);
+    dbg('✅ Guest updated successfully:', result.data.updateGuest);
     
     if (onSuccess) {
       onSuccess();

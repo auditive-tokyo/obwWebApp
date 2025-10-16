@@ -6,8 +6,8 @@ on:
     paths:
       - 'lambda_functions/admin_approve_guest/**'
       - 'lambda_functions/get_presigned_url/**'
-      - 'lambda_functions/notify_admin/**'
       - 'lambda_functions/request_access/**'
+      - 'lambda_functions/transfer_room_guests/**'
       - 'lambda_functions/verify_access/**'
       - '.github/workflows/appsync-lambdas-deploy.yml'
       - 'template-appsync-lambdas.yaml'
@@ -58,8 +58,6 @@ jobs:
 
       - name: SAM Deploy
         env:
-          TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}
         run: |
           sam deploy \
@@ -69,8 +67,6 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
-              TelegramBotTokenParam="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
-              TelegramChatIdParam="$TELEGRAM_CHAT_ID_FROM_SECRET" \
               SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
@@ -79,9 +75,9 @@ jobs:
           set -e
           for i in {1..15}; do
             COUNT=$(aws cloudformation list-exports \
-              --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn' || Name=='Obw-AdminApproveGuestFunctionArn'])" \
+              --query "length(Exports[?Name=='Obw-RequestAccessFunctionArn' || Name=='Obw-VerifyAccessTokenFunctionArn' || Name=='Obw-GetPresignedUrlFunctionArn' || Name=='Obw-AdminApproveGuestFunctionArn' || Name=='Obw-TransferRoomGuestsFunctionArn'])" \
               --output text || echo 0)
-            if [ "$COUNT" -ge 4 ]; then
+            if [ "$COUNT" -ge 5 ]; then
               echo "All Lambda exports found."
               break
             fi
@@ -105,12 +101,14 @@ jobs:
           VERIFY_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-VerifyAccessTokenFunctionArn'].Value" --output text)
           PRESIGNED_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-GetPresignedUrlFunctionArn'].Value" --output text)
           APPROVE_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-AdminApproveGuestFunctionArn'].Value" --output text)
+          TRANSFER_ARN=$(aws cloudformation list-exports --query "Exports[?Name=='Obw-TransferRoomGuestsFunctionArn'].Value" --output text)
           
           echo "Enabling Lambda integration with ARNs:"
           echo "RequestAccessFunctionArn=${REQUEST_ARN}"
           echo "VerifyAccessTokenFunctionArn=${VERIFY_ARN}"
           echo "GetPresignedUrlFunctionArn=${PRESIGNED_ARN}"
           echo "AdminApproveGuestFunctionArn=${APPROVE_ARN}"
+          echo "TransferRoomGuestsFunctionArn=${TRANSFER_ARN}"
           
           aws cloudformation deploy \
             --template-file template-infra-appsync.yaml \
@@ -122,4 +120,5 @@ jobs:
               VerifyAccessTokenFunctionArn=${VERIFY_ARN} \
               GetPresignedUrlFunctionArn=${PRESIGNED_ARN} \
               AdminApproveGuestFunctionArn=${APPROVE_ARN} \
+              TransferRoomGuestsFunctionArn=${TRANSFER_ARN} \
             --no-fail-on-empty-changeset

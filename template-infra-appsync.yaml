@@ -32,6 +32,10 @@ Parameters:
     Type: String
     Description: ARN of the AdminApproveGuest Lambda function
     Default: ""
+  TransferRoomGuestsFunctionArn:
+    Type: String
+    Description: ARN of the TransferRoomGuests Lambda function
+    Default: ""
 
 Conditions:
   DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
@@ -107,13 +111,11 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        # 承認状態 × チェックイン日順（管理画面用）  
-        - IndexName: ApprovalStatusCheckInIndex
+        # 承認状態（管理画面用）
+        - IndexName: ApprovalStatusIndex
           KeySchema:
             - AttributeName: approvalStatus
               KeyType: HASH
-            - AttributeName: checkInDate
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
         # 承認状態 × 有効期限順（自動クリーンアップ用）
@@ -195,6 +197,7 @@ Resources:
           promoConsent: Boolean
           isFamilyMember: Boolean
           currentLocation: String
+          sessionTokenExpiresAt: Int
         }
 
         input RequestAccessInput {
@@ -217,6 +220,18 @@ Resources:
           guestId: String!
         }
 
+        input TransferRoomInput {
+          oldRoomNumber: String!
+          newRoomNumber: String!
+          bookingIds: [String!]
+        }
+
+        type TransferRoomResult @aws_cognito_user_pools {
+          success: Boolean!
+          transferredCount: Int!
+          message: String
+        }
+
         type VerifyTokenResult {
           success: Boolean!
           guest: Guest
@@ -235,6 +250,7 @@ Resources:
           verifyAccessToken(roomNumber: String!, guestId: String!, token: String!): VerifyTokenResult @aws_iam
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
           adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
+          transferRoomGuests(input: TransferRoomInput!): TransferRoomResult @aws_cognito_user_pools
         }
 
         type Query {
@@ -309,6 +325,17 @@ Resources:
       ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
       LambdaConfig:
         LambdaFunctionArn: !Ref AdminApproveGuestFunctionArn
+
+  TransferRoomGuestsLambdaDataSource:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: transferRoomGuestsLambda
+      Type: AWS_LAMBDA
+      ServiceRoleArn: !GetAtt AppSyncLambdaRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: !Ref TransferRoomGuestsFunctionArn
 
   AppSyncDynamoDBRole:
     Type: AWS::IAM::Role
@@ -434,6 +461,13 @@ Resources:
           #set($setExp = $setExp + ", #approvalStatus = :approvalStatus")
           $util.qr($names.put("#approvalStatus","approvalStatus"))
           $util.qr($values.put(":approvalStatus", { "S": "$ctx.args.input.approvalStatus" }))
+        #end
+
+        ## sessionTokenExpiresAt (Number)
+        #if(!$util.isNull($ctx.args.input.sessionTokenExpiresAt))
+          #set($setExp = $setExp + ", #sessionTokenExpiresAt = :sessionTokenExpiresAt")
+          $util.qr($names.put("#sessionTokenExpiresAt","sessionTokenExpiresAt"))
+          $util.qr($values.put(":sessionTokenExpiresAt", { "N": "$ctx.args.input.sessionTokenExpiresAt" }))
         #end
 
         ## Booleans
@@ -575,14 +609,13 @@ Resources:
         {
           "version": "2017-02-28",
           "operation": "Query",
-          "index": "ApprovalStatusCheckInIndex",
+          "index": "ApprovalStatusIndex",
           "query": {
             "expression": "approvalStatus = :status",
             "expressionValues": {
               ":status": $util.dynamodb.toDynamoDBJson($ctx.args.approvalStatus)
             }
-          },
-          "scanIndexForward": true
+          }
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result.items)
@@ -768,6 +801,26 @@ Resources:
       TypeName: Mutation
       FieldName: adminApproveGuest
       DataSourceName: !GetAtt AdminApproveGuestLambdaDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": $util.toJson($context)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
+
+  TransferRoomGuestsResolver:
+    Condition: DoLambdaIntegration
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - TransferRoomGuestsLambdaDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: transferRoomGuests
+      DataSourceName: !GetAtt TransferRoomGuestsLambdaDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",

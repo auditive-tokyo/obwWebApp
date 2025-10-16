@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DynamoDB Streams Lambda functions for obwWebApp
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+
+Parameters:
+  TelegramBotTokenParam:
+    Type: String
+    NoEcho: true
+  TelegramChatIdParam:
+    Type: String
+    NoEcho: true
+
+Resources:
+  # 管理者への通知Lambda (DynamoDB Streams)
+  NotifyAdminOnPendingFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: obw-notify-admin-on-pending
+      CodeUri: lambda_functions/notify_admin/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 256
+      Environment:
+        Variables:
+          ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
+          TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaDynamoDBExecutionRole
+      Events:
+        FromGuestTableStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !ImportValue Obw-GuestTableStreamArn
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 0
+            StartingPosition: LATEST
+            MaximumRetryAttempts: 2
+            FilterCriteria:
+              Filters:
+                - Pattern: |
+                    {
+                      "eventName": ["MODIFY"],
+                      "dynamodb": {
+                        "NewImage": {
+                          "approvalStatus": {
+                            "S": ["pending"]
+                          }
+                        }
+                      }
+                    }
+
+  # 家族メンバーのトークン有効期限を同期するLambda (DynamoDB Streams)
+  SyncFamilyTokenExpirationFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: obw-sync-family-token-expiration
+      CodeUri: lambda_functions/sync_family_token_expiration/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 256
+      Environment:
+        Variables:
+          GUEST_TABLE_NAME: !ImportValue Obw-GuestTableName
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaDynamoDBExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue Obw-GuestTableName
+      Events:
+        FromGuestTableStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !ImportValue Obw-GuestTableStreamArn
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 0
+            StartingPosition: LATEST
+            MaximumRetryAttempts: 2
+            FilterCriteria:
+              Filters:
+                - Pattern: |
+                    {
+                      "eventName": ["INSERT"],
+                      "dynamodb": {
+                        "NewImage": {
+                          "approvalStatus": {
+                            "S": ["waitingForPassportImage"]
+                          }
+                        }
+                      }
+                    }
+
+Outputs:
+  NotifyAdminOnPendingFunctionArn:
+    Description: "ARN for notify-admin-on-pending Lambda"
+    Value: !GetAtt NotifyAdminOnPendingFunction.Arn
+    Export:
+      Name: Obw-NotifyAdminOnPendingFunctionArn
+
+  SyncFamilyTokenExpirationFunctionArn:
+    Description: "ARN for sync-family-token-expiration Lambda"
+    Value: !GetAtt SyncFamilyTokenExpirationFunction.Arn
+    Export:
+      Name: Obw-SyncFamilyTokenExpirationFunctionArn

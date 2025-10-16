@@ -9,6 +9,7 @@ type Props = {
   handleSend: () => void
   handleCompositionStart: () => void
   handleCompositionEnd: () => void
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>
 }
 
 // URLを自動的にリンクに変換する関数
@@ -40,6 +41,7 @@ const ChatInterfaceView: React.FC<Props> = ({
   handleSend,
   handleCompositionStart,
   handleCompositionEnd,
+  inputRef,
 }) => {
   return (
     <>
@@ -129,6 +131,7 @@ const ChatInterfaceView: React.FC<Props> = ({
         </div>
         <div className="message-box">
           <textarea
+            ref={inputRef}
             className="message-input"
             value={input}
             onChange={e => setInput(e.target.value)}
