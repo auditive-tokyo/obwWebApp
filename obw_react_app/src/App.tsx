@@ -2,10 +2,9 @@ import { matchPath, Route, Routes, useLocation } from 'react-router-dom'
 import AdminAuth from './auth/AdminAuth'
 import AdminLogout from './auth/AdminLogout'
 import Auth from './auth/Auth'
-import ChatWidget from './components/ChatWidget'
+// import ChatWidget from './components/ChatWidget'
 import Header from './header/Header'
 import ErrorPage from './pages/ErrorPage'
-import MainPage from './pages/MainPage'
 import RoomPage from './pages/RoomPage'
 
 // 2F〜8F 各フロア 01〜04号室を許可
@@ -31,7 +30,6 @@ function App() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Header />
         <Routes>
-          <Route path="/" element={<MainPage />} />
           <Route path="/room/:roomId" element={<Auth />} />
           {/* Admin routes protected by Cognito Hosted UI */}
           <Route path="/admin" element={<AdminAuth />} />
@@ -52,7 +50,7 @@ function App() {
           <Route path="*" element={<ErrorPage />} />
         </Routes>
         {/* ルートがRoomPage以外のときだけグローバル用ChatWidgetを表示 */}
-        {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" approved={false} />}
+        {/* {!location.pathname.match(/^\/\d+$/) && <ChatWidget roomId="" approved={false} />} */}
       </div>
     </>
   )
