@@ -49,6 +49,11 @@ export const handleNextAction = async (params: HandleNextParams) => {
     date ? date.toISOString().slice(0, 10) : null
 
   // guestIdがあればupdate、なければcreate
+  // TODO: 実はここは必ずupdateが呼ばれている。
+  // const newId = window.crypto.randomUUID()  // ← UUID生成
+  // setSelectedGuestId(newId)  // ← guestId が設定される
+  // ゲスト側でレコード更新中にadmin側で部屋が変更されるとdyamoの振る舞いにより古い部屋と新しい部屋でレコードが重複する。
+  // 運用でカバーする（admin側で重複レコードを削除する機能を追加するか、、、）
   const isUpdate = !!guestId
 
   const mutation = isUpdate
