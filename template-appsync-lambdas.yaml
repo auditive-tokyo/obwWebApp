@@ -21,6 +21,13 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "privacy-obw-id-upload"
+      # KMS暗号化を有効化（AWS managed key使用）
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              # KMSMasterKeyIDを指定しない = AWS managed key (aws/s3) を使用
+            BucketKeyEnabled: true  # S3 Bucket Keyでコスト削減
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins:

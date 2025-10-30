@@ -56,6 +56,11 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
+      # KMS暗号化を有効化（AWS managed key使用）
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        # KMSMasterKeyIdを指定しない = AWS managed key (aws/dynamodb) を使用
       AttributeDefinitions:
         - AttributeName: roomNumber
           AttributeType: S
