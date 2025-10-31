@@ -1,63 +1,78 @@
 import openai
 import json
 
-# Tool Callingで使用する関数の定義
-tools = [
-    {
-        "type": "function",
-        "name": "categorize_user_request",
-        "description": "ユーザーからの問い合わせ内容を分析し、緊急度を判断します。",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "urgency": {
-                    "type": "string",
-                    "enum": ["urgent", "general", "unknown"],
-                    "description": "問い合わせの緊急度。緊急の場合は'urgent'、そうでない場合は'general'、判断できない場合は'unknown'。"
-                },
-                "reasoning": {
-                    "type": "string",
-                    "description": "なぜその緊急度と判断したかの簡単な理由（モデルの思考）。"
-                }
-            },
-            "required": ["urgency"]
+# JSON Schema for Structured Outputs
+urgency_classification_schema = {
+    "type": "object",
+    "properties": {
+        "urgency": {
+            "type": "string",
+            "enum": ["urgent", "general", "unknown"],
+            "description": "問い合わせの緊急度。緊急の場合は'urgent'、そうでない場合は'general'、判断できない場合は'unknown'。"
+        },
+        "reasoning": {
+            "type": "string",
+            "description": "なぜその緊急度と判断したかの簡単な理由。"
         }
-    }
-]
+    },
+    "required": ["urgency", "reasoning"],
+    "additionalProperties": False
+}
 
 
 async def classify_message_urgency_with_openai_tool_calling(
     openai_async_client: openai.AsyncOpenAI,
-    user_message: str
-) -> str:
+    user_message: str,
+    previous_response_id: str = None
+) -> dict:
     """
     OpenAIのTool Callingを使用してユーザーのメッセージの緊急度を分類
-    戻り値: "urgent", "general", "unknown", "error"
+    
+    Args:
+        openai_async_client: OpenAI非同期クライアント
+        user_message: 分類するメッセージ
+        previous_response_id: 前回のレスポンスID（会話の継続用）
+    
+    Returns:
+        {
+            'urgency': str ("urgent", "general", "unknown", "error"),
+            'response_id': str (次回の previous_response_id として使用)
+        }
     """
     if not openai_async_client:
         print("Error: classify_message_urgency - OpenAI async client not provided.")
-        return "error"
+        return {"urgency": "error", "response_id": None}
 
-    print(f"OpenAI (Tool Calling)でメッセージの緊急度を分類中: '{user_message}'")
+    print(f"メッセージの緊急度を分類中: '{user_message}'")
 
     system_instructions = """あなたはOsaka Bay Wheelというホテルのユーザーからの問い合わせを分類するアシスタントです。
 ユーザーのメッセージが緊急かどうかを判断してください。
-判断基準として、以下のケースが挙げられますが、これに限らず人命に関わるものは必ず「緊急（urgent）」としてください。
-不明なテキストや意味が分からない質問と判断した場合は「不明（unknown）」としてください。
-想定されるケース：
-- 不審者
-- 家事
-- 災害
-- 盗難
-- 事故
-- 水漏れ
-- 器物損壊
-- 紛失
-- 救急
-- 犯罪
-上記に関わるもの全て
 
-必ず 'categorize_user_request' 関数を呼び出して結果を返してください。
+会話履歴がある場合は、それまでの文脈を考慮して緊急度を判断してください。
+例えば、最初は一般的な問い合わせでも、続く発言で緊急性が明らかになる場合があります。
+
+判断基準として、以下のケースが挙げられますが、これに限らず人命に関わるものや、
+ゲストの安全・セキュリティに関わるものは必ず「緊急（urgent）」としてください。
+
+想定される緊急ケース：
+- 不審者の侵入や目撃
+- 火事・煙・焦げ臭い
+- 地震・台風などの災害
+- 盗難・紛失（特に鍵やセキュリティに関わるもの）
+- 事故・怪我
+- 水漏れ・ガス漏れ
+- 器物損壊
+- 救急を要する体調不良
+- その他犯罪行為
+
+不明なテキストや意味が分からない質問と判断した場合は「不明（unknown）」としてください。
+それ以外の一般的な問い合わせ（施設案内、チェックイン方法など）は「一般（general）」としてください。
+
+回答は以下のJSON形式で返してください：
+{
+  "urgency": "urgent" または "general" または "unknown",
+  "reasoning": "判断理由を簡潔に（日本語）"
+}
 """
     try:
         response = await openai_async_client.responses.create(
@@ -66,63 +81,64 @@ async def classify_message_urgency_with_openai_tool_calling(
             input=[
                 {"role": "user", "content": user_message}
             ],
-            tools=tools,
             reasoning={
-                "effort": "minimal"
+                "effort": "low"
             },
-            tool_choice={
-                "type": "function",
-                "name": "categorize_user_request"
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "urgency_classification",
+                    "schema": urgency_classification_schema,
+                    "strict": True
+                },
+                "verbosity": "low"
             },
-            store=False
+            previous_response_id=previous_response_id
         )
 
-        tool_calls = None
-        if response and response.output and isinstance(response.output, list) and len(response.output) > 0:
-            first_output_item = response.output[0]
-            if hasattr(first_output_item, 'type') and first_output_item.type == 'function_call':
-                tool_calls = [{
-                    "id": getattr(first_output_item, 'call_id', None),
-                    "type": "function",
-                    "function": {
-                        "name": getattr(first_output_item, 'name', None),
-                        "arguments": getattr(first_output_item, 'arguments', None)
-                    }
-                }]
-                print(f"抽出されたTool Call: {tool_calls}")
+        # レスポンスIDを取得
+        response_id = response.id if hasattr(response, 'id') else None
 
-        if tool_calls:
-            for tool_call in tool_calls:
-                if tool_call["function"]["name"] == "categorize_user_request":
-                    function_args_str = tool_call["function"]["arguments"]
-                    if function_args_str:
-                        try:
-                            function_args = json.loads(function_args_str)
-                            urgency = function_args.get("urgency")
-                            reasoning = function_args.get("reasoning", "N/A")
-                            print(f"OpenAIからの分類結果 (Tool Call): urgency='{urgency}', reasoning='{reasoning}'")
-                            if urgency in ["urgent", "general", "unknown"]:
-                                return urgency
-                            else:
-                                print(f"予期しない緊急度の値: {urgency}。'unknown'として扱います。")
-                                return "unknown"
-                        except json.JSONDecodeError as e_json:
-                            print(f"Tool Callの引数JSONのパースに失敗しました: {e_json}")
-                            print(f"問題の引数文字列: {function_args_str}")
-                            return "error"
-                    else:
-                        print("Tool Callの引数が空です。")
-                        return "unknown"
+        # レスポンスから message を探す（JSON Schema で返される）
+        if response.output:
+            for item in response.output:
+                # message タイプの出力を探す
+                if hasattr(item, 'type') and item.type == 'message':
+                    # content 配列から output_text を探す
+                    if hasattr(item, 'content') and item.content:
+                        for content_item in item.content:
+                            if hasattr(content_item, 'type') and content_item.type == 'output_text':
+                                # JSON 文字列をパース
+                                result = json.loads(content_item.text)
+                                urgency = result.get("urgency")
+                                reasoning = result.get("reasoning", "N/A")
+                                
+                                print(f"分類結果: urgency='{urgency}', reasoning='{reasoning}'")
+                                
+                                if urgency in ["urgent", "general", "unknown"]:
+                                    return {
+                                        "urgency": urgency,
+                                        "response_id": response_id
+                                    }
+                                else:
+                                    print(f"予期しない緊急度の値: {urgency}")
+                                    return {
+                                        "urgency": "unknown",
+                                        "response_id": response_id
+                                    }
         
-        print("OpenAIが期待通りにTool Callを返しませんでした。分類結果を 'unknown' とします。")
-        return "unknown"
+        print("テキスト出力が見つかりませんでした")
+        return {
+            "urgency": "unknown",
+            "response_id": response_id
+        }
 
     except openai.APIConnectionError as e:
         print(f"OpenAI APIへの接続に失敗しました: {e}")
-        return "error"
+        return {"urgency": "error", "response_id": None}
     except openai.RateLimitError as e:
         print(f"OpenAI APIのレート制限に達しました: {e}")
-        return "error"
+        return {"urgency": "error", "response_id": None}
     except openai.APIStatusError as e:
         error_details = "N/A"
         try:
@@ -137,10 +153,10 @@ async def classify_message_urgency_with_openai_tool_calling(
             
         print(f"OpenAI APIがエラーを返しました (ステータスコード: {e.status_code}): {e.response}")
         print(f"エラー詳細:\n{error_details}") # ★エラー詳細を出力
-        return "error"
+        return {"urgency": "error", "response_id": None}
     except Exception as e:
         print(f"OpenAI (Tool Calling)での分類中に予期せぬエラーが発生しました: {e}")
-        return "error"
+        return {"urgency": "error", "response_id": None}
 
 
 # # --- ここからテスト実行用のコード ---
@@ -157,29 +173,42 @@ async def classify_message_urgency_with_openai_tool_calling(
 
 #         openai_async_client = openai.AsyncOpenAI(api_key=api_key)
 
-#         print("\n--- テスト開始 ---")
+#         print("\n--- テスト開始: 段階的な緊急度変化 ---")
 
-#         test_messages = {
-#             "緊急のケース1": "部屋で火事だ！助けて！",
-#             "緊急のケース2": "不審者が廊下をうろついている、怖い。",
-#             "一般的なケース1": "レストランの予約をしたいのですが。",
-#             "一般的なケース2": "明日の天気はどうですか？",
-#             "不明なケース1": "あｓｄｆｇｈｊｋｌ",
-#             "不明なケース2": "えっと、あの、その、あれがですね。",
-#             "紛失のケース": "部屋の鍵をなくしてしまいました。",
-#             "救急のケース": "気分が悪くて倒れそうです、救急車を呼んでください。"
-#         }
-
-#         for description, message in test_messages.items():
-#             print(f"\nテストメッセージ ({description}): 「{message}」")
-#             try:
-#                 urgency = await classify_message_urgency_with_openai_tool_calling(
-#                     openai_async_client,
-#                     message
-#                 )
-#                 print(f"分類結果: {urgency}")
-#             except Exception as e_test:
-#                 print(f"テスト中にエラーが発生しました: {e_test}")
+#         # テスト1: 不明なテキスト（意味不明な入力）
+#         print("\n=== テスト1: 不明なテキスト ===")
+#         result1 = await classify_message_urgency_with_openai_tool_calling(
+#             openai_async_client,
+#             "あのー、えっと、なんか、その。"
+#         )
+#         print(f"期待: unknown | 結果: urgency={result1['urgency']}")
+        
+#         # テスト2: 一般的な問い合わせ（緊急性なし）
+#         print("\n=== テスト2: 一般的な問い合わせ ===")
+#         result2 = await classify_message_urgency_with_openai_tool_calling(
+#             openai_async_client,
+#             "すみません、近くにコンビニはありますか？",
+#             previous_response_id=result1['response_id']
+#         )
+#         print(f"期待: general | 結果: urgency={result2['urgency']}")
+        
+#         # テスト3: 緊急性が徐々に明らかになる
+#         print("\n=== テスト3: 緊急性の兆候 ===")
+#         result3 = await classify_message_urgency_with_openai_tool_calling(
+#             openai_async_client,
+#             "あと、部屋の廊下で知らない人を見かけたんですが...",
+#             previous_response_id=result2['response_id']
+#         )
+#         print(f"期待: urgent | 結果: urgency={result3['urgency']}")
+        
+#         # テスト4: 明確な危険・緊急事態
+#         print("\n=== テスト4: 明確な緊急事態 ===")
+#         result4 = await classify_message_urgency_with_openai_tool_calling(
+#             openai_async_client,
+#             "その人が今も部屋のドアの前にいて、中に入ろうとしています！",
+#             previous_response_id=result3['response_id']
+#         )
+#         print(f"期待: urgent | 結果: urgency={result4['urgency']}")
         
 #         print("\n--- テスト終了 ---")
 

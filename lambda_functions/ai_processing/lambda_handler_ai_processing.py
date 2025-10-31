@@ -61,24 +61,28 @@ async def lambda_handler_async(event, context):
 
     try:
         urgency_result = None
+        current_openai_response_id = None
         should_hangup_due_to_classification_error = False
 
+        # 毎回、会話履歴を考慮して分類を実行
         if previous_response_id_from_event:
-            # TODO: 2ターン目以降は、文脈があるとみなし、強制的に general ルートへ行ってるけど2回目で緊急になる可能性は？
-            print(f"Previous response ID '{previous_response_id_from_event}' exists. Skipping classification and setting urgency_result to 'general'.")
-            urgency_result = "general"
+            print(f"Classifying speech with previous response ID: {previous_response_id_from_event}")
         else:
-            # 最初のターンのみ意図分類を実行
-            print(f"No previous response ID. Classifying speech: {speech_result}")
-            urgency_result = await classification_service.classify_message_urgency_with_openai_tool_calling(
-                openai_async_client,
-                speech_result
-            )
-            print(f"Classification result: {urgency_result}")
-            if urgency_result == "error":
-                # 分類サービス自体がエラーを返した場合
-                should_hangup_due_to_classification_error = True
-                print("Classification service returned an error. Will proceed to hangup.")
+            print(f"Classifying speech (first turn): {speech_result}")
+        
+        classification_result = await classification_service.classify_message_urgency_with_openai_tool_calling(
+            openai_async_client,
+            speech_result,
+            previous_response_id_from_event
+        )
+        print(f"Classification result: {classification_result}")
+        urgency_result = classification_result.get('urgency')
+        current_openai_response_id = classification_result.get('response_id')
+        
+        if urgency_result == "error":
+            # 分類サービス自体がエラーを返した場合
+            should_hangup_due_to_classification_error = True
+            print("Classification service returned an error. Will proceed to hangup.")
 
         # ai_response_segment = "" # この変数は各ケースで設定されるので、ここでの初期化は必須ではないかも
 

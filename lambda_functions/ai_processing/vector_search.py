@@ -25,12 +25,17 @@ async def openai_vector_search_with_file_search_tool(
 
     system_instructions = f"""あなたはOsaka Bay Wheelというホテルの親切な電話応答アシスタントです。
 ユーザーからの質問に対して、提供された File Search ツールを使って関連情報を検索し、その情報に基づいて {language} で自然な応答を生成してください。
-電話でPollyが話しやすいように、簡潔でSpeech Synthesisに適したテキストを生成してください。
+
+電話でPollyが話しやすいように、簡潔でSpeech Synthesisに適したテキストを生成してください。特殊文字などは厳禁です。
 
 検索結果が見つからない場合や、情報が不十分な場合は、その旨を正確に伝え、オペレーターと話す必要があるか確認してください。
 オペレーターと話す必要があるか確認をした場合、'needs_operator' フラグをTrueにしてください。それ以外は全てFalseにしてください。
 
-応答テキストは 'assistant_response_text' に含めてください。
+回答は以下のJSON形式で返してください：
+{{
+  "assistant_response_text": "ユーザーへの応答テキスト（{language}）",
+  "needs_operator": true または false
+}}
 """
     try:
         response_format_schema = {
@@ -58,14 +63,7 @@ async def openai_vector_search_with_file_search_tool(
                     "type": "file_search",
                     "vector_store_ids": [vector_store_id],
                     "max_num_results": 10,
-                    "ranking_options": {"score_threshold": 0.2},
-                    "filters": {
-                        "type": "or",
-                        "filters": [
-                            {"key": "room_number", "type": "eq", "value": "201"},
-                            {"key": "room_number", "type": "eq", "value": "common"}
-                        ]
-                    }
+                    "ranking_options": {"score_threshold": 0.2}
                 }
             ],
             "reasoning": {
