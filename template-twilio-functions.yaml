@@ -73,9 +73,12 @@ Resources:
       Environment:
         Variables:
           AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
+          GUEST_TABLE_NAME: !ImportValue Obw-GuestTableName
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref AiProcessingLambdaFunctionName
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue Obw-GuestTableName
 
   # TwilioのLambda2
   AiProcessingFunction:

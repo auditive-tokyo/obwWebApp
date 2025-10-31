@@ -3,6 +3,11 @@ class LingualManager:
         self.messages = {
             "ja-JP": {
                 "welcome": "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。ご用件をどうぞ。",
+                "prompt_room_number": "部屋番号を3桁で入力してください。例えば、201号室の場合は、2、0、1と順番に押してください。",
+                "prompt_phone_last4": "ご登録されている電話番号の下4桁を入力してください。",
+                "invalid_room_number": "無効な部屋番号です。",
+                "invalid_phone_last4": "無効な電話番号です。",
+                "authentication_failed": "認証に失敗しました。部屋番号と電話番号をご確認の上、もう一度おかけ直しください。",
                 "received_and_analyzing": "メッセージを受け取りました。解析します。少々お待ちください。",
                 "could_not_understand": "聞き取れませんでした。",
                 "re_prompt_inquiry": "お手数ですが、もう一度、ご用件をお話しください。",
@@ -21,6 +26,11 @@ class LingualManager:
             },
             "en-US": {
                 "welcome": "Thank you for calling. This is the Osaka Bay Wheel AI automated attendant. How can I help you?",
+                "prompt_room_number": "Please enter your 3-digit room number. For example, for room 201, press 2, 0, 1 in order.",
+                "prompt_phone_last4": "Please enter the last 4 digits of your registered phone number.",
+                "invalid_room_number": "Invalid room number.",
+                "invalid_phone_last4": "Invalid phone number.",
+                "authentication_failed": "Authentication failed. Please check your room number and phone number, then try calling again.",
                 "received_and_analyzing": "Message received. I am analyzing it. Please wait a moment.",
                 "could_not_understand": "I couldn't understand your request.",
                 "re_prompt_inquiry": "Could you please state your inquiry again?",

@@ -5,12 +5,29 @@ import boto3
 import os
 from twilio.twiml.voice_response import VoiceResponse, Gather
 from lingual_manager import LingualManager
+from authenticate_guest import authenticate_guest
 
 # Lambda関数2の名前を環境変数から取得
 AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function')
 
 lambda_client = boto3.client('lambda')
 lingual_mgr = LingualManager() # LingualManagerのインスタンスを作成
+
+
+# 許可される部屋番号リスト (2F〜8F 各フロア 01〜04号室)
+def get_allowed_rooms():
+    """2階〜8階の各フロア01〜04号室のリストを生成"""
+    allowed = []
+    for floor in range(2, 9):  # 2〜8階
+        for room in range(1, 5):  # 01〜04号室
+            allowed.append(f"{floor}{room:02d}")
+    return allowed
+
+ALLOWED_ROOMS = get_allowed_rooms()
+
+def is_valid_room_number(room_number):
+    """部屋番号が有効かチェック"""
+    return room_number in ALLOWED_ROOMS
 
 def lambda_handler(event, context):
     print(f"ImmediateResponse Lambda Event: {json.dumps(event)}")
@@ -32,10 +49,14 @@ def lambda_handler(event, context):
     language = query_params.get('language', 'en-US')
     previous_openai_response_id_from_query = query_params.get('previous_openai_response_id')
     source = query_params.get('source') # どのGatherからのリクエストかを取得
+    attempt = int(query_params.get('attempt', '1'))  # リトライ回数 (デフォルト1)
+    room_number = query_params.get('room_number')  # 部屋番号
     
     print(f"  Query Param - language: {language}")
     print(f"  Query Param - previous_openai_response_id: {previous_openai_response_id_from_query}")
     print(f"  Query Param - source: {source}")
+    print(f"  Query Param - attempt: {attempt}")
+    print(f"  Query Param - room_number: {room_number}")
 
     speech_result = None
     call_sid = None
@@ -92,10 +113,13 @@ def lambda_handler(event, context):
             print("User pressed 2 for other inquiries. Re-prompting.")
             follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
             voice = lingual_mgr.get_voice(language)
+            phone_last4 = query_params.get('phone_last4')
+            room_param = f"&room_number={room_number}" if room_number else ""
+            phone_param = f"&phone_last4={phone_last4}" if phone_last4 else ""
             gather = Gather(
                 input='speech', method='POST', language=language,
                 speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
-                action=f'?language={language}&previous_openai_response_id={previous_openai_response_id_from_query}'
+                action=f'?language={language}&previous_openai_response_id={previous_openai_response_id_from_query}{room_param}{phone_param}'
             )
             gather.say(follow_up_msg, language=language, voice=voice)
             twilio_response.append(gather)
@@ -108,7 +132,118 @@ def lambda_handler(event, context):
             twilio_response.say(timeout_message, language=language, voice=voice)
             twilio_response.hangup()
 
-    # B. ユーザーが言語選択の番号を入力した場合
+    # B. 部屋番号入力からの応答
+    elif source == 'room_number_input' and digits_result:
+        print(f"Handling room number input: {digits_result}")
+        
+        if is_valid_room_number(digits_result):
+            print(f"Valid room number: {digits_result}")
+            # 部屋番号が有効な場合、電話番号下4桁を聞く
+            phone_prompt = lingual_mgr.get_message(language, "prompt_phone_last4")
+            voice = lingual_mgr.get_voice(language)
+            gather_phone = Gather(
+                input='dtmf', numDigits=4, method='POST',
+                action=f'?language={language}&source=phone_last4_input&room_number={digits_result}&attempt=1'
+            )
+            gather_phone.say(phone_prompt, language=language, voice=voice)
+            twilio_response.append(gather_phone)
+            # タイムアウト時
+            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+            twilio_response.say(timeout_msg, language=language, voice=voice)
+            twilio_response.hangup()
+        else:
+            # 無効な部屋番号
+            print(f"Invalid room number: {digits_result}. Attempt: {attempt}")
+            invalid_msg = lingual_mgr.get_message(language, "invalid_room_number")
+            voice = lingual_mgr.get_voice(language)
+            
+            if attempt < 2:
+                # 1回目の失敗：再プロンプト
+                twilio_response.say(invalid_msg, language=language, voice=voice)
+                room_prompt = lingual_mgr.get_message(language, "prompt_room_number")
+                gather_room_retry = Gather(
+                    input='dtmf', numDigits=3, method='POST',
+                    action=f'?language={language}&source=room_number_input&attempt=2'
+                )
+                gather_room_retry.say(room_prompt, language=language, voice=voice)
+                twilio_response.append(gather_room_retry)
+                timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.hangup()
+            else:
+                # 2回目の失敗：切断
+                twilio_response.say(invalid_msg, language=language, voice=voice)
+                timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.hangup()
+
+    # C. 電話番号下4桁入力からの応答
+    elif source == 'phone_last4_input' and digits_result:
+        print(f"Handling phone last 4 digits input: {digits_result}")
+        
+        # 4桁の数字かチェック
+        if len(digits_result) == 4 and digits_result.isdigit():
+            print(f"Valid phone last 4 digits: {digits_result}")
+            print(f"Room number from query: {room_number}")
+            
+            # DynamoDB認証処理
+            auth_result = authenticate_guest(room_number, digits_result)
+            
+            if auth_result['success']:
+                # 認証成功
+                guest_info = auth_result['guest_info']
+                print(f"Authentication successful for guest: {guest_info.get('guestName')} in room {room_number}")
+                
+                # 用件を伺う
+                welcome_message = lingual_mgr.get_message(language, "welcome")
+                voice = lingual_mgr.get_voice(language)
+                gather_inquiry = Gather(
+                    input='speech', method='POST', language=language,
+                    speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
+                    action=f'?language={language}&room_number={room_number}&phone_last4={digits_result}&attempt=1'
+                )
+                gather_inquiry.say(welcome_message, language=language, voice=voice)
+                twilio_response.append(gather_inquiry)
+                timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.hangup()
+            else:
+                # 認証失敗
+                error_code = auth_result.get('error', 'UNKNOWN_ERROR')
+                print(f"Authentication failed: {error_code} for room {room_number}, phone_last4 {digits_result}")
+                
+                # 認証失敗メッセージを再生して切断
+                voice = lingual_mgr.get_voice(language)
+                auth_failed_msg = lingual_mgr.get_message(language, "authentication_failed")
+                twilio_response.say(auth_failed_msg, language=language, voice=voice)
+                twilio_response.hangup()
+        else:
+            # 無効な電話番号
+            print(f"Invalid phone last 4 digits: {digits_result}. Attempt: {attempt}")
+            invalid_msg = lingual_mgr.get_message(language, "invalid_phone_last4")
+            voice = lingual_mgr.get_voice(language)
+            
+            if attempt < 2:
+                # 1回目の失敗：再プロンプト
+                twilio_response.say(invalid_msg, language=language, voice=voice)
+                phone_prompt = lingual_mgr.get_message(language, "prompt_phone_last4")
+                gather_phone_retry = Gather(
+                    input='dtmf', numDigits=4, method='POST',
+                    action=f'?language={language}&source=phone_last4_input&room_number={room_number}&attempt=2'
+                )
+                gather_phone_retry.say(phone_prompt, language=language, voice=voice)
+                twilio_response.append(gather_phone_retry)
+                timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.hangup()
+            else:
+                # 2回目の失敗：切断
+                twilio_response.say(invalid_msg, language=language, voice=voice)
+                timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.hangup()
+
+    # D. ユーザーが言語選択の番号を入力した場合
     elif digits_result:
         # このブロックは言語選択専用
         print("Handling language selection.")
@@ -130,30 +265,34 @@ def lambda_handler(event, context):
             twilio_response.hangup()
 
         if language_selection_valid:
-            # 言語選択成功後、用件を伺う (リトライ処理は別途考慮が必要)
-            welcome_message = lingual_mgr.get_message(language, "welcome")
+            # 言語選択成功後、部屋番号入力を促す
+            room_prompt = lingual_mgr.get_message(language, "prompt_room_number")
             voice = lingual_mgr.get_voice(language)
-            gather_inquiry = Gather(
-                input='speech', method='POST', language=language,
-                speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
-                action=f'?language={language}&attempt=1'
+            gather_room = Gather(
+                input='dtmf', numDigits=3, method='POST',
+                action=f'?language={language}&source=room_number_input&attempt=1'
             )
-            gather_inquiry.say(welcome_message, language=language, voice=voice)
-            twilio_response.append(gather_inquiry)
-            # Gatherがタイムアウトした場合の処理は、次のリクエストで attempt=1 を見て判断する
-            # ここでは、タイムアウトしたら通話が終了するようにhangupを追加しておく
+            gather_room.say(room_prompt, language=language, voice=voice)
+            twilio_response.append(gather_room)
+            # タイムアウト時
+            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
+            twilio_response.say(timeout_msg, language=language, voice=voice)
             twilio_response.hangup()
 
-    # C. ユーザーの発話を受け取った場合
+    # E. ユーザーの発話を受け取った場合
     elif speech_result and call_sid:
-        # URLから言語設定を取得 (action URLに含めて渡す)
-        language = event.get('queryStringParameters', {}).get('language', language) # speech_captured actionから渡された言語
-        print(f"Speech result received: '{speech_result}'. Invoking AI processing Lambda.")
+        # URLから言語設定、部屋番号、電話番号下4桁を取得
+        language = event.get('queryStringParameters', {}).get('language', language)
+        room_number = event.get('queryStringParameters', {}).get('room_number')
+        phone_last4 = event.get('queryStringParameters', {}).get('phone_last4')
+        print(f"Speech result received: '{speech_result}'. Room: {room_number}, Phone: {phone_last4}. Invoking AI processing Lambda.")
 
         payload = {
             'speech_result': speech_result,
             'call_sid': call_sid,
-            'language': language, # AI処理Lambdaに言語情報を渡す
+            'language': language,
+            'room_number': room_number,
+            'phone_last4': phone_last4,
             'previous_openai_response_id': previous_openai_response_id_from_query
         }
 

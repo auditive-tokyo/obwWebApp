@@ -31,6 +31,8 @@ async def lambda_handler_async(event, context):
     speech_result = event.get('speech_result')
     call_sid = event.get('call_sid')
     language = event.get('language', 'en-US')
+    room_number = event.get('room_number')
+    phone_last4 = event.get('phone_last4')
     previous_response_id_from_event = event.get('previous_openai_response_id', None)
 
     voice = lingual_mgr.get_voice(language)
@@ -135,6 +137,11 @@ async def lambda_handler_async(event, context):
                     # 「1を押すか、2を押してください」というプロンプトを準備
                     prompt_for_choice_text = lingual_mgr.get_message(language, "prompt_for_operator_dtmf")
                     
+                    # 部屋番号と電話番号を取得
+                    phone_last4 = event.get('phone_last4')
+                    room_param = f"&room_number={room_number}" if room_number else ""
+                    phone_param = f"&phone_last4={phone_last4}" if phone_last4 else ""
+                    
                     # DTMF(キー入力)を待つGather
                     gather = TwilioGather(
                         input='dtmf',
@@ -142,7 +149,7 @@ async def lambda_handler_async(event, context):
                         method='POST',
                         timeout=7, # 少し長めに待つ
                         # actionには、この選択を処理するLambda1のURLを指定し、どの応答かを伝えるクエリを追加
-                        action=f"{LAMBDA1_FUNCTION_URL}?language={language}&source=operator_choice_dtmf&previous_openai_response_id={current_openai_response_id}"
+                        action=f"{LAMBDA1_FUNCTION_URL}?language={language}&source=operator_choice_dtmf&previous_openai_response_id={current_openai_response_id}{room_param}{phone_param}"
                     )
                     gather.say(prompt_for_choice_text, language=language, voice=voice)
                     operator_choice_twiml.append(gather)
@@ -164,9 +171,14 @@ async def lambda_handler_async(event, context):
                     results_twiml_obj.say(assistant_text_to_speak, language=language, voice=voice)
                     
                     # Gatherのaction URLに、次のターンのための情報をクエリパラメータとして含める
+                    phone_last4 = event.get('phone_last4')
                     next_gather_action_url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
                     if current_openai_response_id:
                         next_gather_action_url += f"&previous_openai_response_id={current_openai_response_id}"
+                    if room_number:
+                        next_gather_action_url += f"&room_number={room_number}"
+                    if phone_last4:
+                        next_gather_action_url += f"&phone_last4={phone_last4}"
 
                     gather = TwilioGather(
                         input='speech', language=language, method='POST',
@@ -212,7 +224,13 @@ async def lambda_handler_async(event, context):
             # (TwiML構築)
             response_twiml_obj = VoiceResponse() # ... urgent用のTwiML ...
             response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
-            gather = TwilioGather( input='speech', language=language, method='POST', action=f"{LAMBDA1_FUNCTION_URL}?language={language}", timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
+            phone_last4 = event.get('phone_last4')
+            urgent_action_url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
+            if room_number:
+                urgent_action_url += f"&room_number={room_number}"
+            if phone_last4:
+                urgent_action_url += f"&phone_last4={phone_last4}"
+            gather = TwilioGather( input='speech', language=language, method='POST', action=urgent_action_url, timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
             follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
             gather.say(follow_up_msg, language=language, voice=voice)
             response_twiml_obj.append(gather)
@@ -231,7 +249,13 @@ async def lambda_handler_async(event, context):
             ai_response_segment = lingual_mgr.get_message(language, "inquiry_not_understood")
             response_twiml_obj = VoiceResponse() # ... unknown用のTwiML ...
             response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
-            gather = TwilioGather( input='speech', language=language, method='POST', action=f"{LAMBDA1_FUNCTION_URL}?language={language}", timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
+            phone_last4 = event.get('phone_last4')
+            unknown_action_url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
+            if room_number:
+                unknown_action_url += f"&room_number={room_number}"
+            if phone_last4:
+                unknown_action_url += f"&phone_last4={phone_last4}"
+            gather = TwilioGather( input='speech', language=language, method='POST', action=unknown_action_url, timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
             re_prompt_msg = lingual_mgr.get_message(language, "re_prompt_inquiry") # 再度促すメッセージ
             gather.say(re_prompt_msg, language=language, voice=voice)
             response_twiml_obj.append(gather)
