@@ -1,4 +1,4 @@
-from calculate_key_code import calculate_key_code
+from .calculate_key_code import calculate_key_code
 from datetime import datetime
 
 
