@@ -287,12 +287,23 @@ def lambda_handler(event, context):
         phone_last4 = event.get('queryStringParameters', {}).get('phone_last4')
         print(f"Speech result received: '{speech_result}'. Room: {room_number}, Phone: {phone_last4}. Invoking AI processing Lambda.")
 
+        # ゲスト情報を再取得（認証済みのはずだが、念のため確認）
+        guest_info = None
+        if room_number and phone_last4:
+            auth_result = authenticate_guest(room_number, phone_last4)
+            if auth_result['success']:
+                guest_info = auth_result['guest_info']
+                print(f"Guest info retrieved: {guest_info.get('guestName')} in room {room_number}")
+            else:
+                print(f"Warning: Guest re-authentication failed in speech handling: {auth_result.get('error')}")
+
         payload = {
             'speech_result': speech_result,
             'call_sid': call_sid,
             'language': language,
             'room_number': room_number,
             'phone_last4': phone_last4,
+            'guest_info': guest_info,
             'previous_openai_response_id': previous_openai_response_id_from_query
         }
 

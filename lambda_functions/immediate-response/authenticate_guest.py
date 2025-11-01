@@ -71,19 +71,16 @@ def authenticate_guest(room_number: str, phone_last4: str) -> Dict:
         # 3. マッチしたゲストを返す（複数いる場合は最初の1件）
         guest_info = matching_guests[0]
         
-        # 認証成功時に返す情報を選別
+        # 認証成功時に返す情報を選別（必要最小限のみ）
         return {
             'success': True,
             'guest_info': {
-                'guestId': guest_info.get('guestId'),
                 'guestName': guest_info.get('guestName'),
                 'roomNumber': guest_info.get('roomNumber'),
                 'phone': guest_info.get('phone'),
-                'email': guest_info.get('email'),
                 'checkInDate': guest_info.get('checkInDate'),
                 'checkOutDate': guest_info.get('checkOutDate'),
-                'approvalStatus': guest_info.get('approvalStatus'),
-                'isFamilyMember': guest_info.get('isFamilyMember', False)
+                'approvalStatus': guest_info.get('approvalStatus')
             }
         }
         
@@ -94,20 +91,3 @@ def authenticate_guest(room_number: str, phone_last4: str) -> Dict:
             'error': 'DATABASE_ERROR',
             'details': str(e)
         }
-
-
-def get_guest_by_room_and_phone(room_number: str, phone_last4: str) -> Optional[Dict]:
-    """
-    認証処理のシンプルなラッパー関数
-    
-    Args:
-        room_number: 部屋番号
-        phone_last4: 電話番号下4桁
-    
-    Returns:
-        ゲスト情報（dict）または None
-    """
-    result = authenticate_guest(room_number, phone_last4)
-    if result['success']:
-        return result['guest_info']
-    return None

@@ -4,7 +4,7 @@ class LingualManager:
             "ja-JP": {
                 "welcome": "お電話ありがとうございます。こちらは大阪ベイウィールのAI自動応答です。ご用件をどうぞ。",
                 "prompt_room_number": "部屋番号を3桁で入力してください。例えば、201号室の場合は、2、0、1と順番に押してください。",
-                "prompt_phone_last4": "ご登録されている電話番号の下4桁を入力してください。",
+                "prompt_phone_last4": "ご登録されている電話番号の、しも4桁を入力してください。",
                 "invalid_room_number": "無効な部屋番号です。",
                 "invalid_phone_last4": "無効な電話番号です。",
                 "authentication_failed": "認証に失敗しました。部屋番号と電話番号をご確認の上、もう一度おかけ直しください。",

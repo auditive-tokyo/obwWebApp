@@ -33,9 +33,16 @@ async def lambda_handler_async(event, context):
     language = event.get('language', 'en-US')
     room_number = event.get('room_number')
     phone_last4 = event.get('phone_last4')
+    guest_info = event.get('guest_info')
     previous_response_id_from_event = event.get('previous_openai_response_id', None)
 
     voice = lingual_mgr.get_voice(language)
+    
+    # ゲスト情報をログ出力（デバッグ用）
+    if guest_info:
+        print(f"Guest info received: {guest_info.get('guestName')} in room {guest_info.get('roomNumber')}")
+    else:
+        print("Warning: No guest info provided in event")
 
     resource_validation_error = validate_handler_resources(
         twilio_client,
