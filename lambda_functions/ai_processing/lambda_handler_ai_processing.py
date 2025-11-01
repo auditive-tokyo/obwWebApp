@@ -107,7 +107,8 @@ async def lambda_handler_async(event, context):
                 speech_result,
                 language,
                 OPENAI_VECTOR_STORE_ID,
-                previous_response_id_from_event
+                previous_response_id_from_event,
+                guest_info
             )
             
             print("Announcement and vector search tasks created, starting them in parallel...")

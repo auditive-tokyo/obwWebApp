@@ -1,15 +1,24 @@
 import openai
 import json
+from utils.system_instructions import get_vector_search_instructions
+
 
 async def openai_vector_search_with_file_search_tool(
     openai_async_client: openai.AsyncOpenAI,
     query_text: str,
     language: str,
     vector_store_id: str = None,
-    previous_response_id: str = None # 将来的に使用
+    previous_response_id: str = None,
+    guest_info: dict = None
 ) -> str: # 返り値はJSON文字列の想定に戻す
     
     print(f"Previous Response ID: {previous_response_id}") # デバッグ用
+    
+    # ゲスト情報をログ出力
+    if guest_info:
+        print(f"Guest info in vector_search: {json.dumps(guest_info, ensure_ascii=False)}")
+    else:
+        print("No guest info provided to vector_search")
 
     if not openai_async_client:
         print("Error: OpenAI async client not provided.")
@@ -23,20 +32,9 @@ async def openai_vector_search_with_file_search_tool(
 
     print(f"File Search Tool を使用して検索開始: '{query_text}' (Vector Store: {vector_store_id})")
 
-    system_instructions = f"""あなたはOsaka Bay Wheelというホテルの親切な電話応答アシスタントです。
-ユーザーからの質問に対して、提供された File Search ツールを使って関連情報を検索し、その情報に基づいて {language} で自然な応答を生成してください。
-
-電話でPollyが話しやすいように、簡潔でSpeech Synthesisに適したテキストを生成してください。特殊文字などは厳禁です。
-
-検索結果が見つからない場合や、情報が不十分な場合は、その旨を正確に伝え、オペレーターと話す必要があるか確認してください。
-オペレーターと話す必要があるか確認をした場合、'needs_operator' フラグをTrueにしてください。それ以外は全てFalseにしてください。
-
-回答は以下のJSON形式で返してください：
-{{
-  "assistant_response_text": "ユーザーへの応答テキスト（{language}）",
-  "needs_operator": true または false
-}}
-"""
+    # システムインストラクションを取得
+    system_instructions = get_vector_search_instructions(guest_info, language)
+    
     try:
         response_format_schema = {
             "type": "object",
