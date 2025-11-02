@@ -98,7 +98,7 @@ async def lambda_handler_async(event, context):
             announce_search_msg = lingual_mgr.get_message(language, "general_inquiry")
             announce_twiml = VoiceResponse()
             announce_twiml.say(announce_search_msg, language=language, voice=voice)
-            announce_twiml.pause(length=15)
+            announce_twiml.pause(length=25)  # Vector Search完了まで25秒待機
             
             # タスクを作成
             announce_task = update_twilio_call_async(twilio_client, call_sid, str(announce_twiml))

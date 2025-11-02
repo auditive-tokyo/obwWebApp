@@ -82,7 +82,7 @@ async def classify_message_urgency_with_openai_tool_calling(
                 {"role": "user", "content": user_message}
             ],
             reasoning={
-                "effort": "low"
+                "effort": "minimal"
             },
             text={
                 "format": {
