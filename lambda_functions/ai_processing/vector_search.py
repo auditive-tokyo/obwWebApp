@@ -67,7 +67,7 @@ async def openai_vector_search_with_file_search_tool(
             "reasoning": {
                 "effort": "low"
             },
-            "tool_choice": "required",
+            "tool_choice": "auto",
             "text": {
                 "verbosity": "low",
                 "format": {
