@@ -10,6 +10,27 @@ COMMON_RESPONSE_GUIDELINES = """
 """
 
 
+# AIシステムの技術的制約
+COMMON_SYSTEM_CAPABILITIES = """
+重要：あなたは電話音声のみで対応するAIアシスタントです。以下の技術的制約を必ず理解してください：
+
+できないこと：
+- テキストメッセージ、SMS、チャットの送受信
+- 写真、画像、動画、文書ファイルの送受信や確認
+- メールの送信や受信
+- ウェブサイトやアプリへのリンク送信
+- 予約システムへの直接アクセスや変更
+
+できること：
+- 音声での情報提供と質問への回答
+- データベースに登録されている施設情報、FAQ、アクセス方法の案内
+- オペレーターへの転送
+
+写真や文書の確認が必要な場合、予約変更が必要な場合、またはデータベースに情報がない複雑な対応が必要な場合は、「詳細な対応が必要なため、オペレーターにお繋ぎしますか？」と提案してください。
+「写真を送ってください」「メールで送ります」「リンクを送ります」などの実現不可能な指示は絶対にしないでください。
+"""
+
+
 # 共通のneeds_operator判定ルールとend_conversation判定ルール、JSON形式の説明
 COMMON_NEEDS_OPERATOR_INSTRUCTIONS = """
 以下の場合は 'needs_operator' フラグをTrueにしてください：
@@ -85,6 +106,7 @@ def get_vector_search_instructions(guest_info: dict, language: str) -> str:
 あなたの担当は、{room_number}号室の{guest_name}様です。
 
 {COMMON_RESPONSE_GUIDELINES.format(language=language)}
+{COMMON_SYSTEM_CAPABILITIES}
 {COMMON_NEEDS_OPERATOR_INSTRUCTIONS.format(language=language)}"""
     else:
         # 承認済みかつ滞在期間内のパターン
@@ -93,6 +115,7 @@ def get_vector_search_instructions(guest_info: dict, language: str) -> str:
 {room_number}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : {key_code}
 
 {COMMON_RESPONSE_GUIDELINES.format(language=language)}
+{COMMON_SYSTEM_CAPABILITIES}
 {COMMON_NEEDS_OPERATOR_INSTRUCTIONS.format(language=language)}"""
     
     return system_instructions
