@@ -131,11 +131,29 @@ async def lambda_handler_async(event, context):
 
                 assistant_text_to_speak = parsed_search_results.get("assistant_response_text", lingual_mgr.get_message(language, "system_error"))
                 needs_operator_flag = parsed_search_results.get("needs_operator", False)
+                end_conversation_flag = parsed_search_results.get("end_conversation", False)
                 current_openai_response_id = parsed_search_results.get("response_id")
 
                 print(f"  Assistant text to speak: {assistant_text_to_speak}")
                 print(f"  Needs operator flag: {needs_operator_flag}")
+                print(f"  End conversation flag: {end_conversation_flag}")
                 print(f"  OpenAI Response ID: {current_openai_response_id}")
+
+                # end_conversation_flag が True の場合は会話を終了
+                if end_conversation_flag:
+                    ending_twiml = VoiceResponse()
+                    ending_twiml.say(assistant_text_to_speak, language=language, voice=voice)
+                    ending_msg = lingual_mgr.get_message(language, "ending_message")
+                    ending_twiml.say(ending_msg, language=language, voice=voice)
+                    ending_twiml.hangup()
+                    
+                    try:
+                        await update_twilio_call_async(twilio_client, call_sid, str(ending_twiml))
+                        print("Conversation ended by user request.")
+                        return {'status': 'completed', 'action': 'conversation_ended'}
+                    except Exception as e_ending:
+                        print(f"Error ending conversation: {e_ending}")
+                        return {'status': 'error', 'message': f"Failed to end conversation: {str(e_ending)}"}
 
                 # needs_operator_flag が True かどうかで応答を分岐
                 if needs_operator_flag:

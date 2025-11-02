@@ -23,12 +23,12 @@ async def openai_vector_search_with_file_search_tool(
     if not openai_async_client:
         print("Error: OpenAI async client not provided.")
         # "retrieved_annotations" を削除
-        return json.dumps({"assistant_response_text": "エラー: OpenAIクライアントが利用できません。", "needs_operator": False, "response_id": None}, ensure_ascii=False)
+        return json.dumps({"assistant_response_text": "エラー: OpenAIクライアントが利用できません。", "needs_operator": False, "end_conversation": False, "response_id": None}, ensure_ascii=False)
     
     if not vector_store_id:
         print("Error: Vector Store ID not provided or configured.")
         # "retrieved_annotations" を削除
-        return json.dumps({"assistant_response_text": "エラー: 検索対象のデータベースが設定されていません。", "needs_operator": False, "response_id": None}, ensure_ascii=False)
+        return json.dumps({"assistant_response_text": "エラー: 検索対象のデータベースが設定されていません。", "needs_operator": False, "end_conversation": False, "response_id": None}, ensure_ascii=False)
 
     print(f"File Search Tool を使用して検索開始: '{query_text}' (Vector Store: {vector_store_id})")
 
@@ -46,9 +46,13 @@ async def openai_vector_search_with_file_search_tool(
                 "needs_operator": {
                     "type": "boolean",
                     "description": "True if the user explicitly states a need to speak with an operator, false otherwise. Defaults to false in this initial search phase."
+                },
+                "end_conversation": {
+                    "type": "boolean",
+                    "description": "True if the user indicates they have no further inquiries and wants to end the call, false otherwise. Defaults to false."
                 }
             },
-            "required": ["assistant_response_text", "needs_operator"],
+            "required": ["assistant_response_text", "needs_operator", "end_conversation"],
             "additionalProperties": False
         }
 
@@ -96,6 +100,7 @@ async def openai_vector_search_with_file_search_tool(
         final_json_output = {
             "assistant_response_text": "検索結果に基づく応答の抽出に失敗しました。",
             "needs_operator": False,
+            "end_conversation": False,
             "response_id": current_response_id
         }
 
@@ -114,6 +119,7 @@ async def openai_vector_search_with_file_search_tool(
                                 model_generated_data = json.loads(output_text_obj.text)
                                 final_json_output["assistant_response_text"] = model_generated_data.get("assistant_response_text", "Error: 'assistant_response_text' key missing.")
                                 final_json_output["needs_operator"] = model_generated_data.get("needs_operator", False)
+                                final_json_output["end_conversation"] = model_generated_data.get("end_conversation", False)
                             except json.JSONDecodeError:
                                 print(f"Error: Failed to parse JSON from model output: {output_text_obj.text}")
                     else:
@@ -132,11 +138,11 @@ async def openai_vector_search_with_file_search_tool(
     except openai.APIConnectionError as e:
         print(f"OpenAI APIへの接続エラー: {e}")
         # "retrieved_annotations" を削除
-        return json.dumps({"assistant_response_text": "申し訳ありません、現在データベースへの接続に問題が発生しています。", "needs_operator": False, "response_id": None}, ensure_ascii=False)
+        return json.dumps({"assistant_response_text": "申し訳ありません、現在データベースへの接続に問題が発生しています。", "needs_operator": False, "end_conversation": False, "response_id": None}, ensure_ascii=False)
     except openai.RateLimitError as e:
         print(f"OpenAI APIレート制限エラー: {e}")
         # "retrieved_annotations" を削除
-        return json.dumps({"assistant_response_text": "現在、多くのお問い合わせを処理中です。恐れ入りますが、少し時間をおいて再度お試しください。", "needs_operator": False, "response_id": None}, ensure_ascii=False)
+        return json.dumps({"assistant_response_text": "現在、多くのお問い合わせを処理中です。恐れ入りますが、少し時間をおいて再度お試しください。", "needs_operator": False, "end_conversation": False, "response_id": None}, ensure_ascii=False)
     except openai.APIStatusError as e:
         error_details_str = "N/A"
         try:
@@ -149,11 +155,11 @@ async def openai_vector_search_with_file_search_tool(
         print(f"OpenAI APIステータスエラー (HTTP {e.status_code}): {e.response}")
         print(f"エラー詳細:\n{error_details_str}")
         # "retrieved_annotations" を削除
-        return json.dumps({"assistant_response_text": "データベース検索中に予期せぬエラーが発生しました。管理者にご連絡ください。", "needs_operator": False, "response_id": None}, ensure_ascii=False)
+        return json.dumps({"assistant_response_text": "データベース検索中に予期せぬエラーが発生しました。管理者にご連絡ください。", "needs_operator": False, "end_conversation": False, "response_id": None}, ensure_ascii=False)
     except Exception as e:
         print(f"File Search Tool 処理中に予期せぬエラーが発生しました: {e}")
         # "retrieved_annotations" を削除
-        return json.dumps({"assistant_response_text": f"「{query_text}」の検索中にエラーが発生しました。", "needs_operator": False, "response_id": None}, ensure_ascii=False)
+        return json.dumps({"assistant_response_text": f"「{query_text}」の検索中にエラーが発生しました。", "needs_operator": False, "end_conversation": False, "response_id": None}, ensure_ascii=False)
 
 # # --- テスト実行用のコード ---
 # if __name__ == "__main__":

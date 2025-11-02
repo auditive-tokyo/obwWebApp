@@ -10,7 +10,7 @@ COMMON_RESPONSE_GUIDELINES = """
 """
 
 
-# 共通のneeds_operator判定ルールとJSON形式の説明
+# 共通のneeds_operator判定ルールとend_conversation判定ルール、JSON形式の説明
 COMMON_NEEDS_OPERATOR_INSTRUCTIONS = """
 以下の場合は 'needs_operator' フラグをTrueにしてください：
 1. 検索結果が見つからない場合や、情報が不十分な場合
@@ -20,10 +20,18 @@ COMMON_NEEDS_OPERATOR_INSTRUCTIONS = """
 'needs_operator' フラグがTrueの場合は、assistant_response_textで「オペレーターにお繋ぎしますか？」と提案してください。
 それ以外の場合は 'needs_operator' をFalseにしてください。
 
+以下の場合は 'end_conversation' フラグをTrueにしてください：
+1. ユーザーが「ありがとう」「もう大丈夫です」「以上です」など、会話を終了したい意図を示している場合
+2. ユーザーが「他にはありません」「特にありません」など、これ以上の問い合わせがないことを明示している場合
+
+'end_conversation' フラグがTrueの場合は、assistant_response_textで「承知いたしました」などの締めの挨拶を含めてください。
+それ以外の場合は 'end_conversation' をFalseにしてください。
+
 回答は以下のJSON形式で返してください：
 {{
   "assistant_response_text": "ユーザーへの応答テキスト（{language}）",
-  "needs_operator": true または false
+  "needs_operator": true または false,
+  "end_conversation": true または false
 }}
 """
 
