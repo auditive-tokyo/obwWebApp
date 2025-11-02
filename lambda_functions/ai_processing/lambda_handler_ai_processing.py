@@ -68,30 +68,28 @@ async def lambda_handler_async(event, context):
 
     try:
         urgency_result = None
-        current_openai_response_id = None
         should_hangup_due_to_classification_error = False
 
-        # 毎回、会話履歴を考慮して分類を実行
+        # 会話の継続（previous_response_idあり）の場合はclassificationをスキップ
         if previous_response_id_from_event:
-            print(f"Classifying speech with previous response ID: {previous_response_id_from_event}")
+            print(f"Continuing conversation with previous_response_id: {previous_response_id_from_event}")
+            print("Skipping classification - treating as 'general' inquiry")
+            urgency_result = "general"
         else:
-            print(f"Classifying speech (first turn): {speech_result}")
-        
-        classification_result = await classification_service.classify_message_urgency_with_openai_tool_calling(
-            openai_async_client,
-            speech_result,
-            previous_response_id_from_event
-        )
-        print(f"Classification result: {classification_result}")
-        urgency_result = classification_result.get('urgency')
-        current_openai_response_id = classification_result.get('response_id')
-        
-        if urgency_result == "error":
-            # 分類サービス自体がエラーを返した場合
-            should_hangup_due_to_classification_error = True
-            print("Classification service returned an error. Will proceed to hangup.")
-
-        # ai_response_segment = "" # この変数は各ケースで設定されるので、ここでの初期化は必須ではないかも
+            # 初回ターン: ユーザーメッセージの緊急度を分類
+            print(f"First turn - Classifying user message: '{speech_result}'")
+            
+            classification_result = await classification_service.classify_message_urgency(
+                openai_async_client,
+                speech_result
+            )
+            print(f"Classification result: {classification_result}")
+            urgency_result = classification_result.get('urgency')
+            
+            if urgency_result == "error":
+                # 分類サービス自体がエラーを返した場合
+                should_hangup_due_to_classification_error = True
+                print("Classification service returned an error. Will proceed to hangup.")
 
         if urgency_result == "general":
             # 1. 「データベースを検索します」というメッセージを準備
@@ -231,30 +229,27 @@ async def lambda_handler_async(event, context):
                     print(f"Failed to inform user about gather error: {e_twil_err}")
                 return {'status': 'error', 'message': f"Processing error during general inquiry: {str(e_gather)}"}
 
-        elif urgency_result == "urgent":
-            ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
-            # (TwiML構築)
-            response_twiml_obj = VoiceResponse() # ... urgent用のTwiML ...
+        elif urgency_result in ["urgent", "operator_request"]:
+            # 緊急事態またはオペレーター希望 → 即座にオペレーターに転送
+            if urgency_result == "urgent":
+                ai_response_segment = lingual_mgr.get_message(language, "urgent_inquiry")
+            else:  # operator_request
+                ai_response_segment = lingual_mgr.get_message(language, "transferring_to_operator")
+            
+            response_twiml_obj = VoiceResponse()
             response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
-            phone_last4 = event.get('phone_last4')
-            urgent_action_url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
-            if room_number:
-                urgent_action_url += f"&room_number={room_number}"
-            if phone_last4:
-                urgent_action_url += f"&phone_last4={phone_last4}"
-            gather = TwilioGather( input='speech', language=language, method='POST', action=urgent_action_url, timeout=5, speechTimeout='auto', speechModel='deepgram-nova-3')
-            follow_up_msg = lingual_mgr.get_message(language, "follow_up_question")
-            gather.say(follow_up_msg, language=language, voice=voice)
-            response_twiml_obj.append(gather)
-            timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-            response_twiml_obj.say(timeout_msg, language=language, voice=voice)
-            response_twiml_obj.hangup()
+            
+            # オペレーターに転送
+            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+15005550006")
+            response_twiml_obj.dial(operator_phone_number)
+            
             try:
                 await update_twilio_call_async(twilio_client, call_sid, str(response_twiml_obj))
-                return {'status': 'completed', 'action': 'prompted_for_more_requests_urgent'}
+                print(f"Transferred to operator due to: {urgency_result}")
+                return {'status': 'completed', 'action': f'transferred_to_operator_{urgency_result}'}
             except Exception as e:
-                print(f"Error in urgent case: {e}")
-                return {'status': 'error', 'message': f"Twilio API error in urgent case: {str(e)}"}
+                print(f"Error in {urgency_result} case: {e}")
+                return {'status': 'error', 'message': f"Twilio API error in {urgency_result} case: {str(e)}"}
 
 
         elif urgency_result == "unknown":

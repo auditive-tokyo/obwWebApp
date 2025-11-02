@@ -2,6 +2,32 @@ from .calculate_key_code import calculate_key_code
 from datetime import datetime
 
 
+# 共通の応答生成ガイドライン
+COMMON_RESPONSE_GUIDELINES = """
+{language} で自然な応答を生成してください。
+
+電話でPollyが話しやすいように、簡潔でSpeech Synthesisに適したテキストを生成してください。特殊文字などは厳禁です。
+"""
+
+
+# 共通のneeds_operator判定ルールとJSON形式の説明
+COMMON_NEEDS_OPERATOR_INSTRUCTIONS = """
+以下の場合は 'needs_operator' フラグをTrueにしてください：
+1. 検索結果が見つからない場合や、情報が不十分な場合
+2. ユーザーが「オペレーターと話したい」「人と話したい」「スタッフに繋いでほしい」などと明確に要求している場合
+3. 質問内容が緊急性を帯びている場合（火事、怪我、不審者など）
+
+'needs_operator' フラグがTrueの場合は、assistant_response_textで「オペレーターにお繋ぎしますか？」と提案してください。
+それ以外の場合は 'needs_operator' をFalseにしてください。
+
+回答は以下のJSON形式で返してください：
+{{
+  "assistant_response_text": "ユーザーへの応答テキスト（{language}）",
+  "needs_operator": true または false
+}}
+"""
+
+
 def get_vector_search_instructions(guest_info: dict, language: str) -> str:
     """
     ベクトル検索用の基本システムインストラクション
@@ -50,38 +76,15 @@ def get_vector_search_instructions(guest_info: dict, language: str) -> str:
         system_instructions = f"""あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊の親切な電話応答アシスタントです。
 あなたの担当は、{room_number}号室の{guest_name}様です。
 
- {language} で自然な応答を生成してください。
-
-電話でPollyが話しやすいように、簡潔でSpeech Synthesisに適したテキストを生成してください。特殊文字などは厳禁です。
-
-検索結果が見つからない場合や、情報が不十分な場合は、その旨を正確に伝え、オペレーターと話す必要があるか確認してください。
-オペレーターと話す必要があるか確認をした場合、'needs_operator' フラグをTrueにしてください。それ以外は全てFalseにしてください。
-
-回答は以下のJSON形式で返してください：
-{{
-  "assistant_response_text": "ユーザーへの応答テキスト（{language}）",
-  "needs_operator": true または false
-}}
-"""
+{COMMON_RESPONSE_GUIDELINES.format(language=language)}
+{COMMON_NEEDS_OPERATOR_INSTRUCTIONS.format(language=language)}"""
     else:
         # 承認済みかつ滞在期間内のパターン
         system_instructions = f"""あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊の親切な電話応答アシスタントです。
 あなたの担当は、{room_number}号室の{guest_name}様です。
-
 {room_number}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : {key_code}
 
- {language} で自然な応答を生成してください。
-
-電話でPollyが話しやすいように、簡潔でSpeech Synthesisに適したテキストを生成してください。特殊文字などは厳禁です。
-
-検索結果が見つからない場合や、情報が不十分な場合は、その旨を正確に伝え、オペレーターと話す必要があるか確認してください。
-オペレーターと話す必要があるか確認をした場合、'needs_operator' フラグをTrueにしてください。それ以外は全てFalseにしてください。
-
-回答は以下のJSON形式で返してください：
-{{
-  "assistant_response_text": "ユーザーへの応答テキスト（{language}）",
-  "needs_operator": true または false
-}}
-"""
+{COMMON_RESPONSE_GUIDELINES.format(language=language)}
+{COMMON_NEEDS_OPERATOR_INSTRUCTIONS.format(language=language)}"""
     
     return system_instructions

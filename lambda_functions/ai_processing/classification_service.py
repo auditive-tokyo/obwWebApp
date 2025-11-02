@@ -7,8 +7,8 @@ urgency_classification_schema = {
     "properties": {
         "urgency": {
             "type": "string",
-            "enum": ["urgent", "general", "unknown"],
-            "description": "問い合わせの緊急度。緊急の場合は'urgent'、そうでない場合は'general'、判断できない場合は'unknown'。"
+            "enum": ["urgent", "general", "operator_request", "unknown"],
+            "description": "問い合わせの緊急度。緊急の場合は'urgent'、オペレーターと話したい場合は'operator_request'、一般的な問い合わせは'general'、判断できない場合は'unknown'。"
         },
         "reasoning": {
             "type": "string",
@@ -20,23 +20,20 @@ urgency_classification_schema = {
 }
 
 
-async def classify_message_urgency_with_openai_tool_calling(
+async def classify_message_urgency(
     openai_async_client: openai.AsyncOpenAI,
-    user_message: str,
-    previous_response_id: str = None
+    user_message: str
 ) -> dict:
     """
-    OpenAIのTool Callingを使用してユーザーのメッセージの緊急度を分類
+    OpenAIを使用してユーザーのメッセージの緊急度を分類（初回ターンのみ実行）
     
     Args:
         openai_async_client: OpenAI非同期クライアント
         user_message: 分類するメッセージ
-        previous_response_id: 前回のレスポンスID（会話の継続用）
     
     Returns:
         {
-            'urgency': str ("urgent", "general", "unknown", "error"),
-            'response_id': str (次回の previous_response_id として使用)
+            'urgency': str ("urgent", "general", "operator_request", "unknown", "error")
         }
     """
     if not openai_async_client:
@@ -46,31 +43,35 @@ async def classify_message_urgency_with_openai_tool_calling(
     print(f"メッセージの緊急度を分類中: '{user_message}'")
 
     system_instructions = """あなたはOsaka Bay Wheelというホテルのユーザーからの問い合わせを分類するアシスタントです。
-ユーザーのメッセージが緊急かどうかを判断してください。
+ユーザーの最初のメッセージを以下の4つのカテゴリに分類してください。
 
-会話履歴がある場合は、それまでの文脈を考慮して緊急度を判断してください。
-例えば、最初は一般的な問い合わせでも、続く発言で緊急性が明らかになる場合があります。
+判断基準：
 
-判断基準として、以下のケースが挙げられますが、これに限らず人命に関わるものや、
-ゲストの安全・セキュリティに関わるものは必ず「緊急（urgent）」としてください。
+1. **緊急（urgent）**: 人命に関わるもの、ゲストの安全・セキュリティに関わるもの
+   - 不審者の侵入や目撃
+   - 火事・煙・焦げ臭い
+   - 地震・台風などの災害
+   - 盗難・紛失（特に鍵やセキュリティに関わるもの）
+   - 事故・怪我
+   - 水漏れ・ガス漏れ
+   - 器物損壊
+   - 救急を要する体調不良
+   - その他犯罪行為
 
-想定される緊急ケース：
-- 不審者の侵入や目撃
-- 火事・煙・焦げ臭い
-- 地震・台風などの災害
-- 盗難・紛失（特に鍵やセキュリティに関わるもの）
-- 事故・怪我
-- 水漏れ・ガス漏れ
-- 器物損壊
-- 救急を要する体調不良
-- その他犯罪行為
+2. **オペレーター希望（operator_request）**: ユーザーが明確に人間のオペレーターと話したいと言っている
+   - 「オペレーターと話したい」
+   - 「人と話したい」
+   - 「スタッフに繋いでほしい」
+   - 「担当者はいますか」
+   など
 
-不明なテキストや意味が分からない質問と判断した場合は「不明（unknown）」としてください。
-それ以外の一般的な問い合わせ（施設案内、チェックイン方法など）は「一般（general）」としてください。
+3. **一般（general）**: 施設案内、チェックイン方法など通常の問い合わせ
+
+4. **不明（unknown）**: 意味が分からない、判断できないテキスト
 
 回答は以下のJSON形式で返してください：
 {
-  "urgency": "urgent" または "general" または "unknown",
+  "urgency": "urgent" または "general" または "operator_request" または "unknown",
   "reasoning": "判断理由を簡潔に（日本語）"
 }
 """
@@ -92,12 +93,8 @@ async def classify_message_urgency_with_openai_tool_calling(
                     "strict": True
                 },
                 "verbosity": "low"
-            },
-            previous_response_id=previous_response_id
+            }
         )
-
-        # レスポンスIDを取得
-        response_id = response.id if hasattr(response, 'id') else None
 
         # レスポンスから message を探す（JSON Schema で返される）
         if response.output:
@@ -115,30 +112,21 @@ async def classify_message_urgency_with_openai_tool_calling(
                                 
                                 print(f"分類結果: urgency='{urgency}', reasoning='{reasoning}'")
                                 
-                                if urgency in ["urgent", "general", "unknown"]:
-                                    return {
-                                        "urgency": urgency,
-                                        "response_id": response_id
-                                    }
+                                if urgency in ["urgent", "general", "operator_request", "unknown"]:
+                                    return {"urgency": urgency}
                                 else:
                                     print(f"予期しない緊急度の値: {urgency}")
-                                    return {
-                                        "urgency": "unknown",
-                                        "response_id": response_id
-                                    }
+                                    return {"urgency": "unknown"}
         
         print("テキスト出力が見つかりませんでした")
-        return {
-            "urgency": "unknown",
-            "response_id": response_id
-        }
+        return {"urgency": "unknown"}
 
     except openai.APIConnectionError as e:
         print(f"OpenAI APIへの接続に失敗しました: {e}")
-        return {"urgency": "error", "response_id": None}
+        return {"urgency": "error"}
     except openai.RateLimitError as e:
         print(f"OpenAI APIのレート制限に達しました: {e}")
-        return {"urgency": "error", "response_id": None}
+        return {"urgency": "error"}
     except openai.APIStatusError as e:
         error_details = "N/A"
         try:
@@ -153,10 +141,10 @@ async def classify_message_urgency_with_openai_tool_calling(
             
         print(f"OpenAI APIがエラーを返しました (ステータスコード: {e.status_code}): {e.response}")
         print(f"エラー詳細:\n{error_details}") # ★エラー詳細を出力
-        return {"urgency": "error", "response_id": None}
+        return {"urgency": "error"}
     except Exception as e:
-        print(f"OpenAI (Tool Calling)での分類中に予期せぬエラーが発生しました: {e}")
-        return {"urgency": "error", "response_id": None}
+        print(f"OpenAI分類中に予期せぬエラーが発生しました: {e}")
+        return {"urgency": "error"}
 
 
 # # --- ここからテスト実行用のコード ---
