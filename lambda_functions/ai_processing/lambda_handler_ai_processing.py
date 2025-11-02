@@ -224,12 +224,10 @@ async def lambda_handler_async(event, context):
                     try:
                         await update_twilio_call_async(twilio_client, call_sid, str(results_twiml_obj))
                         print("Search results and follow-up prompt sent to user.")
-                        # 関数の戻り値に、取得した情報を追加することも検討できる (ImmediateResponseFunction側で利用する場合)
                         return {
                             'status': 'completed',
                             'action': 'provided_search_results_and_gathered',
-                            'openai_response_id': current_openai_response_id,
-                            # 'needs_operator': needs_operator_flag
+                            'openai_response_id': current_openai_response_id
                         }
                     except Exception as e_results:
                         print(f"Error sending search results to user: {e_results}")
