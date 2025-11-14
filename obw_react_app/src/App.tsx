@@ -5,6 +5,7 @@ import Auth from './auth/Auth'
 // import ChatWidget from './components/ChatWidget'
 import Header from './header/Header'
 import ErrorPage from './pages/ErrorPage'
+import GeneralPage from './pages/GeneralPage'
 import RoomPage from './pages/RoomPage'
 
 // 2F〜8F 各フロア 01〜04号室を許可
@@ -30,6 +31,7 @@ function App() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Header />
         <Routes>
+          <Route path="/" element={<GeneralPage />} />
           <Route path="/room/:roomId" element={<Auth />} />
           {/* Admin routes protected by Cognito Hosted UI */}
           <Route path="/admin" element={<AdminAuth />} />

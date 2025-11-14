@@ -233,7 +233,7 @@ const messages: Messages = {
     unselect: "選択を解除する",
     addNewPerson: "+ ゲストを追加する",
     roomStatus: "この部屋の申請状況",
-    welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
+    welcome: "Osaka Bay Wheel WebAppへようこそ！",
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
     basicInfoSaved:
@@ -368,7 +368,7 @@ const messages: Messages = {
     unselect: "Unselect",
     addNewPerson: "+ Add Guest",
     roomStatus: "Room Status",
-    welcome: "Welcome to Osaka Bay Wheel WebApp.",
+    welcome: "Welcome to Osaka Bay Wheel WebApp!",
     registeringBasicInfo: "Registering basic information...",
     basicInfoError: "Failed to register basic information.",
     basicInfoSaved: "Basic information saved. Please upload your ID image.",

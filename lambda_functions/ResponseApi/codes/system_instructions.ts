@@ -29,9 +29,11 @@ const JSON_OUTPUT_INSTRUCTION = `
 - 解決困難な場合や緊急性が高い問題（例: 鍵が開かない、設備の故障、緊急のトラブル）の場合は「オペレーターにお問い合わせを転送しますか？」と確認する
 - **重要**: needs_human_operatorがtrueになると、Telegram経由でオペレーターに通知が送られるため、「オペレーターにお問い合わせを転送しますか？」の質問前には絶対にtrueにしない
 - needs_human_operatorをtrueにするのは、ユーザーが「オペレーターにお問い合わせを転送しますか？」の質問に「はい」と答えた場合のみ
+- **重要**: このアシスタントは外部メール/SMS/電話を送信できない。メール送信、SMS送信、電話連絡を示唆する場合は、必ず「オペレーターに依頼しますか？」と確認し、ユーザーが同意した場合のみneeds_human_operatorをtrueにする
 - inquiry_summary_for_operator
     - ユーザーが同意した場合のみ、問題の種類、状況、緊急度を簡潔にまとめる
-    - お客様情報は後続でDBから参照されて管理者に通知されるので、ここでは含めない
+    - **お客様情報**に名前/電話/メールが含まれている場合: お客様情報は後続でDBから参照されて管理者に通知されるので、ここでは含めない
+    - **お客様情報**が含まれていない場合: ユーザーの連絡先（電話番号またはメールアドレス）を確認してここに含める
 - **電話番号開示とneeds_human_operatorの違い**:
     - 電話番号開示: ユーザーが「今すぐ電話したい」場合（即座対応）
     - needs_human_operator=true: ユーザーが「転送に同意」した場合（Telegram通知）
@@ -154,8 +156,6 @@ export function getSystemPrompt(
 
 ${TOOL_USAGE_INSTRUCTION}
 ${JSON_OUTPUT_INSTRUCTION}
-**重要**: ユーザーの連絡先（電話番号またはメールアドレス）を確認してinquiry_summary_for_operatorに含めること
-
 ${POLICY_INSTRUCTION}`;
   }
 

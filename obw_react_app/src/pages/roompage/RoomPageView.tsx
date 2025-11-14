@@ -1,6 +1,7 @@
 import ChatWidget from "@/components/ChatWidget";
 import { getMessage } from "@/i18n/messages";
 import BasicInfoForm from "@/pages/components/BasicInfoForm";
+import { ChatInstructionBox } from "@/pages/components/ChatInstructionBox";
 import { dbg } from "@/utils/debugLogger";
 import { useMemo, useState } from "react";
 import { DateEditorModal } from "./components/DateEditorModal";
@@ -507,26 +508,11 @@ export function RoomPageView(
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
           <>
-            {/* チャットボックス（常に表示） */}
-            <div
-              className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6 cursor-pointer hover:from-teal-100 hover:to-cyan-100 transition-colors"
-              onClick={() => setChatOpen(!chatOpen)}
-            >
-              <div className="flex items-center gap-3">
-                <img
-                  src="/icons8-bot-64.png"
-                  alt=""
-                  className="w-8 h-8 shrink-0"
-                />
-                <p className="text-lg font-semibold text-teal-900 whitespace-pre-line">
-                  {hasApprovedGuest
-                    ? isAfterCheckInTime
-                      ? getMessage("chatInstructionAfterApproved")
-                      : getMessage("chatInstructionBeforeCheckIn")
-                    : getMessage("chatIsTheFastestWayToGetHelp")}
-                </p>
-              </div>
-            </div>
+            <ChatInstructionBox
+              hasApprovedGuest={hasApprovedGuest}
+              isAfterCheckInTime={isAfterCheckInTime}
+              onToggleChat={() => setChatOpen(!chatOpen)}
+            />
 
             {/* 未承認の場合のみ追加メッセージ */}
             {!hasApprovedGuest && (
