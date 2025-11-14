@@ -1,6 +1,4 @@
-export type SupportedLang =
-  | "ja"
-  | "en";
+export type SupportedLang = "ja" | "en";
 
 type MessageKeys =
   | "close"
@@ -76,6 +74,7 @@ type MessageKeys =
   | "lawInfo"
   | "securityInfoShort"
   | "securityInfo"
+  | "chatIsTheFastestWayToGetHelp"
   | "chatInstructionAfterApproved"
   | "chatInstructionBeforeCheckIn"
   | "whyWeAsk"
@@ -186,6 +185,7 @@ type Messages = {
     lawInfo: string[];
     securityInfoShort: string;
     securityInfo: string[];
+    chatIsTheFastestWayToGetHelp: string;
     chatInstructionAfterApproved: string;
     chatInstructionBeforeCheckIn: string;
     whyWeAsk: string;
@@ -220,7 +220,7 @@ type Messages = {
     bookingNotFound: string;
     dateUpdateFailed: string;
     editLockedAfterApproval: string;
-  }
+  };
 };
 
 const messages: Messages = {
@@ -236,7 +236,8 @@ const messages: Messages = {
     welcome: "ようこそ！Osaka Bay Wheel WebAppへ。",
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
-    basicInfoSaved: "基本情報を登録しました。ID写真をアップロードしてください。",
+    basicInfoSaved:
+      "基本情報を登録しました。ID写真をアップロードしてください。",
     uploadingPassportImage: "ID画像を更新中...",
     uploadSuccess: "ID画像のアップロードが完了しました！",
     uploadError: "ID画像のアップロードに失敗しました。もう一度お試しください。",
@@ -246,11 +247,15 @@ const messages: Messages = {
     statusApproved: "承認されました。",
     statusRejected: "承認されませんでした。",
     noRegistrationYet: "現在、この部屋の登録はありません。",
-    selectGuestOrAddNew: "お客様の情報を入力してください。上のリストから対象の方を選択するか、「新規追加」を押してください。",
-    completeBasicInfoFirst: "新しいゲストを追加する前に基本情報の登録を完了してください。",
-    familyRegistrationMessage: "代表者のご家族として登録します。お名前のみ入力してID写真アップロードへお進みください。",
+    selectGuestOrAddNew:
+      "お客様の情報を入力してください。上のリストから対象の方を選択するか、「ゲストを追加する」を押してください。",
+    completeBasicInfoFirst:
+      "新しいゲストを追加する前に基本情報の登録を完了してください。",
+    familyRegistrationMessage:
+      "代表者のご家族として登録します。お名前のみ入力してID写真アップロードへお進みください。",
     familyQuestionTitle: "代表者のご家族ですか？",
-    familyQuestionDescription: "代表者のご家族の場合は、お名前のみの入力で登録できます。",
+    familyQuestionDescription:
+      "代表者のご家族の場合は、お名前のみの入力で登録できます。",
     no: "いいえ",
     yes: "はい",
     accessRequest: "アクセス申請",
@@ -270,7 +275,8 @@ const messages: Messages = {
     email: "メールアドレス",
     emailValidation: "正しいメールアドレスを入力してください",
     emailConsent: "最新情報をメールで受け取る",
-    promoConsent: "プロモーションや特別割引、近隣イベント情報などをお送りします。\n受取りをご希望されない場合はチェックは外したままにして下さい。",
+    promoConsent:
+      "プロモーションや特別割引、近隣イベント情報などをお送りします。\n受取りをご希望されない場合はチェックは外したままにして下さい。",
     addressLine1: "住所1",
     addressLine1Placeholder: "住所1（番地・丁目・号など）",
     addressLine2: "住所2",
@@ -294,30 +300,36 @@ const messages: Messages = {
     proceedToPassportImageUpload: "ID画像アップロードへ進む",
     aboutPassport: "身分証明書について",
     aboutSecurity: "セキュリティについて",
-    lawInfoShort: "旅館業法により、宿泊者の身元確認・記録保持が義務付けられています。身分証画像の複写・保管が必要です。",
+    lawInfoShort:
+      "旅館業法により、宿泊者の身元確認・記録保持が義務付けられています。身分証画像の複写・保管が必要です。",
     lawInfo: [
       "旅館業法により、宿泊事業者は宿泊者の身元確認および記録保持が法的に義務付けられています。身分証画像詳細の複写と一定期間の保管が必要となります。",
-      "この情報は必要に応じて政府機関から要請される場合があるため、法令遵守のためファイルに保管させていただきます。ご理解とご協力をお願いいたします。"
+      "この情報は必要に応じて政府機関から要請される場合があるため、法令遵守のためファイルに保管させていただきます。ご理解とご協力をお願いいたします。",
     ],
-    securityInfoShort: "個人情報はAWS KMSで保護、通信はSSL暗号化、国際基準に準拠しています。",
+    securityInfoShort:
+      "個人情報はAWS KMSで保護、通信はSSL暗号化、国際基準に準拠しています。",
     securityInfo: [
       "お客様の個人情報はAWS KMS（暗号化サービス）により高度に保護されています。",
       "通信は全てSSL暗号化により安全に送信されます。",
-      "データの保管・管理は国際的なセキュリティ基準に準拠しています。"
+      "データの保管・管理は国際的なセキュリティ基準に準拠しています。",
     ],
+    chatIsTheFastestWayToGetHelp:
+      "AIチャットでお問い合わせいただくと最速でのサポート対応が可能となります。",
     chatInstructionAfterApproved:
       "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
     chatInstructionBeforeCheckIn:
       "認証されました。チェックイン日以降に部屋の鍵の暗証番号などの情報にアクセスできる様になります。その他の質問はお気軽に右下のチャットボットに質問してください。",
     whyWeAsk: "この情報をお願いする理由",
-    securityIntro: "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
+    securityIntro:
+      "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
     currentLocation: "現在地",
     updateStatus: "ステータス更新",
     unsyncLocation: "同期解除",
     locationInfo: "現在地情報",
     locationShareTitle: "現在地も共有しますか？",
     locationResyncTitle: "現在地も再同期しますか？",
-    statusUpdateMessage: "ステータスを更新します。お客様の現在地を保存しますか？お客様の位置情報はサポートの目的においてのみ使用されます。",
+    statusUpdateMessage:
+      "ステータスを更新します。お客様の現在地を保存しますか？お客様の位置情報はサポートの目的においてのみ使用されます。",
     shareLocation: "位置情報も共有",
     updateStatusOnly: "ステータス更新",
     updatedAt: "更新日時",
@@ -328,19 +340,24 @@ const messages: Messages = {
     pleaseRetryLater: "少し時間をおいてから再度お試しください。",
     welcomeToGuestPage: "大阪ベイウィール ゲストページへようこそ",
     smsLinkKeepSafe: "このリンクは大切に保管してください。",
-    smsShareWarning: "同じ部屋に宿泊するご家族・ご友人以外には共有しないでください。",
-    smsMultiDeviceInfo: "複数のデバイスやブラウザからアクセスする場合も、このリンクを開くことでセッションを復元できます。",
-    smsExpiryWarning: "基本情報の入力が完了しないまま24時間経過するとこのリンクは無効になります。",
-    smsSessionRestore: "基本情報送信後は、同じリンクで再アクセスしてセッションを復元できます。",
+    smsShareWarning:
+      "同じ部屋に宿泊するご家族・ご友人以外には共有しないでください。",
+    smsMultiDeviceInfo:
+      "複数のデバイスやブラウザからアクセスする場合も、このリンクを開くことでセッションを復元できます。",
+    smsExpiryWarning:
+      "基本情報の入力が完了しないまま24時間経過するとこのリンクは無効になります。",
+    smsSessionRestore:
+      "基本情報送信後は、同じリンクで再アクセスしてセッションを復元できます。",
     understood: "了解しました",
     attention: "注意",
     editRoomDates: "部屋の日程を編集",
-    roomDateChangeWarning: "この変更は部屋に滞在する全員のチェックイン・チェックアウト日に影響します。",
+    roomDateChangeWarning:
+      "この変更は部屋に滞在する全員のチェックイン・チェックアウト日に影響します。",
     cancel: "キャンセル",
     save: "保存",
     bookingNotFound: "予約情報が見つかりません",
     dateUpdateFailed: "日付の更新に失敗しました。再度お試しください。",
-    editLockedAfterApproval: "承認後は変更不可",
+    editLockedAfterApproval: "承認申請後は変更不可",
   },
   en: {
     close: "Close",
@@ -364,11 +381,15 @@ const messages: Messages = {
     statusApproved: "Approved.",
     statusRejected: "Rejected.",
     noRegistrationYet: "There are currently no registrations for this room.",
-    selectGuestOrAddNew: "Please enter your information. Select a person from the list above or press 'Add Guest'.",
-    completeBasicInfoFirst: "Please complete the basic information registration before adding a new guest.",
-    familyRegistrationMessage: "Registering as a family member of the representative. Please enter only your name and proceed to ID image upload.",
+    selectGuestOrAddNew:
+      "Please enter your information. Select a person from the list above or press 'Add Guest'.",
+    completeBasicInfoFirst:
+      "Please complete the basic information registration before adding a new guest.",
+    familyRegistrationMessage:
+      "Registering as a family member of the representative. Please enter only your name and proceed to ID image upload.",
     familyQuestionTitle: "Are you a family member of the representative?",
-    familyQuestionDescription: "Family members of the representative can register with only their name.",
+    familyQuestionDescription:
+      "Family members of the representative can register with only their name.",
     no: "No",
     yes: "Yes",
     accessRequest: "Access Request",
@@ -389,11 +410,13 @@ const messages: Messages = {
     email: "Email",
     emailValidation: "Please enter a valid email address.",
     emailConsent: "Receive updates via email",
-    promoConsent: "We will send you promotions, special discounts, and local event information. \nIf you do not wish to receive these, please leave the checkbox unchecked.",
+    promoConsent:
+      "We will send you promotions, special discounts, and local event information. \nIf you do not wish to receive these, please leave the checkbox unchecked.",
     addressLine1: "Address Line 1",
     addressLine1Placeholder: "Address Line 1 (Street, Block, etc.)",
     addressLine2: "Address Line 2",
-    addressLine2Placeholder: "Address Line 2 (Building Name, Room Number, etc.)",
+    addressLine2Placeholder:
+      "Address Line 2 (Building Name, Room Number, etc.)",
     city: "City",
     state: "State/Province",
     country: "Country",
@@ -412,30 +435,36 @@ const messages: Messages = {
     proceedToPassportImageUpload: "Proceed to ID Image Upload",
     aboutPassport: "About ID Documents",
     aboutSecurity: "About Security",
-    lawInfoShort: "According to the Hotel Business Act, accommodation providers must verify guest identity and keep records. An image copy of the ID document must be taken and retained for a certain period.",
+    lawInfoShort:
+      "According to the Hotel Business Act, accommodation providers must verify guest identity and keep records. An image copy of the ID document must be taken and retained for a certain period.",
     lawInfo: [
       "According to the Hotel Business Act, accommodation providers are legally required to verify guest identity and keep records. An image of the ID document must be copied and stored for a certain period.",
-      "This information may be requested by government agencies as needed, so we will keep it on file for legal compliance. We appreciate your understanding and cooperation."
+      "This information may be requested by government agencies as needed, so we will keep it on file for legal compliance. We appreciate your understanding and cooperation.",
     ],
-    securityInfoShort: "Personal information is protected by AWS KMS, communication is SSL encrypted, and complies with international standards.",
+    securityInfoShort:
+      "Personal information is protected by AWS KMS, communication is SSL encrypted, and complies with international standards.",
     securityInfo: [
       "Your personal information is highly protected by AWS KMS (encryption service).",
       "All communications are securely transmitted via SSL encryption.",
-      "Data storage and management comply with international security standards."
+      "Data storage and management comply with international security standards.",
     ],
+    chatIsTheFastestWayToGetHelp:
+      "Contacting us via AI chat enables the fastest support response.",
     chatInstructionAfterApproved:
       "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
     chatInstructionBeforeCheckIn:
       "You have been authenticated. Information such as the room door code will be accessible from your check-in date onwards. Please feel free to ask the chatbot at the bottom right for other questions.",
     whyWeAsk: "Why we ask for this information",
-    securityIntro: "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
+    securityIntro:
+      "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
     currentLocation: "Current Location",
     updateStatus: "Update Status",
     unsyncLocation: "Unsync",
     locationInfo: "Location Information",
     locationShareTitle: "Share Current Location?",
     locationResyncTitle: "Re-sync Current Location?",
-    statusUpdateMessage: "We will update your status. Would you like to save your current location? Your location information will only be used for support purposes.",
+    statusUpdateMessage:
+      "We will update your status. Would you like to save your current location? Your location information will only be used for support purposes.",
     shareLocation: "Share location",
     updateStatusOnly: "Update status only",
     updatedAt: "Updated",
@@ -446,20 +475,25 @@ const messages: Messages = {
     pleaseRetryLater: "Please wait a moment and try again.",
     welcomeToGuestPage: "Welcome to Osaka Bay Wheel Guest Page",
     smsLinkKeepSafe: "Please keep this link secure.",
-    smsShareWarning: "Do NOT share it with anyone except family or companions staying in the same room.",
-    smsMultiDeviceInfo: "If you use multiple devices or browsers, opening this link restores your session.",
-    smsExpiryWarning: "If you do NOT complete the basic information within 24 hours, this link becomes invalid.",
-    smsSessionRestore: "After submitting the basic information you can still revisit using the same link to restore your session.",
+    smsShareWarning:
+      "Do NOT share it with anyone except family or companions staying in the same room.",
+    smsMultiDeviceInfo:
+      "If you use multiple devices or browsers, opening this link restores your session.",
+    smsExpiryWarning:
+      "If you do NOT complete the basic information within 24 hours, this link becomes invalid.",
+    smsSessionRestore:
+      "After submitting the basic information you can still revisit using the same link to restore your session.",
     understood: "Understood",
     attention: "Note",
     editRoomDates: "Edit Room Dates",
-    roomDateChangeWarning: "This change will affect the check-in and check-out dates for all guests in this room.",
+    roomDateChangeWarning:
+      "This change will affect the check-in and check-out dates for all guests in this room.",
     cancel: "Cancel",
     save: "Save",
     bookingNotFound: "Booking information not found",
     dateUpdateFailed: "Failed to update dates. Please try again.",
-    editLockedAfterApproval: "Locked after approval",
-  }
+    editLockedAfterApproval: "Locked after approval request",
+  },
 };
 
 function getCurrentLang(): SupportedLang {

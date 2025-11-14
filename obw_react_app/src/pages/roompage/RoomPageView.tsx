@@ -1,25 +1,28 @@
-import ChatWidget from '@/components/ChatWidget'
-import { getMessage } from '@/i18n/messages'
-import { BasicCheckInOutDate } from '@/pages/components/BasicCheckInOutDate'
-import BasicInfoForm from '@/pages/components/BasicInfoForm'
-import { dbg } from '@/utils/debugLogger'
-import { useMemo, useState } from 'react'
-import { PassportUpload } from './components/PassportUpload'
-import { SecurityInfoCards } from './components/SecurityInfoCards'
-import { refreshGuestSessions, updateRoomCheckDates } from './services/apiCalls'
-import type { GuestSession, RoomPageViewProps } from './types'
+import ChatWidget from "@/components/ChatWidget";
+import { getMessage } from "@/i18n/messages";
+import { BasicCheckInOutDate } from "@/pages/components/BasicCheckInOutDate";
+import BasicInfoForm from "@/pages/components/BasicInfoForm";
+import { dbg } from "@/utils/debugLogger";
+import { useMemo, useState } from "react";
+import { PassportUpload } from "./components/PassportUpload";
+import { SecurityInfoCards } from "./components/SecurityInfoCards";
+import {
+  refreshGuestSessions,
+  updateRoomCheckDates,
+} from "./services/apiCalls";
+import type { GuestSession, RoomPageViewProps } from "./types";
 
 export function RoomPageView(
   props: RoomPageViewProps & {
-    hasRoomCheckDates?: boolean
-    roomCheckInDate?: Date | null
-    roomCheckOutDate?: Date | null
-    forceShowForm?: boolean | null
-    overrideIsRepresentativeFamily?: boolean | null
-    handleSyncGeo?: () => Promise<void>
-    handleClearLocation?: () => Promise<void>
-    myCurrentLocation?: string | null
-    setGuestSessions?: (sessions: GuestSession[]) => void
+    hasRoomCheckDates?: boolean;
+    roomCheckInDate?: Date | null;
+    roomCheckOutDate?: Date | null;
+    forceShowForm?: boolean | null;
+    overrideIsRepresentativeFamily?: boolean | null;
+    handleSyncGeo?: () => Promise<void>;
+    handleClearLocation?: () => Promise<void>;
+    myCurrentLocation?: string | null;
+    setGuestSessions?: (sessions: GuestSession[]) => void;
   }
 ) {
   const {
@@ -63,13 +66,22 @@ export function RoomPageView(
     handleClearLocation,
     myCurrentLocation,
     setGuestSessions,
-  } = props
-  const selectedSession = selectedGuest
+  } = props;
+  const selectedSession = selectedGuest;
+
+  // Pending状態のゲストがいる場合の変数
+  const hasPendingGuest =
+    Array.isArray(guestSessions) &&
+    guestSessions.some(
+      (g) => (g?.approvalStatus || "").toLowerCase() === "pending"
+    );
 
   // 鍵の4桁コード文書へのアクセス許可: guestSessions の中に approved が1人でもいればOK
   const hasApprovedGuest =
     Array.isArray(guestSessions) &&
-    guestSessions.some(g => (g?.approvalStatus || '').toLowerCase() === 'approved')
+    guestSessions.some(
+      (g) => (g?.approvalStatus || "").toLowerCase() === "approved"
+    );
 
   // チェックイン日の0時以降かどうかを判定（日本時間）
   const isAfterCheckInTime = useMemo(() => {
@@ -77,7 +89,9 @@ export function RoomPageView(
 
     // 現在の日本時間を取得
     const now = new Date();
-    const japanTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    const japanTime = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
+    );
 
     // チェックイン日の0時（日本時間）を作成
     const checkInStart = new Date(roomCheckInDate);
@@ -91,131 +105,142 @@ export function RoomPageView(
 
   // クリック選択時の表示判定
   const shouldShowBasicInfoForSession = (g: GuestSession | null | undefined) =>
-    g?.approvalStatus === 'waitingForBasicInfo'
+    g?.approvalStatus === "waitingForBasicInfo";
 
   const shouldShowUploadForSession = (g: GuestSession | null | undefined) =>
-    g?.approvalStatus === 'waitingForPassportImage'
+    g?.approvalStatus === "waitingForPassportImage";
 
-  const getStatusMessage = (g: GuestSession | null | undefined): string | null => {
-    const status = g?.approvalStatus
-    if (status === 'pending') return getMessage("statusPending") as string
-    if (status === 'approved') return getMessage("statusApproved") as string
-    if (status === 'rejected') return getMessage("statusRejected") as string
-    return null
-  }
+  const getStatusMessage = (
+    g: GuestSession | null | undefined
+  ): string | null => {
+    const status = g?.approvalStatus;
+    if (status === "pending") return getMessage("statusPending") as string;
+    if (status === "approved") return getMessage("statusApproved") as string;
+    if (status === "rejected") return getMessage("statusRejected") as string;
+    return null;
+  };
 
   const getStatusLabel = (status?: string): string => {
     switch (status) {
-      case 'waitingForBasicInfo':
-        return getMessage('enterBasicInfo') as string
-      case 'waitingForPassportImage':
-        return getMessage('enterPassportImage') as string
-      case 'pending':
-        return getMessage('statusPending') as string
-      case 'approved':
-        return getMessage('statusApproved') as string
-      case 'rejected':
-        return getMessage('statusRejected') as string
+      case "waitingForBasicInfo":
+        return getMessage("enterBasicInfo") as string;
+      case "waitingForPassportImage":
+        return getMessage("enterPassportImage") as string;
+      case "pending":
+        return getMessage("statusPending") as string;
+      case "approved":
+        return getMessage("statusApproved") as string;
+      case "rejected":
+        return getMessage("statusRejected") as string;
       default:
-        return status ?? ''
+        return status ?? "";
     }
-  }
+  };
 
   // 「Add Guest」ボタンを無効化する条件:
   // どれかのセッションが waitingForBasicInfo かつ guestId を持っている場合は無効化
-  const disableAddGuest = !!guestSessions?.some((g: GuestSession) => g?.approvalStatus === 'waitingForBasicInfo' && !!g?.guestId)
+  const disableAddGuest = !!guestSessions?.some(
+    (g: GuestSession) =>
+      g?.approvalStatus === "waitingForBasicInfo" && !!g?.guestId
+  );
 
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
     forceShowForm === true
       ? true
-      : (!!selectedSession && shouldShowBasicInfoForSession(selectedSession))
+      : !!selectedSession && shouldShowBasicInfoForSession(selectedSession);
 
   const showUpload =
-    !!selectedSession && !showForm && shouldShowUploadForSession(selectedSession)
+    !!selectedSession &&
+    !showForm &&
+    shouldShowUploadForSession(selectedSession);
 
   const showStatus =
     selectedSession &&
     !showForm &&
     !showUpload &&
-    !!getStatusMessage(selectedSession)
+    !!getStatusMessage(selectedSession);
 
-  dbg('selectedSession:', selectedSession)
-  dbg('shouldShowUploadForSession:', selectedSession && shouldShowUploadForSession(selectedSession))
+  dbg("selectedSession:", selectedSession);
+  dbg(
+    "shouldShowUploadForSession:",
+    selectedSession && shouldShowUploadForSession(selectedSession)
+  );
   // The form component's props type isn't exported from the component file; cast locally and suppress the lint rule
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const BasicInfoFormAny = BasicInfoForm as any
+  const BasicInfoFormAny = BasicInfoForm as any;
 
   // 位置情報同期モーダルの状態
-  const [showGeoModal, setShowGeoModal] = useState(false)
+  const [showGeoModal, setShowGeoModal] = useState(false);
   // 現在地詳細ポップアップの状態
-  const [showLocationDetail, setShowLocationDetail] = useState(false)
+  const [showLocationDetail, setShowLocationDetail] = useState(false);
   // 日付編集モーダルの状態
-  const [showDateEditor, setShowDateEditor] = useState(false)
+  const [showDateEditor, setShowDateEditor] = useState(false);
+  // チャットウィジェットの開閉状態
+  const [chatOpen, setChatOpen] = useState(false);
   // 一時的なチェックイン・チェックアウト日
-  const [tempCheckInDate, setTempCheckInDate] = useState<Date | null>(null)
-  const [tempCheckOutDate, setTempCheckOutDate] = useState<Date | null>(null)
+  const [tempCheckInDate, setTempCheckInDate] = useState<Date | null>(null);
+  const [tempCheckOutDate, setTempCheckOutDate] = useState<Date | null>(null);
 
   // 位置情報同期の確認後実行
   const handleGeoConfirm = async () => {
-    setShowGeoModal(false)
+    setShowGeoModal(false);
     if (handleSyncGeo) {
-      await handleSyncGeo()
-      await refreshGuestSessions({ client, roomId, setGuestSessions })
+      await handleSyncGeo();
+      await refreshGuestSessions({ client, roomId, setGuestSessions });
     }
-  }
+  };
 
   // ステータスのみ更新
   const handleStatusRefreshOnly = async () => {
     try {
-      await refreshGuestSessions({ client, roomId, setGuestSessions })
+      await refreshGuestSessions({ client, roomId, setGuestSessions });
     } finally {
-      setShowGeoModal(false)
+      setShowGeoModal(false);
     }
-  }
+  };
 
   // 日付の保存処理
   const handleRoomDateSave = async () => {
-    if (!tempCheckInDate || !tempCheckOutDate) return
+    if (!tempCheckInDate || !tempCheckOutDate) return;
 
-    const bookingId = localStorage.getItem('bookingId')
+    const bookingId = localStorage.getItem("bookingId");
     if (!bookingId) {
-      alert(getMessage("bookingNotFound"))
-      return
+      alert(getMessage("bookingNotFound"));
+      return;
     }
 
     try {
       // JST形式で日付文字列を作成
-      const checkInDateString = tempCheckInDate.toISOString().split('T')[0]
-      const checkOutDateString = tempCheckOutDate.toISOString().split('T')[0]
+      const checkInDateString = tempCheckInDate.toISOString().split("T")[0];
+      const checkOutDateString = tempCheckOutDate.toISOString().split("T")[0];
 
       // API呼び出し
       const result = await updateRoomCheckDates({
         client,
         bookingId,
         checkInDate: checkInDateString,
-        checkOutDate: checkOutDateString
-      })
+        checkOutDate: checkOutDateString,
+      });
 
-      dbg("✅ Room dates updated successfully:", result)
+      dbg("✅ Room dates updated successfully:", result);
 
       // 既存のsetterを直接使用（propsから）
-      setCheckInDate(tempCheckInDate)      // 既存のprop
-      setCheckOutDate(tempCheckOutDate)    // 既存のprop
+      setCheckInDate(tempCheckInDate); // 既存のprop
+      setCheckOutDate(tempCheckOutDate); // 既存のprop
 
       // ゲストセッション情報を再読み込み
-      await refreshGuestSessions({ client, roomId, setGuestSessions })
+      await refreshGuestSessions({ client, roomId, setGuestSessions });
 
       // モーダルを閉じる
-      setShowDateEditor(false)
-      setTempCheckInDate(null)
-      setTempCheckOutDate(null)
-
+      setShowDateEditor(false);
+      setTempCheckInDate(null);
+      setTempCheckOutDate(null);
     } catch (error) {
-      console.error("❌ Failed to update room dates:", error)
-      alert(getMessage("dateUpdateFailed"))
+      console.error("❌ Failed to update room dates:", error);
+      alert(getMessage("dateUpdateFailed"));
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -223,9 +248,7 @@ export function RoomPageView(
         {/* ヘッダーカード（ROOM + Room Status + 申請状況リスト） */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-start mb-2">
-            <h1 className="text-2xl font-bold text-gray-800">
-              ROOM {roomId}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800">ROOM {roomId}</h1>
             {/* 同期ボタン（右上）とメッセージ */}
             <div className="flex items-center gap-2">
               {myCurrentLocation ? (
@@ -270,7 +293,9 @@ export function RoomPageView(
               ) : (
                 // 位置情報がない場合: 同期ボタン
                 <>
-                  <span className="text-xs text-gray-500">{getMessage("updateStatus")}</span>
+                  <span className="text-xs text-gray-500">
+                    {getMessage("updateStatus")}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setShowGeoModal(true)}
@@ -297,16 +322,35 @@ export function RoomPageView(
           </div>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
-              {hasApprovedGuest ? (
+              {hasPendingGuest ? (
                 // 承認済み：編集不可
                 <div className="flex items-center gap-1">
                   <span>
-                    {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
+                    {getMessage("checkInDate")}:{" "}
+                    {roomCheckInDate
+                      ? roomCheckInDate.toLocaleDateString()
+                      : ""}{" "}
+                    〜 {getMessage("checkOutDate")}:{" "}
+                    {roomCheckOutDate
+                      ? roomCheckOutDate.toLocaleDateString()
+                      : ""}
                   </span>
-                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    className="w-3 h-3 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
-                  <span className="text-xs text-gray-500">({getMessage("editLockedAfterApproval")})</span>
+                  <span className="text-xs text-gray-500">
+                    ({getMessage("editLockedAfterApproval")})
+                  </span>
                 </div>
               ) : (
                 // 未承認：編集可能
@@ -314,9 +358,24 @@ export function RoomPageView(
                   onClick={() => setShowDateEditor(true)}
                   className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                 >
-                  {getMessage("checkInDate")}: {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ''} 〜 {getMessage("checkOutDate")}: {roomCheckOutDate ? roomCheckOutDate.toLocaleDateString() : ''}
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  {getMessage("checkInDate")}:{" "}
+                  {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ""}{" "}
+                  〜 {getMessage("checkOutDate")}:{" "}
+                  {roomCheckOutDate
+                    ? roomCheckOutDate.toLocaleDateString()
+                    : ""}
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
                   </svg>
                 </button>
               )}
@@ -334,10 +393,16 @@ export function RoomPageView(
                     type="button"
                     onClick={onAddGuest}
                     disabled={disableAddGuest}
-                    title={disableAddGuest ? getMessage("completeBasicInfoFirst") as string : undefined}
+                    title={
+                      disableAddGuest
+                        ? (getMessage("completeBasicInfoFirst") as string)
+                        : undefined
+                    }
                     className={
                       "text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200 " +
-                      (disableAddGuest ? "opacity-50 cursor-not-allowed pointer-events-none" : "hover:from-blue-400 hover:to-blue-500")
+                      (disableAddGuest
+                        ? "opacity-50 cursor-not-allowed pointer-events-none"
+                        : "hover:from-blue-400 hover:to-blue-500")
                     }
                   >
                     {getMessage("addNewPerson")}
@@ -353,37 +418,45 @@ export function RoomPageView(
               <ul className="divide-y divide-gray-200 border border-gray-100 rounded-md">
                 {guestSessions.map((g: GuestSession) => {
                   const isSelected =
-                    !!selectedSession && selectedSession.guestId === g.guestId
+                    !!selectedSession && selectedSession.guestId === g.guestId;
                   return (
                     <li
                       key={g.guestId || `${g.roomNumber}_${g.guestName}`}
                       className={
                         "py-2 px-3 flex items-center justify-between cursor-pointer select-none " +
-                        (isSelected ? "bg-blue-50 ring-1 ring-blue-300 rounded-md" : "hover:bg-gray-50")
+                        (isSelected
+                          ? "bg-blue-50 ring-1 ring-blue-300 rounded-md"
+                          : "hover:bg-gray-50")
                       }
                       onClick={() => onSelectGuest(g.guestId)}
                       aria-selected={isSelected}
-                      title={g.lastUpdated ? new Date(g.lastUpdated).toLocaleString() : ''}
+                      title={
+                        g.lastUpdated
+                          ? new Date(g.lastUpdated).toLocaleString()
+                          : ""
+                      }
                     >
-                      <span className="text-sm text-gray-800 truncate">{g.guestName || getMessage("unfilled")}</span>
+                      <span className="text-sm text-gray-800 truncate">
+                        {g.guestName || getMessage("unfilled")}
+                      </span>
                       <span
                         className={
-                          'text-xs px-2 py-0.5 rounded-full ' +
-                          (g.approvalStatus === 'approved'
-                            ? 'bg-green-100 text-green-700'
-                            : g.approvalStatus === 'rejected'
-                              ? 'bg-red-100 text-red-700'
-                              : g.approvalStatus === 'pending'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : g.approvalStatus === 'waitingForBasicInfo'
-                                  ? 'bg-indigo-100 text-indigo-700'
-                                  : 'bg-blue-100 text-blue-700')
+                          "text-xs px-2 py-0.5 rounded-full " +
+                          (g.approvalStatus === "approved"
+                            ? "bg-green-100 text-green-700"
+                            : g.approvalStatus === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : g.approvalStatus === "pending"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : g.approvalStatus === "waitingForBasicInfo"
+                            ? "bg-indigo-100 text-indigo-700"
+                            : "bg-blue-100 text-blue-700")
                         }
                       >
                         {getStatusLabel(g.approvalStatus)}
                       </span>
                     </li>
-                  )
+                  );
                 })}
               </ul>
 
@@ -403,7 +476,9 @@ export function RoomPageView(
 
           {!guestSessions?.length && (
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">{getMessage("noRegistrationYet")}</div>
+              <div className="text-sm text-gray-600">
+                {getMessage("noRegistrationYet")}
+              </div>
             </div>
           )}
         </div>
@@ -413,7 +488,11 @@ export function RoomPageView(
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {getMessage(myCurrentLocation ? "locationResyncTitle" : "locationShareTitle")}
+                {getMessage(
+                  myCurrentLocation
+                    ? "locationResyncTitle"
+                    : "locationShareTitle"
+                )}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
                 {getMessage("statusUpdateMessage")}
@@ -475,38 +554,40 @@ export function RoomPageView(
           </div>
         )}
 
-        {/* セキュリティ・法的情報カード（approvedが1人でもいれば非表示） */}
-        {!hasApprovedGuest && <SecurityInfoCards />}
+        {/* セキュリティ・法的情報カード（pendingが1人でもいれば非表示） */}
+        {!hasPendingGuest && <SecurityInfoCards />}
 
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
-          hasApprovedGuest ? (
-            isAfterCheckInTime ? (
-              // 承認済み + チェックイン日以降
-              <div className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6">
-                <div className="flex items-center gap-3">
-                  <img src="/icons8-bot-64.png" alt="" className="w-8 h-8 shrink-0" />
-                  <p className="text-lg font-semibold text-teal-900">
-                    {getMessage("chatInstructionAfterApproved")}
-                  </p>
-                </div>
+          <>
+            {/* チャットボックス（常に表示） */}
+            <div
+              className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6 cursor-pointer hover:from-teal-100 hover:to-cyan-100 transition-colors"
+              onClick={() => setChatOpen(!chatOpen)}
+            >
+              <div className="flex items-center gap-3">
+                <img
+                  src="/icons8-bot-64.png"
+                  alt=""
+                  className="w-8 h-8 shrink-0"
+                />
+                <p className="text-lg font-semibold text-teal-900">
+                  {hasApprovedGuest
+                    ? isAfterCheckInTime
+                      ? getMessage("chatInstructionAfterApproved")
+                      : getMessage("chatInstructionBeforeCheckIn")
+                    : getMessage("chatIsTheFastestWayToGetHelp")}
+                </p>
               </div>
-            ) : (
-              // 承認済み + チェックイン前
-              <div className="mt-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md p-6">
-                <div className="flex items-center gap-3">
-                  <img src="/icons8-bot-64.png" alt="" className="w-8 h-8 shrink-0" />
-                  <p className="text-lg font-semibold text-teal-900">
-                    {getMessage("chatInstructionBeforeCheckIn")}
-                  </p>
-                </div>
-              </div>
-            )
-          ) : (
-            <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
-              {getMessage("selectGuestOrAddNew")}
             </div>
-          )
+
+            {/* 未承認の場合のみ追加メッセージ */}
+            {!hasApprovedGuest && (
+              <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
+                {getMessage("selectGuestOrAddNew")}
+              </div>
+            )}
+          </>
         )}
 
         {/* 基本情報入力フォーム（新規 or waitingForBasicInfo の人を選択時） */}
@@ -549,7 +630,9 @@ export function RoomPageView(
               guestId={selectedSession?.guestId ?? ""}
               client={client}
               onBack={handleBack}
-              showEditInfo={selectedSession?.approvalStatus === 'waitingForPassportImage'}
+              showEditInfo={
+                selectedSession?.approvalStatus === "waitingForPassportImage"
+              }
             />
           </div>
         )}
@@ -574,38 +657,45 @@ export function RoomPageView(
         {/* チャット */}
         <div className="mt-8">
           <ChatWidget
-            roomId={roomId || ''}
+            roomId={roomId || ""}
             approved={isApproved}
             currentLocation={myCurrentLocation || undefined}
-
+            open={chatOpen}
+            setOpen={setChatOpen}
             representativeName={(() => {
               try {
-                const gid = localStorage.getItem('guestId');
+                const gid = localStorage.getItem("guestId");
                 if (gid && Array.isArray(guestSessions)) {
-                  const rep = guestSessions.find(g => g.guestId === gid);
+                  const rep = guestSessions.find((g) => g.guestId === gid);
                   return rep?.guestName || name;
                 }
-              } catch { void 0 }
+              } catch {
+                void 0;
+              }
               return name;
             })()}
             representativeEmail={(() => {
               try {
-                const gid = localStorage.getItem('guestId');
+                const gid = localStorage.getItem("guestId");
                 if (gid && Array.isArray(guestSessions)) {
-                  const rep = guestSessions.find(g => g.guestId === gid);
+                  const rep = guestSessions.find((g) => g.guestId === gid);
                   return rep?.email || email;
                 }
-              } catch { void 0 }
+              } catch {
+                void 0;
+              }
               return email;
             })()}
             representativePhone={(() => {
               try {
-                const gid = localStorage.getItem('guestId');
+                const gid = localStorage.getItem("guestId");
                 if (gid && Array.isArray(guestSessions)) {
-                  const rep = guestSessions.find(g => g.guestId === gid);
+                  const rep = guestSessions.find((g) => g.guestId === gid);
                   return rep?.phone || phone;
                 }
-              } catch { void 0 }
+              } catch {
+                void 0;
+              }
               return phone;
             })()}
           />
@@ -620,10 +710,10 @@ export function RoomPageView(
               {getMessage("locationInfo")}
             </h3>
             <p className="text-sm text-gray-700 mb-6 break-words">
-              {myCurrentLocation.split('@')[0]}
+              {myCurrentLocation.split("@")[0]}
             </p>
             <div className="text-xs text-gray-500 mb-4">
-              {getMessage("updatedAt")}: {myCurrentLocation.split('@')[1]}
+              {getMessage("updatedAt")}: {myCurrentLocation.split("@")[1]}
             </div>
             <div className="flex justify-end">
               <button
@@ -662,9 +752,9 @@ export function RoomPageView(
               <button
                 type="button"
                 onClick={() => {
-                  setShowDateEditor(false)
-                  setTempCheckInDate(null)
-                  setTempCheckOutDate(null)
+                  setShowDateEditor(false);
+                  setTempCheckInDate(null);
+                  setTempCheckOutDate(null);
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
@@ -682,5 +772,5 @@ export function RoomPageView(
         </div>
       )}
     </div>
-  )
+  );
 }
