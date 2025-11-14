@@ -322,8 +322,8 @@ export function RoomPageView(
           </div>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
-              {hasPendingGuest ? (
-                // 承認済み：編集不可
+              {hasPendingGuest || hasApprovedGuest ? (
+                // Pending または 承認済み：編集不可
                 <div className="flex items-center gap-1">
                   <span>
                     {getMessage("checkInDate")}:{" "}
@@ -554,8 +554,8 @@ export function RoomPageView(
           </div>
         )}
 
-        {/* セキュリティ・法的情報カード（pendingが1人でもいれば非表示） */}
-        {!hasPendingGuest && <SecurityInfoCards />}
+        {/* セキュリティ・法的情報カード（pendingまたはapprovedが1人でもいれば非表示） */}
+        {!hasPendingGuest && !hasApprovedGuest && <SecurityInfoCards />}
 
         {/* 未選択時の案内テキスト */}
         {!selectedSession && !showForm && !showUpload && (
@@ -571,7 +571,7 @@ export function RoomPageView(
                   alt=""
                   className="w-8 h-8 shrink-0"
                 />
-                <p className="text-lg font-semibold text-teal-900">
+                <p className="text-lg font-semibold text-teal-900 whitespace-pre-line">
                   {hasApprovedGuest
                     ? isAfterCheckInTime
                       ? getMessage("chatInstructionAfterApproved")
