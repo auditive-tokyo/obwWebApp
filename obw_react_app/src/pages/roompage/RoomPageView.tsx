@@ -1,9 +1,12 @@
 import ChatWidget from "@/components/ChatWidget";
 import { getMessage } from "@/i18n/messages";
-import { BasicCheckInOutDate } from "@/pages/components/BasicCheckInOutDate";
 import BasicInfoForm from "@/pages/components/BasicInfoForm";
 import { dbg } from "@/utils/debugLogger";
 import { useMemo, useState } from "react";
+import { DateEditorModal } from "./components/DateEditorModal";
+import { FamilyQuestionModal } from "./components/FamilyQuestionModal";
+import { LocationDetailModal } from "./components/LocationDetailModal";
+import { LocationSyncModal } from "./components/LocationSyncModal";
 import { PassportUpload } from "./components/PassportUpload";
 import { SecurityInfoCards } from "./components/SecurityInfoCards";
 import {
@@ -484,75 +487,19 @@ export function RoomPageView(
         </div>
 
         {/* 位置情報同期確認モーダル */}
-        {showGeoModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {getMessage(
-                  myCurrentLocation
-                    ? "locationResyncTitle"
-                    : "locationShareTitle"
-                )}
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                {getMessage("statusUpdateMessage")}
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowGeoModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  {getMessage("cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStatusRefreshOnly}
-                  className="px-4 py-2 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
-                >
-                  {getMessage("updateStatusOnly")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGeoConfirm}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  {getMessage("shareLocation")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <LocationSyncModal
+          isOpen={showGeoModal}
+          hasCurrentLocation={!!myCurrentLocation}
+          onClose={() => setShowGeoModal(false)}
+          onStatusRefreshOnly={handleStatusRefreshOnly}
+          onConfirm={handleGeoConfirm}
+        />
 
         {/* 家族質問モーダル */}
-        {showFamilyQuestion && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {getMessage("familyQuestionTitle")}
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                {getMessage("familyQuestionDescription")}
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => onFamilyResponse(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  {getMessage("no")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onFamilyResponse(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  {getMessage("yes")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <FamilyQuestionModal
+          isOpen={showFamilyQuestion}
+          onResponse={onFamilyResponse}
+        />
 
         {/* セキュリティ・法的情報カード（pendingまたはapprovedが1人でもいれば非表示） */}
         {!hasPendingGuest && !hasApprovedGuest && <SecurityInfoCards />}
@@ -703,74 +650,26 @@ export function RoomPageView(
       </div>
 
       {/* 現在地詳細ポップアップ */}
-      {showLocationDetail && myCurrentLocation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              {getMessage("locationInfo")}
-            </h3>
-            <p className="text-sm text-gray-700 mb-6 break-words">
-              {myCurrentLocation.split("@")[0]}
-            </p>
-            <div className="text-xs text-gray-500 mb-4">
-              {getMessage("updatedAt")}: {myCurrentLocation.split("@")[1]}
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowLocationDetail(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                {getMessage("close")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LocationDetailModal
+        isOpen={showLocationDetail}
+        location={myCurrentLocation || null}
+        onClose={() => setShowLocationDetail(false)}
+      />
 
       {/* 日付編集モーダル */}
-      {showDateEditor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              {getMessage("editRoomDates")}
-            </h3>
-            <div className="mb-4">
-              <BasicCheckInOutDate
-                checkInDate={tempCheckInDate}
-                setCheckInDate={setTempCheckInDate}
-                checkOutDate={tempCheckOutDate}
-                setCheckOutDate={setTempCheckOutDate}
-              />
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
-              <p className="text-sm text-yellow-800">
-                ⚠️ {getMessage("roomDateChangeWarning")}
-              </p>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDateEditor(false);
-                  setTempCheckInDate(null);
-                  setTempCheckOutDate(null);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                {getMessage("cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={handleRoomDateSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                {getMessage("save")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DateEditorModal
+        isOpen={showDateEditor}
+        checkInDate={tempCheckInDate}
+        setCheckInDate={setTempCheckInDate}
+        checkOutDate={tempCheckOutDate}
+        setCheckOutDate={setTempCheckOutDate}
+        onSave={handleRoomDateSave}
+        onCancel={() => {
+          setShowDateEditor(false);
+          setTempCheckInDate(null);
+          setTempCheckOutDate(null);
+        }}
+      />
     </div>
   );
 }
