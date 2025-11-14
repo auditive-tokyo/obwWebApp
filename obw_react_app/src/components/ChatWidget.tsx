@@ -16,6 +16,8 @@ const ChatWidget = ({
   representativeEmail,
   representativePhone,
   currentLocation,
+  checkInDate,
+  checkOutDate,
   open: externalOpen,
   setOpen: externalSetOpen,
 }: RoomProps & {
@@ -68,6 +70,8 @@ const ChatWidget = ({
             representativeEmail={representativeEmail}
             representativePhone={representativePhone}
             currentLocation={currentLocation}
+            checkInDate={checkInDate}
+            checkOutDate={checkOutDate}
             messages={messages}
             setMessages={setMessages}
             nextId={nextId}

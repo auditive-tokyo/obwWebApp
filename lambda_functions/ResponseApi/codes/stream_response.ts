@@ -16,6 +16,8 @@ interface GenerateStreamResponseParams {
     representativeName?: string | null;
     representativeEmail?: string | null;
     representativePhone?: string | null;
+    checkInDate?: string;
+    checkOutDate?: string;
 }
 
 export async function* generateStreamResponse({
@@ -28,6 +30,8 @@ export async function* generateStreamResponse({
     representativeEmail,
     representativePhone,
     currentLocation,
+    checkInDate,
+    checkOutDate,
 }: GenerateStreamResponseParams): AsyncGenerator<unknown, void, unknown> {
     try {
         // システムプロンプトを動的生成
@@ -38,8 +42,10 @@ export async function* generateStreamResponse({
             representativeEmail ?? null,
             representativePhone ?? null,
             currentLocation ? currentLocation : undefined,
+            checkInDate,
+            checkOutDate
         );
-        console.info("Generated system prompt for:", { roomId, approved, representativeName, representativeEmail, representativePhone, currentLocation });
+        console.info("Generated system prompt for:", { roomId, approved, representativeName, representativeEmail, representativePhone, currentLocation, checkInDate, checkOutDate });
 
         const tools: Array<Record<string, unknown>> = [];
 
@@ -99,11 +105,11 @@ export async function* generateStreamResponse({
                             },
                             needs_human_operator: {
                                 type: "boolean",
-                                description: "Set to true ONLY when the user explicitly requests human operator assistance or answers 'yes' to the question 'Would you like me to contact a human operator?'. Do NOT set to true automatically based on the complexity of the issue."
+                                description: "Set to true ONLY when the user answers 'yes' to the question 'Would you like to transfer your inquiry to an operator?' (オペレーターにお問い合わせを転送しますか？). NEVER set to true before asking this confirmation question, even for urgent issues. This triggers a Telegram notification to the operator."
                             },
                             inquiry_summary_for_operator: {
                                 type: "string",
-                                description: "A concise summary of the guest's inquiry for the human operator, formatted for Telegram messaging. Include key details like the issue type, current situation, and any urgent actions needed. DO NOT include guest personal information (name, email, phone) as it will be retrieved from the database. Return empty string \"\" if needs_human_operator is false."
+                                description: "A concise summary of the guest's inquiry for the human operator, formatted for Telegram messaging. Include key details like the issue type, current situation, urgency level, and any actions needed. If guest information is NOT available in the system prompt, include the guest's contact information (phone or email) obtained during the conversation. If guest information IS available in the system prompt, DO NOT include it here as it will be retrieved from the database. Return empty string \"\" if needs_human_operator is false."
                             }
                         },
                         required: ["assistant_response_text", "reference_sources", "images", "needs_human_operator", "inquiry_summary_for_operator"],

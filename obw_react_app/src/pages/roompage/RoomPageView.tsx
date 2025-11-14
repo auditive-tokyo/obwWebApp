@@ -607,6 +607,8 @@ export function RoomPageView(
             roomId={roomId || ""}
             approved={isApproved}
             currentLocation={myCurrentLocation || undefined}
+            checkInDate={roomCheckInDate}
+            checkOutDate={roomCheckOutDate}
             open={chatOpen}
             setOpen={setChatOpen}
             representativeName={(() => {
