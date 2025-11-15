@@ -1,4 +1,4 @@
-import ChatWidget from "../components/ChatWidget";
+import ChatWidget from "@/components/ChatWidget";
 import { getMessage } from "@/i18n/messages";
 import { ChatInstructionBox } from "./components/ChatInstructionBox";
 import { useState } from "react";
@@ -15,12 +15,14 @@ function GeneralPage() {
               {getMessage("welcome")}
             </h1>
             <p className="text-gray-600 mb-6">
-              〒552-0021 大阪府大阪市港区築港4-2-24
+              {getMessage("facilityAddress")}
             </p>
             <div className="prose max-w-none">
-              <p className="text-gray-700 leading-relaxed">
-                施設に関するご質問や、周辺情報についてお気軽にAIアシスタントにお尋ねください。
-                チェックイン方法、アクセス情報、おすすめの観光スポットなど、様々なご質問にお答えします。
+              <p className="text-gray-800 leading-relaxed font-semibold text-lg">
+                {getMessage("generalSupportPage")}
+              </p>
+              <p className="text-gray-700 leading-relaxed font-semibold text-md">
+                {getMessage("generalPageDescription")}
               </p>
             </div>
           </div>
@@ -30,13 +32,17 @@ function GeneralPage() {
             hasApprovedGuest={false}
             isAfterCheckInTime={false}
             onToggleChat={() => setChatOpen(!chatOpen)}
-            customMessage="施設に関するご質問や、周辺情報についてお気軽にAIアシスタントにお尋ねください。"
           />
         </div>
       </div>
 
       {/* グローバルチャット (roomIdなし) */}
-      <ChatWidget roomId="" approved={false} open={chatOpen} setOpen={setChatOpen} />
+      <ChatWidget
+        roomId=""
+        approved={false}
+        open={chatOpen}
+        setOpen={setChatOpen}
+      />
     </div>
   );
 }

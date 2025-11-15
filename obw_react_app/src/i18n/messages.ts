@@ -10,6 +10,8 @@ type MessageKeys =
   | "addNewPerson"
   | "roomStatus"
   | "welcome"
+  | "facilityAddress"
+  | "generalPageDescription"
   | "registeringBasicInfo"
   | "basicInfoError"
   | "basicInfoSaved"
@@ -74,6 +76,7 @@ type MessageKeys =
   | "lawInfo"
   | "securityInfoShort"
   | "securityInfo"
+  | "generalSupportPage"
   | "chatIsTheFastestWayToGetHelp"
   | "chatInstructionAfterApproved"
   | "chatInstructionBeforeCheckIn"
@@ -121,6 +124,8 @@ type Messages = {
     addNewPerson: string;
     roomStatus: string;
     welcome: string;
+    facilityAddress: string;
+    generalPageDescription: string;
     registeringBasicInfo: string;
     basicInfoError: string;
     basicInfoSaved: string;
@@ -190,6 +195,7 @@ type Messages = {
     chatInstructionBeforeCheckIn: string;
     whyWeAsk: string;
     securityIntro: string;
+    generalSupportPage: string;
     currentLocation: string;
     updateStatus: string;
     unsyncLocation: string;
@@ -234,6 +240,9 @@ const messages: Messages = {
     addNewPerson: "+ ゲストを追加する",
     roomStatus: "この部屋の申請状況",
     welcome: "Osaka Bay Wheel WebAppへようこそ！",
+    facilityAddress: "〒552-0021 大阪府大阪市港区築港4-2-24",
+    generalPageDescription:
+      "チェックイン方法、アクセス情報、おすすめの観光スポットなど、様々なご質問にお答えします。",
     registeringBasicInfo: "基本情報を登録中...",
     basicInfoError: "基本情報の登録に失敗しました",
     basicInfoSaved:
@@ -313,8 +322,10 @@ const messages: Messages = {
       "通信は全てSSL暗号化により安全に送信されます。",
       "データの保管・管理は国際的なセキュリティ基準に準拠しています。",
     ],
+    generalSupportPage:
+      "こちらはチェックイン前のお客様用のサポートページです。",
     chatIsTheFastestWayToGetHelp:
-      "AIチャットでお問い合わせいただくと最速でのサポート対応が可能となります。",
+      "こちらをクリックしてAIアシスタントとチャットしてください。最速のサポートをご提供します。必要に応じてオペレーターにメッセージを転送します。",
     chatInstructionAfterApproved:
       "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
     chatInstructionBeforeCheckIn:
@@ -369,6 +380,9 @@ const messages: Messages = {
     addNewPerson: "+ Add Guest",
     roomStatus: "Room Status",
     welcome: "Welcome to Osaka Bay Wheel WebApp!",
+    facilityAddress: "4-2-24 Chikko, Minato-ku, Osaka 552-0021, Japan",
+    generalPageDescription:
+      "We can answer various questions such as check-in methods, access information, recommended sightseeing spots, and more.",
     registeringBasicInfo: "Registering basic information...",
     basicInfoError: "Failed to register basic information.",
     basicInfoSaved: "Basic information saved. Please upload your ID image.",
@@ -448,8 +462,9 @@ const messages: Messages = {
       "All communications are securely transmitted via SSL encryption.",
       "Data storage and management comply with international security standards.",
     ],
+    generalSupportPage: "This is a support page for guests before check-in.",
     chatIsTheFastestWayToGetHelp:
-      "Contacting us via AI chat enables the fastest support response.",
+      "Click here to chat with our AI assistant for the fastest support. If needed, your message will be forwarded to an operator.",
     chatInstructionAfterApproved:
       "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
     chatInstructionBeforeCheckIn:
