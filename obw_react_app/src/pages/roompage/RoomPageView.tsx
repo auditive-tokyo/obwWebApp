@@ -516,8 +516,10 @@ export function RoomPageView(
 
             {/* 未承認の場合のみ追加メッセージ */}
             {!hasApprovedGuest && (
-              <div className="bg-white rounded-lg shadow-md p-6 mt-4 text-gray-700">
-                {getMessage("selectGuestOrAddNew")}
+              <div className="bg-white rounded-lg shadow-md p-6 mt-4">
+                <p className="text-gray-700 leading-relaxed font-semibold text-md">
+                  {getMessage("selectGuestOrAddNew")}
+                </p>
               </div>
             )}
           </>

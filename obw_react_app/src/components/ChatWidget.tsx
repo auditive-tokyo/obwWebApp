@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import ChatInterface from "./ChatInterface";
 import { RoomProps } from "./chatInterface/typeClass";
 import { Message } from "./chatInterface/typeClass";
@@ -8,6 +8,12 @@ const WELCOME_MESSAGES = {
   ja: "ようこそ！Osaka Bay Wheel WebAppへ。",
   en: "Welcome to Osaka Bay Wheel WebApp.",
 };
+
+function getCurrentLang(): "ja" | "en" {
+  const rawLang = localStorage.getItem("lang");
+  if (rawLang === "ja" || rawLang === "en") return rawLang;
+  return "en"; // デフォルト英語
+}
 
 const ChatWidget = ({
   roomId,
@@ -27,7 +33,7 @@ const ChatWidget = ({
   const [internalOpen, setInternalOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     // 初期化時にウェルカムメッセージを設定
-    const lang = document.documentElement.lang as "ja" | "en";
+    const lang = getCurrentLang();
     return [
       {
         id: 0,
@@ -38,6 +44,24 @@ const ChatWidget = ({
     ];
   });
   const nextId = useRef({ current: 1 }); // オブジェクトでラップ
+
+  // 言語変更を監視してウェルカムメッセージを更新
+  useEffect(() => {
+    const lang = getCurrentLang();
+    setMessages((prevMessages) => {
+      // 最初のメッセージがウェルカムメッセージの場合のみ更新
+      if (prevMessages.length > 0 && prevMessages[0].id === 0) {
+        return [
+          {
+            ...prevMessages[0],
+            text: WELCOME_MESSAGES[lang] || WELCOME_MESSAGES.en,
+          },
+          ...prevMessages.slice(1),
+        ];
+      }
+      return prevMessages;
+    });
+  }, []);  // マウント時に一度だけ実行
 
   // 外部からopenが渡された場合はそれを使用、なければ内部state
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
