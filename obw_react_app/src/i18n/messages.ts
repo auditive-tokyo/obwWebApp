@@ -327,9 +327,9 @@ const messages: Messages = {
     chatIsTheFastestWayToGetHelp:
       "こちらをクリックしてAIアシスタントとチャットしてください。最速のサポートをご提供します。必要に応じてオペレーターにメッセージを転送します。",
     chatInstructionAfterApproved:
-      "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。右下のチャットボットに質問してください。",
+      "部屋の鍵の暗証番号などの情報にアクセスできる様になりました。ここをクリックしてAIアシスタントに質問してください。",
     chatInstructionBeforeCheckIn:
-      "認証されました。チェックイン日以降に部屋の鍵の暗証番号などの情報をチャットボットにお気軽に質問してください。\n最速でのサポート対応が可能となります。",
+      "認証されました。\nチェックイン日以降に、部屋の鍵の暗証番号などの情報は、AIアシスタントにお気軽に質問してください。\n最速でのサポート対応が可能となります。",
     whyWeAsk: "この情報をお願いする理由",
     securityIntro:
       "法令遵守と安全確保のため最小限の身元情報を収集し安全に保管します。詳細は下のカードをご覧ください。",
@@ -466,9 +466,9 @@ const messages: Messages = {
     chatIsTheFastestWayToGetHelp:
       "Click here to chat with our AI assistant for the fastest support. If needed, your message will be forwarded to an operator.",
     chatInstructionAfterApproved:
-      "You can now access information such as the room door code. Please ask the chatbot at the bottom right.",
+      "You can now access information such as the room door code. Click here to ask AI Assistant.",
     chatInstructionBeforeCheckIn:
-      "You have been authenticated. From your check-in date onwards, please feel free to ask the chatbot for information such as the room door code.\nThis enables the fastest support response.",
+      "You have been authenticated.\nFrom your check-in date onwards, please feel free to ask our AI assistant for information such as the room door code.\nThis enables the fastest support response.",
     whyWeAsk: "Why we ask for this information",
     securityIntro:
       "We collect only minimal identity information for legal compliance and guest safety. See the cards below for details.",
