@@ -1,8 +1,27 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Daily actions for obwWebApp
 
 Resources:
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: obw-db-backups
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ArchiveOldBackups
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
   DailyRecordsCleanupFunction:
     Type: AWS::Serverless::Function
     Metadata:
@@ -24,20 +43,66 @@ Resources:
         MidnightJSTTrigger:
           Type: Schedule
           Properties:
-            Schedule: cron(5 15 * * ? *)   # 00:05 JST (UTC+9)
+            Schedule: cron(5 15 * * ? *) # 00:05 JST (UTC+9)
             Name: obw-daily-records-cleanup-midnight
             Description: Run guest cleanup at 00:05 JST
             Enabled: true
         NoonJSTTrigger:
           Type: Schedule
           Properties:
-            Schedule: cron(5 3 * * ? *)    # 12:05 JST (UTC+9)
+            Schedule: cron(5 3 * * ? *) # 12:05 JST (UTC+9)
             Name: obw-daily-records-cleanup-noon
             Description: Run guest cleanup at 12:05 JST
             Enabled: true
 
+  DailyS3BackupFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: obw-daily-s3-backup
+      MemorySize: 256
+      CodeUri: lambda_functions/daily_s3_backup/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 300
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue Obw-GuestTableName
+          BACKUP_BUCKET: !Ref BackupBucket
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue Obw-GuestTableName
+        - S3CrudPolicy:
+            BucketName: !Ref BackupBucket
+      Events:
+        MidnightJSTTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: cron(5 15 * * ? *) # 00:05 JST (UTC+9)
+            Name: obw-daily-s3-backup-midnight
+            Description: Run S3 backup at 00:05 JST
+            Enabled: true
+        NoonJSTTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: cron(5 3 * * ? *) # 12:05 JST (UTC+9)
+            Name: obw-daily-s3-backup-noon
+            Description: Run S3 backup at 12:05 JST
+            Enabled: true
+
 Outputs:
+  BackupBucketName:
+    Value: !Ref BackupBucket
+    Export:
+      Name: BackupBucketName
+
   DailyRecordsCleanupFunctionArn:
     Value: !GetAtt DailyRecordsCleanupFunction.Arn
     Export:
       Name: DailyRecordsCleanupFunctionArn
+
+  DailyS3BackupFunctionArn:
+    Value: !GetAtt DailyS3BackupFunction.Arn
+    Export:
+      Name: DailyS3BackupFunctionArn
