@@ -43,12 +43,12 @@ type GuestRecord struct {
 	CurrentLocation       string `dynamodbav:"currentLocation"`
 	Email                 string `dynamodbav:"email"`
 	GuestName             string `dynamodbav:"guestName"`
-	IsFamilyMember        string `dynamodbav:"isFamilyMember"`
+	IsFamilyMember        bool   `dynamodbav:"isFamilyMember"`
 	Nationality           string `dynamodbav:"nationality"`
 	Occupation            string `dynamodbav:"occupation"`
 	PassportImageURL      string `dynamodbav:"passportImageUrl"`
 	Phone                 string `dynamodbav:"phone"`
-	PromoConsent          string `dynamodbav:"promoConsent"`
+	PromoConsent          bool   `dynamodbav:"promoConsent"`
 	SessionTokenExpiresAt int64  `dynamodbav:"sessionTokenExpiresAt"`
 	SessionTokenHash      string `dynamodbav:"sessionTokenHash"`
 	UpdatedAt             string `dynamodbav:"updatedAt"`
@@ -280,12 +280,16 @@ func downloadExistingCSV(ctx context.Context, s3Key string) ([]GuestRecord, erro
 		// Parse sessionTokenExpiresAt
 		expiresAt, _ := strconv.ParseInt(row[18], 10, 64)
 
+		// Parse boolean fields
+		isFamilyMember, _ := strconv.ParseBool(row[3])
+		promoConsent, _ := strconv.ParseBool(row[4])
+
 		record := GuestRecord{
 			RoomNumber:            row[0],
 			BookingID:             row[1],
 			GuestName:             row[2],
-			IsFamilyMember:        row[3],
-			PromoConsent:          row[4],
+			IsFamilyMember:        isFamilyMember,
+			PromoConsent:          promoConsent,
 			ContactChannel:        row[5],
 			Email:                 row[6],
 			Phone:                 row[7],
@@ -350,8 +354,8 @@ func generateCSV(records []GuestRecord) ([]byte, error) {
 			record.RoomNumber,
 			record.BookingID,
 			record.GuestName,
-			record.IsFamilyMember,
-			record.PromoConsent,
+			strconv.FormatBool(record.IsFamilyMember),
+			strconv.FormatBool(record.PromoConsent),
 			record.ContactChannel,
 			record.Email,
 			record.Phone,
