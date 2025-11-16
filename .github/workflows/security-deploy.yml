@@ -140,41 +140,6 @@ jobs:
 
           echo "✅ Twilio stack updated with CloudFront URL"
 
-      - name: Update ResponseApi Stack with CloudFront URL
-        if: steps.get_cloudfront_urls.outputs.responseapi_url != ''
-        run: |
-          echo "=== Updating ResponseApi Stack with CloudFront URL ==="
-
-          # ResponseApi stackの現在のパラメータを取得
-          PARAMS=$(aws cloudformation describe-stacks \
-            --stack-name obw-responseapi-function \
-            --region ap-northeast-1 \
-            --query 'Stacks[0].Parameters' \
-            --output json)
-
-          # 必要なパラメータを抽出
-          OPENAI_API_KEY=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiApiKey") | .ParameterValue')
-          OPENAI_VECTOR_STORE_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiVectorStoreId") | .ParameterValue')
-          TELEGRAM_BOT_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramBotToken") | .ParameterValue')
-          TELEGRAM_CHAT_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramChatId") | .ParameterValue')
-
-          # CloudFront URLをタグとして保存（参照用）
-          aws cloudformation update-stack \
-            --stack-name obw-responseapi-function \
-            --region ap-northeast-1 \
-            --use-previous-template \
-            --capabilities CAPABILITY_IAM \
-            --parameters \
-              ParameterKey=OpenAiApiKey,ParameterValue="${OPENAI_API_KEY}" \
-              ParameterKey=OpenAiVectorStoreId,ParameterValue="${OPENAI_VECTOR_STORE_ID}" \
-              ParameterKey=TelegramBotToken,ParameterValue="${TELEGRAM_BOT_TOKEN}" \
-              ParameterKey=TelegramChatId,ParameterValue="${TELEGRAM_CHAT_ID}" \
-            --tags \
-              Key=CloudFrontUrl,Value="${{ steps.get_cloudfront_urls.outputs.responseapi_url }}" \
-          || echo "No updates required for ResponseApi stack"
-
-          echo "✅ ResponseApi stack tagged with CloudFront URL"
-
       - name: Add Lambda Resource Policy for CloudFront
         run: |
           echo "=== Adding Lambda Resource Policy ==="
@@ -234,9 +199,4 @@ jobs:
           echo "  ResponseApi: ${{ steps.get_cloudfront_urls.outputs.responseapi_url }}"
           echo ""
           echo "✅ Twilio Lambda updated with CloudFront URL (LAMBDA1_FUNCTION_URL)"
-          echo "✅ ResponseApi stack tagged with CloudFront URL"
           echo "✅ Lambda resource policies configured (CloudFront-only access)"
-          echo ""
-          echo "⚠️  Next steps:"
-          echo "  1. Update frontend to use: ${{ steps.get_cloudfront_urls.outputs.responseapi_url }}"
-          echo "  2. Direct Function URL access will return 403 Forbidden"
