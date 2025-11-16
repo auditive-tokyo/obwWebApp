@@ -28,6 +28,11 @@ Parameters:
     Type: String
     Description: "Function URL for Immediate Response, provided from Outputs"
     Default: ""
+  CloudFrontSecret:
+    Type: String
+    Description: "Secret for CloudFront origin custom header verification"
+    NoEcho: true
+    Default: ""
 
 Resources:
   # CloudWatch Logs - ImmediateResponseFunction
@@ -89,6 +94,7 @@ Resources:
         Variables:
           AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
           GUEST_TABLE_NAME: !ImportValue Obw-GuestTableName
+          CLOUDFRONT_SECRET: !Ref CloudFrontSecret
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref AiProcessingLambdaFunctionName

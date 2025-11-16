@@ -35,6 +35,21 @@ declare const awslambda: {
 export const handler = awslambda.streamifyResponse(
     async (event: LambdaFunctionURLEvent, responseStream: { write: (chunk: string) => void; end: () => void }) => {
         try {
+            // CloudFront Secret検証（セキュリティ）
+            const expectedSecret = process.env.CLOUDFRONT_SECRET;
+            if (expectedSecret) {
+                const receivedSecret = event.headers?.['x-cloudfront-secret'];
+                if (receivedSecret !== expectedSecret) {
+                    console.warn('⚠️ CloudFront Secret検証失敗 - 不正なアクセス試行');
+                    responseStream.write(JSON.stringify({ 
+                        error: 'Forbidden',
+                        message: 'Access denied. Invalid CloudFront secret.'
+                    }));
+                    responseStream.end();
+                    return;
+                }
+            }
+
             if (!event.body) {
                 responseStream.write(JSON.stringify({ error: 'Request body is required' }));
                 responseStream.end();

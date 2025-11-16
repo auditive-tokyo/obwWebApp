@@ -18,6 +18,11 @@ Parameters:
     Type: String
     Description: "Telegram Chat ID for notifications"
     NoEcho: true
+  CloudFrontSecret:
+    Type: String
+    Description: "Secret for CloudFront origin custom header verification"
+    NoEcho: true
+    Default: ""
 
 Resources:
   # CloudWatch Logs - ResponseApiFunction
@@ -64,6 +69,7 @@ Resources:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
+          CLOUDFRONT_SECRET: !Ref CloudFrontSecret
       Policies:
         - Version: "2012-10-17"
           Statement:

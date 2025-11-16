@@ -1,18 +1,18 @@
 name: Deploy Security Stack (CloudFront + WAF)
 
 on:
-  push:
-    branches: [main, feature/*]
-    paths:
-      - "template-security.yaml"
-      - ".github/workflows/security-deploy.yml"
+  # push:
+  #   branches: [main, feature/*]
+  #   paths:
+  #     - "template-security.yaml"
+  #     - ".github/workflows/security-deploy.yml"
   workflow_dispatch:
 
   # Lambda deployが完了したら自動実行
   workflow_run:
     workflows:
       - "Deploy ResponseAPI Functions"
-      - "Deploy Twilio Functions"
+      # - "Deploy Twilio Functions"
     types: [completed]
     branches: [main, feature/*]
 
@@ -124,7 +124,7 @@ jobs:
           TWILIO_ACCOUNT_SID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TwilioAccountSid") | .ParameterValue')
           TWILIO_AUTH_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TwilioAuthToken") | .ParameterValue')
 
-          # CloudFront URLでパラメータ更新
+          # CloudFront URLとSecretでパラメータ更新
           aws cloudformation update-stack \
             --stack-name obw-twilio-functions \
             --region ap-northeast-1 \
@@ -136,85 +136,44 @@ jobs:
               ParameterKey=TwilioAccountSid,ParameterValue="${TWILIO_ACCOUNT_SID}" \
               ParameterKey=TwilioAuthToken,ParameterValue="${TWILIO_AUTH_TOKEN}" \
               ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_cloudfront_urls.outputs.immediate_url }}" \
+              ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
           || echo "No updates required for Twilio stack"
 
-          echo "✅ Twilio stack updated with CloudFront URL"
+          echo "✅ Twilio stack updated with CloudFront URL and Secret"
 
-      - name: Add Lambda Resource Policy for CloudFront
+      - name: Update ResponseApi Stack with CloudFront Secret
+        if: steps.get_cloudfront_urls.outputs.responseapi_url != ''
         run: |
-          echo "=== Adding Lambda Resource Policy ==="
+          echo "=== Updating ResponseApi Stack with CloudFront Secret ==="
 
-          # Account IDを取得
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
-          # 既存のパブリックアクセスポリシーを削除（CloudFront経由のみに制限）
-          echo "Removing public access policies..."
-          aws lambda remove-permission \
-            --function-name obw-response-api-function \
+          # ResponseApi stackの現在のパラメータを取得
+          PARAMS=$(aws cloudformation describe-stacks \
+            --stack-name obw-responseapi-function \
             --region ap-northeast-1 \
-            --statement-id FunctionURLAllowPublicAccess \
-          2>&1 || echo "ResponseApi: FunctionURLAllowPublicAccess not found or already removed"
+            --query 'Stacks[0].Parameters' \
+            --output json)
 
-          aws lambda remove-permission \
-            --function-name obw-response-api-function \
+          # 必要なパラメータを抽出
+          OPENAI_API_KEY=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiApiKey") | .ParameterValue')
+          OPENAI_VECTOR_STORE_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiVectorStoreId") | .ParameterValue')
+          TELEGRAM_BOT_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramBotToken") | .ParameterValue')
+          TELEGRAM_CHAT_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramChatId") | .ParameterValue')
+
+          # CloudFront Secretでパラメータ更新
+          aws cloudformation update-stack \
+            --stack-name obw-responseapi-function \
             --region ap-northeast-1 \
-            --statement-id FunctionURLAllowInvokeAction \
-          2>&1 || echo "ResponseApi: FunctionURLAllowInvokeAction not found or already removed"
+            --use-previous-template \
+            --capabilities CAPABILITY_IAM \
+            --parameters \
+              ParameterKey=OpenAiApiKey,ParameterValue="${OPENAI_API_KEY}" \
+              ParameterKey=OpenAiVectorStoreId,ParameterValue="${OPENAI_VECTOR_STORE_ID}" \
+              ParameterKey=TelegramBotToken,ParameterValue="${TELEGRAM_BOT_TOKEN}" \
+              ParameterKey=TelegramChatId,ParameterValue="${TELEGRAM_CHAT_ID}" \
+              ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
+          || echo "No updates required for ResponseApi stack"
 
-          aws lambda remove-permission \
-            --function-name obw-immediate-response-function \
-            --region ap-northeast-1 \
-            --statement-id FunctionURLAllowPublicAccess \
-          2>&1 || echo "ImmediateResponse: FunctionURLAllowPublicAccess not found or already removed"
-
-          aws lambda remove-permission \
-            --function-name obw-immediate-response-function \
-            --region ap-northeast-1 \
-            --statement-id FunctionURLAllowInvokeAction \
-          2>&1 || echo "ImmediateResponse: FunctionURLAllowInvokeAction not found or already removed"
-
-          # CloudFront Distribution IDを取得
-          if [ -n "${{ steps.get_cloudfront_urls.outputs.immediate_url }}" ]; then
-            IMMEDIATE_DIST_ID=$(aws cloudformation describe-stacks \
-              --stack-name obw-security \
-              --region us-east-1 \
-              --query 'Stacks[0].Outputs[?OutputKey==`ImmediateResponseCloudFrontUrl`].OutputValue' \
-              --output text 2>/dev/null | sed 's|https://||' | cut -d'.' -f1)
-            
-            echo "ImmediateResponse Distribution ID: ${IMMEDIATE_DIST_ID}"
-            
-            # ImmediateResponse Lambda にリソースポリシー追加
-            aws lambda add-permission \
-              --function-name obw-immediate-response-function \
-              --region ap-northeast-1 \
-              --statement-id AllowCloudFrontInvoke \
-              --action lambda:InvokeFunctionUrl \
-              --principal cloudfront.amazonaws.com \
-              --source-arn "arn:aws:cloudfront::${ACCOUNT_ID}:distribution/${IMMEDIATE_DIST_ID}" \
-            2>&1 || echo "Permission already exists or failed to add"
-          fi
-
-          if [ -n "${{ steps.get_cloudfront_urls.outputs.responseapi_url }}" ]; then
-            RESPONSEAPI_DIST_ID=$(aws cloudformation describe-stacks \
-              --stack-name obw-security \
-              --region us-east-1 \
-              --query 'Stacks[0].Outputs[?OutputKey==`ResponseApiCloudFrontUrl`].OutputValue' \
-              --output text 2>/dev/null | sed 's|https://||' | cut -d'.' -f1)
-            
-            echo "ResponseApi Distribution ID: ${RESPONSEAPI_DIST_ID}"
-            
-            # ResponseApi Lambda にリソースポリシー追加
-            aws lambda add-permission \
-              --function-name obw-response-api-function \
-              --region ap-northeast-1 \
-              --statement-id AllowCloudFrontInvoke \
-              --action lambda:InvokeFunctionUrl \
-              --principal cloudfront.amazonaws.com \
-              --source-arn "arn:aws:cloudfront::${ACCOUNT_ID}:distribution/${RESPONSEAPI_DIST_ID}" \
-            2>&1 || echo "Permission already exists or failed to add"
-          fi
-
-          echo "✅ Lambda resource policies configured"
+          echo "✅ ResponseApi stack updated with CloudFront Secret"
 
       - name: Output Summary
         run: |
@@ -224,5 +183,7 @@ jobs:
           echo "  ImmediateResponse: ${{ steps.get_cloudfront_urls.outputs.immediate_url }}"
           echo "  ResponseApi: ${{ steps.get_cloudfront_urls.outputs.responseapi_url }}"
           echo ""
-          echo "✅ Twilio Lambda updated with CloudFront URL (LAMBDA1_FUNCTION_URL)"
-          echo "✅ Lambda resource policies configured (CloudFront-only access)"
+          echo "✅ Twilio Lambda updated with CloudFront URL and Secret"
+          echo "✅ ResponseApi Lambda updated with CloudFront Secret"
+          echo "✅ Lambda functions protected with X-CloudFront-Secret header validation"
+          echo "✅ WAF enabled with OWASP rules, IP reputation, and rate limiting"
