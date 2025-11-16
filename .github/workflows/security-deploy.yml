@@ -8,14 +8,6 @@ on:
       - ".github/workflows/security-deploy.yml"
   workflow_dispatch:
 
-  # Lambda deployが完了したら自動実行
-  workflow_run:
-    workflows:
-      - "Deploy ResponseAPI Functions"
-      - "Deploy Twilio Functions"
-    types: [completed]
-    branches: [main, feature/*]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
