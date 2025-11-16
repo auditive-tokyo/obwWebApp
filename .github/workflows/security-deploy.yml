@@ -156,10 +156,22 @@ jobs:
           2>&1 || echo "ResponseApi: FunctionURLAllowPublicAccess not found or already removed"
 
           aws lambda remove-permission \
+            --function-name obw-response-api-function \
+            --region ap-northeast-1 \
+            --statement-id FunctionURLAllowInvokeAction \
+          2>&1 || echo "ResponseApi: FunctionURLAllowInvokeAction not found or already removed"
+
+          aws lambda remove-permission \
             --function-name obw-immediate-response-function \
             --region ap-northeast-1 \
             --statement-id FunctionURLAllowPublicAccess \
           2>&1 || echo "ImmediateResponse: FunctionURLAllowPublicAccess not found or already removed"
+
+          aws lambda remove-permission \
+            --function-name obw-immediate-response-function \
+            --region ap-northeast-1 \
+            --statement-id FunctionURLAllowInvokeAction \
+          2>&1 || echo "ImmediateResponse: FunctionURLAllowInvokeAction not found or already removed"
 
           # CloudFront Distribution IDを取得
           if [ -n "${{ steps.get_cloudfront_urls.outputs.immediate_url }}" ]; then
