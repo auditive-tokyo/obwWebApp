@@ -97,14 +97,9 @@ Resources:
       AuthType: NONE
       InvokeMode: RESPONSE_STREAM
       Cors:
-        AllowOrigins:
-          - http://localhost:5173 # TODO: テスト終わったら削除
-          - https://app.osakabaywheel.com
-        AllowHeaders:
-          - content-type
-        AllowMethods:
-          - POST
-        AllowCredentials: false
+        AllowOrigins: ["*"]
+        AllowMethods: ["POST"]
+        AllowHeaders: ["content-type"]
         MaxAge: 300
 
   TelegramNotifierFunction:
