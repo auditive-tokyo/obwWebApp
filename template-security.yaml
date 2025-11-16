@@ -34,37 +34,9 @@ Resources:
       DefaultAction:
         Allow: {}
       Rules:
-        # AWSマネージドルール: 共通脆弱性対策
-        - Name: AWSManagedRulesCommonRuleSet
-          Priority: 1
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesCommonRuleSet
-          OverrideAction:
-            None: {}
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: AWSManagedRulesCommonRuleSetMetric
-
-        # AWSマネージドルール: 既知の不正IPアドレス
-        - Name: AWSManagedRulesAmazonIpReputationList
-          Priority: 2
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesAmazonIpReputationList
-          OverrideAction:
-            None: {}
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: AWSManagedRulesAmazonIpReputationListMetric
-
         # Rate limiting: 同一IPから5分間に1000リクエスト以上でブロック
         - Name: RateLimitRule
-          Priority: 3
+          Priority: 1
           Statement:
             RateBasedStatement:
               Limit: 1000
