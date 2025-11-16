@@ -2,13 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: DynamoDB Streams Lambda functions for obwWebApp
 
-Globals:
-  Function:
-    Timeout: 30
-    Runtime: python3.13
-    Architectures:
-      - x86_64
-
 Parameters:
   TelegramBotTokenParam:
     Type: String
@@ -18,9 +11,24 @@ Parameters:
     NoEcho: true
 
 Resources:
+  # CloudWatch Logs - NotifyAdminOnPendingFunction
+  NotifyAdminOnPendingFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-notify-admin-on-pending
+      RetentionInDays: 365
+
+  # CloudWatch Logs - SyncFamilyTokenExpirationFunction
+  SyncFamilyTokenExpirationFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-sync-family-token-expiration
+      RetentionInDays: 365
+
   # 管理者への通知Lambda (DynamoDB Streams)
   NotifyAdminOnPendingFunction:
     Type: AWS::Serverless::Function
+    DependsOn: NotifyAdminOnPendingFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -63,6 +71,7 @@ Resources:
   # 家族メンバーのトークン有効期限を同期するLambda (DynamoDB Streams)
   SyncFamilyTokenExpirationFunction:
     Type: AWS::Serverless::Function
+    DependsOn: SyncFamilyTokenExpirationFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:

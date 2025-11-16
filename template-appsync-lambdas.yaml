@@ -2,13 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: AppSync Lambda functions for obwWebApp
 
-Globals:
-  Function:
-    Timeout: 30
-    Runtime: python3.13
-    Architectures:
-      - x86_64
-
 Parameters:
   SendGridApiKey:
     Type: String
@@ -60,9 +53,45 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  # CloudWatch Logs - GetPresignedUrlFunction
+  GetPresignedUrlFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-get-presigned-url-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - RequestAccessFunction
+  RequestAccessFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-request-access-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - VerifyAccessTokenFunction
+  VerifyAccessTokenFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-verify-access-token-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - AdminApproveGuestFunction
+  AdminApproveGuestFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-admin-approve-guest-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - TransferRoomGuestsFunction
+  TransferRoomGuestsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-transfer-room-guests-function
+      RetentionInDays: 365
+
   # 署名付きURL用Lambda
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
+    DependsOn: GetPresignedUrlFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -83,6 +112,7 @@ Resources:
 
   RequestAccessFunction:
     Type: AWS::Serverless::Function
+    DependsOn: RequestAccessFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -107,6 +137,7 @@ Resources:
 
   VerifyAccessTokenFunction:
     Type: AWS::Serverless::Function
+    DependsOn: VerifyAccessTokenFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -127,6 +158,7 @@ Resources:
 
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function
+    DependsOn: AdminApproveGuestFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -147,6 +179,7 @@ Resources:
 
   TransferRoomGuestsFunction:
     Type: AWS::Serverless::Function
+    DependsOn: TransferRoomGuestsFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:

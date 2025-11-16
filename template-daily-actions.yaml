@@ -46,8 +46,23 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  # CloudWatch Logs - DailyRecordsCleanupFunction
+  DailyRecordsCleanupFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-daily-records-cleanup
+      RetentionInDays: 365
+
+  # CloudWatch Logs - DailyS3BackupFunction
+  DailyS3BackupFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-daily-s3-backup
+      RetentionInDays: 365
+
   DailyRecordsCleanupFunction:
     Type: AWS::Serverless::Function
+    DependsOn: DailyRecordsCleanupFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -81,6 +96,7 @@ Resources:
 
   DailyS3BackupFunction:
     Type: AWS::Serverless::Function
+    DependsOn: DailyS3BackupFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
