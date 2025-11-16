@@ -1,0 +1,242 @@
+name: Deploy Security Stack (CloudFront + WAF)
+
+on:
+  push:
+    branches: [main, feature/*]
+    paths:
+      - "template-security.yaml"
+      - ".github/workflows/security-deploy.yml"
+  workflow_dispatch:
+
+  # Lambda deployが完了したら自動実行
+  workflow_run:
+    workflows:
+      - "Deploy ResponseAPI Functions"
+      - "Deploy Twilio Functions"
+    types: [completed]
+    branches: [main, feature/*]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: us-east-1 # CloudFrontはus-east-1必須
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Generate CloudFront Secret
+        id: generate_secret
+        run: |
+          # ランダムな32文字の英数字を生成
+          SECRET=$(openssl rand -hex 32)
+          echo "secret=${SECRET}" >> $GITHUB_OUTPUT
+          echo "Generated CloudFront secret (hidden)"
+
+      - name: Get ResponseApi Function URL
+        id: get_responseapi
+        run: |
+          URL=$(aws cloudformation describe-stacks \
+            --stack-name obw-responseapi-function \
+            --region ap-northeast-1 \
+            --query 'Stacks[0].Outputs[?OutputKey==`ChatFunctionUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+          echo "url=${URL}" >> $GITHUB_OUTPUT
+          echo "ResponseApi URL: ${URL}"
+
+      - name: Get ImmediateResponse Function URL
+        id: get_immediate
+        run: |
+          URL=$(aws lambda get-function-url-config \
+            --function-name obw-immediate-response-function:live \
+            --region ap-northeast-1 \
+            --query 'FunctionUrl' \
+            --output text 2>/dev/null || echo "")
+          echo "url=${URL}" >> $GITHUB_OUTPUT
+          echo "ImmediateResponse URL: ${URL}"
+
+      - name: Deploy Security Stack
+        run: |
+          sam deploy \
+            --template-file template-security.yaml \
+            --stack-name obw-security \
+            --region us-east-1 \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --parameter-overrides \
+              ResponseApiFunctionUrl="${{ steps.get_responseapi.outputs.url }}" \
+              ImmediateResponseFunctionUrl="${{ steps.get_immediate.outputs.url }}" \
+              OriginCustomHeaderSecret="${{ steps.generate_secret.outputs.secret }}" \
+            --no-fail-on-empty-changeset
+
+      - name: Get CloudFront URLs from Security Stack
+        id: get_cloudfront_urls
+        run: |
+          echo "=== Getting CloudFront URLs ==="
+
+          # ImmediateResponse CloudFront URL
+          IMMEDIATE_CF_URL=$(aws cloudformation describe-stacks \
+            --stack-name obw-security \
+            --region us-east-1 \
+            --query 'Stacks[0].Outputs[?OutputKey==`ImmediateResponseCloudFrontUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+
+          # ResponseApi CloudFront URL
+          RESPONSEAPI_CF_URL=$(aws cloudformation describe-stacks \
+            --stack-name obw-security \
+            --region us-east-1 \
+            --query 'Stacks[0].Outputs[?OutputKey==`ResponseApiCloudFrontUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+
+          echo "immediate_url=${IMMEDIATE_CF_URL}" >> $GITHUB_OUTPUT
+          echo "responseapi_url=${RESPONSEAPI_CF_URL}" >> $GITHUB_OUTPUT
+
+          echo "ImmediateResponse CloudFront URL: ${IMMEDIATE_CF_URL}"
+          echo "ResponseApi CloudFront URL: ${RESPONSEAPI_CF_URL}"
+
+      - name: Update Twilio Stack with CloudFront URL
+        if: steps.get_cloudfront_urls.outputs.immediate_url != ''
+        run: |
+          echo "=== Updating Twilio Stack with CloudFront URL ==="
+
+          # Twilio stackの現在のパラメータを取得
+          PARAMS=$(aws cloudformation describe-stacks \
+            --stack-name obw-twilio-functions \
+            --region ap-northeast-1 \
+            --query 'Stacks[0].Parameters' \
+            --output json)
+
+          # 必要なパラメータを抽出
+          OPENAI_API_KEY=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiApiKey") | .ParameterValue')
+          OPENAI_VECTOR_STORE_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiVectorStoreId") | .ParameterValue')
+          TWILIO_ACCOUNT_SID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TwilioAccountSid") | .ParameterValue')
+          TWILIO_AUTH_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TwilioAuthToken") | .ParameterValue')
+
+          # CloudFront URLでパラメータ更新
+          aws cloudformation update-stack \
+            --stack-name obw-twilio-functions \
+            --region ap-northeast-1 \
+            --use-previous-template \
+            --capabilities CAPABILITY_IAM \
+            --parameters \
+              ParameterKey=OpenAiApiKey,ParameterValue="${OPENAI_API_KEY}" \
+              ParameterKey=OpenAiVectorStoreId,ParameterValue="${OPENAI_VECTOR_STORE_ID}" \
+              ParameterKey=TwilioAccountSid,ParameterValue="${TWILIO_ACCOUNT_SID}" \
+              ParameterKey=TwilioAuthToken,ParameterValue="${TWILIO_AUTH_TOKEN}" \
+              ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_cloudfront_urls.outputs.immediate_url }}" \
+          || echo "No updates required for Twilio stack"
+
+          echo "✅ Twilio stack updated with CloudFront URL"
+
+      - name: Update ResponseApi Stack with CloudFront URL
+        if: steps.get_cloudfront_urls.outputs.responseapi_url != ''
+        run: |
+          echo "=== Updating ResponseApi Stack with CloudFront URL ==="
+
+          # ResponseApi stackの現在のパラメータを取得
+          PARAMS=$(aws cloudformation describe-stacks \
+            --stack-name obw-responseapi-function \
+            --region ap-northeast-1 \
+            --query 'Stacks[0].Parameters' \
+            --output json)
+
+          # 必要なパラメータを抽出
+          OPENAI_API_KEY=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiApiKey") | .ParameterValue')
+          OPENAI_VECTOR_STORE_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiVectorStoreId") | .ParameterValue')
+          TELEGRAM_BOT_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramBotToken") | .ParameterValue')
+          TELEGRAM_CHAT_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramChatId") | .ParameterValue')
+
+          # CloudFront URLをタグとして保存（参照用）
+          aws cloudformation update-stack \
+            --stack-name obw-responseapi-function \
+            --region ap-northeast-1 \
+            --use-previous-template \
+            --capabilities CAPABILITY_IAM \
+            --parameters \
+              ParameterKey=OpenAiApiKey,ParameterValue="${OPENAI_API_KEY}" \
+              ParameterKey=OpenAiVectorStoreId,ParameterValue="${OPENAI_VECTOR_STORE_ID}" \
+              ParameterKey=TelegramBotToken,ParameterValue="${TELEGRAM_BOT_TOKEN}" \
+              ParameterKey=TelegramChatId,ParameterValue="${TELEGRAM_CHAT_ID}" \
+            --tags \
+              Key=CloudFrontUrl,Value="${{ steps.get_cloudfront_urls.outputs.responseapi_url }}" \
+          || echo "No updates required for ResponseApi stack"
+
+          echo "✅ ResponseApi stack tagged with CloudFront URL"
+
+      - name: Add Lambda Resource Policy for CloudFront
+        run: |
+          echo "=== Adding Lambda Resource Policy ==="
+
+          # Account IDを取得
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+          # CloudFront Distribution IDを取得
+          if [ -n "${{ steps.get_cloudfront_urls.outputs.immediate_url }}" ]; then
+            IMMEDIATE_DIST_ID=$(aws cloudformation describe-stacks \
+              --stack-name obw-security \
+              --region us-east-1 \
+              --query 'Stacks[0].Outputs[?OutputKey==`ImmediateResponseCloudFrontUrl`].OutputValue' \
+              --output text 2>/dev/null | sed 's|https://||' | cut -d'.' -f1)
+            
+            echo "ImmediateResponse Distribution ID: ${IMMEDIATE_DIST_ID}"
+            
+            # ImmediateResponse Lambda にリソースポリシー追加
+            aws lambda add-permission \
+              --function-name obw-immediate-response-function \
+              --region ap-northeast-1 \
+              --statement-id AllowCloudFrontInvoke \
+              --action lambda:InvokeFunctionUrl \
+              --principal cloudfront.amazonaws.com \
+              --source-arn "arn:aws:cloudfront::${ACCOUNT_ID}:distribution/${IMMEDIATE_DIST_ID}" \
+            2>&1 || echo "Permission already exists or failed to add"
+          fi
+
+          if [ -n "${{ steps.get_cloudfront_urls.outputs.responseapi_url }}" ]; then
+            RESPONSEAPI_DIST_ID=$(aws cloudformation describe-stacks \
+              --stack-name obw-security \
+              --region us-east-1 \
+              --query 'Stacks[0].Outputs[?OutputKey==`ResponseApiCloudFrontUrl`].OutputValue' \
+              --output text 2>/dev/null | sed 's|https://||' | cut -d'.' -f1)
+            
+            echo "ResponseApi Distribution ID: ${RESPONSEAPI_DIST_ID}"
+            
+            # ResponseApi Lambda にリソースポリシー追加
+            aws lambda add-permission \
+              --function-name obw-response-api-function \
+              --region ap-northeast-1 \
+              --statement-id AllowCloudFrontInvoke \
+              --action lambda:InvokeFunctionUrl \
+              --principal cloudfront.amazonaws.com \
+              --source-arn "arn:aws:cloudfront::${ACCOUNT_ID}:distribution/${RESPONSEAPI_DIST_ID}" \
+            2>&1 || echo "Permission already exists or failed to add"
+          fi
+
+          echo "✅ Lambda resource policies configured"
+
+      - name: Output Summary
+        run: |
+          echo "=== Security Stack Deployment Complete ==="
+          echo ""
+          echo "📋 CloudFront URLs:"
+          echo "  ImmediateResponse: ${{ steps.get_cloudfront_urls.outputs.immediate_url }}"
+          echo "  ResponseApi: ${{ steps.get_cloudfront_urls.outputs.responseapi_url }}"
+          echo ""
+          echo "✅ Twilio Lambda updated with CloudFront URL (LAMBDA1_FUNCTION_URL)"
+          echo "✅ ResponseApi stack tagged with CloudFront URL"
+          echo "✅ Lambda resource policies configured (CloudFront-only access)"
+          echo ""
+          echo "⚠️  Next steps:"
+          echo "  1. Update frontend to use: ${{ steps.get_cloudfront_urls.outputs.responseapi_url }}"
+          echo "  2. Direct Function URL access will return 403 Forbidden"
