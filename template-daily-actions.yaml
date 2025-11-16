@@ -7,15 +7,39 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: obw-db-backups
+      # KMS暗号化を有効化（AWS managed key使用）
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              # KMSMasterKeyIDを指定しない = AWS managed key (aws/s3) を使用
+            BucketKeyEnabled: true # S3 Bucket Keyでコスト削減
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:
         Rules:
+          - Id: DeleteAfter3Years
+            Status: Enabled
+            ExpirationInDays: 1095
           - Id: ArchiveOldBackups
             Status: Enabled
             Transitions:
               - TransitionInDays: 90
                 StorageClass: GLACIER
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - http://localhost:5173 # 開発環境
+              - https://app.osakabaywheel.com # 本番環境
+            AllowedMethods:
+              - GET
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - ETag
+              - Content-Length
+              - Content-Type
+            MaxAge: 3000
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

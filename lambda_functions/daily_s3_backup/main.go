@@ -102,51 +102,59 @@ func handleRequest(ctx context.Context) (string, error) {
 	var uploadedKeys []string
 
 	// Process each month separately
-	for yearMonth, records := range recordsByMonth {
-		log.Printf("Processing %d records for month: %s", len(records), yearMonth)
+	for yearMonth, monthRecords := range recordsByMonth {
+		log.Printf("Processing %d records for month: %s", len(monthRecords), yearMonth)
 
-		// Sort records by checkInDate, then roomNumber
-		sortRecords(records)
+		// Group by room number within the month
+		recordsByRoom := groupRecordsByRoom(monthRecords)
 
-		// Get or create monthly CSV
-		s3Key := fmt.Sprintf("backups/%s/expired-guests.csv", yearMonth)
+		// Process each room separately
+		for roomNumber, records := range recordsByRoom {
+			log.Printf("Processing %d records for room %s in month %s", len(records), roomNumber, yearMonth)
 
-		// Download existing CSV if exists
-		existingRecords, err := downloadExistingCSV(ctx, s3Key)
-		if err != nil {
-			log.Printf("No existing CSV found for %s, will create new one", yearMonth)
-		} else {
-			log.Printf("Found existing CSV with %d records for %s", len(existingRecords), yearMonth)
+			// Sort records by checkInDate
+			sortRecords(records)
+
+			// Get or create room-specific CSV
+			s3Key := fmt.Sprintf("%s/%s-expired-guests.csv", yearMonth, roomNumber)
+
+			// Download existing CSV if exists
+			existingRecords, err := downloadExistingCSV(ctx, s3Key)
+			if err != nil {
+				log.Printf("No existing CSV found for room %s in %s, will create new one", roomNumber, yearMonth)
+			} else {
+				log.Printf("Found existing CSV with %d records for room %s in %s", len(existingRecords), roomNumber, yearMonth)
+			}
+
+			// Merge existing and new records
+			allRecords := append(existingRecords, records...)
+			sortRecords(allRecords)
+
+			// Generate CSV content
+			csvData, err := generateCSV(allRecords)
+			if err != nil {
+				return "", fmt.Errorf("failed to generate CSV for room %s in %s: %w", roomNumber, yearMonth, err)
+			}
+
+			// Upload to S3 (overwrite)
+			if err := uploadToS3Overwrite(ctx, s3Key, csvData); err != nil {
+				return "", fmt.Errorf("failed to upload CSV for room %s in %s: %w", roomNumber, yearMonth, err)
+			}
+
+			log.Printf("Successfully uploaded CSV to S3: %s (%d total records)", s3Key, len(allRecords))
+			uploadedKeys = append(uploadedKeys, s3Key)
+			totalProcessed += len(records)
 		}
-
-		// Merge existing and new records
-		allRecords := append(existingRecords, records...)
-		sortRecords(allRecords)
-
-		// Generate CSV content
-		csvData, err := generateCSV(allRecords)
-		if err != nil {
-			return "", fmt.Errorf("failed to generate CSV for %s: %w", yearMonth, err)
-		}
-
-		// Upload to S3 (overwrite)
-		if err := uploadToS3Overwrite(ctx, s3Key, csvData); err != nil {
-			return "", fmt.Errorf("failed to upload CSV for %s: %w", yearMonth, err)
-		}
-
-		log.Printf("Successfully uploaded CSV to S3: %s (%d total records)", s3Key, len(allRecords))
-		uploadedKeys = append(uploadedKeys, s3Key)
-		totalProcessed += len(records)
 	}
 
 	// Delete records from DynamoDB (only after all successful S3 uploads)
 	deleted, err := deleteRecordsFromDynamoDB(ctx, expiredRecords)
 	if err != nil {
-		return "", fmt.Errorf("failed to delete records from DynamoDB (CSVs backed up to %v): %w", uploadedKeys, err)
+		return "", fmt.Errorf("failed to delete records from DynamoDB (CSVs backed up to %d files): %w", len(uploadedKeys), err)
 	}
 
-	result := fmt.Sprintf("Successfully processed %d expired records across %d months. Deleted %d records from DynamoDB. Uploaded: %v",
-		totalProcessed, len(recordsByMonth), deleted, uploadedKeys)
+	result := fmt.Sprintf("Successfully processed %d expired records. Created/updated %d CSV files. Deleted %d records from DynamoDB.",
+		totalProcessed, len(uploadedKeys), deleted)
 	log.Println(result)
 	return result, nil
 }
@@ -216,6 +224,17 @@ func groupRecordsByMonth(records []GuestRecord) map[string][]GuestRecord {
 	return grouped
 }
 
+// groupRecordsByRoom groups records by their roomNumber
+func groupRecordsByRoom(records []GuestRecord) map[string][]GuestRecord {
+	grouped := make(map[string][]GuestRecord)
+
+	for _, record := range records {
+		grouped[record.RoomNumber] = append(grouped[record.RoomNumber], record)
+	}
+
+	return grouped
+}
+
 // extractYearMonth extracts YYYY-MM from a date string (YYYY-MM-DD)
 func extractYearMonth(dateStr string) string {
 	if len(dateStr) < 7 {
@@ -224,13 +243,10 @@ func extractYearMonth(dateStr string) string {
 	return dateStr[:7] // "2025-11-15" -> "2025-11"
 }
 
-// sortRecords sorts records by checkInDate (ascending), then roomNumber (ascending)
+// sortRecords sorts records by checkInDate (ascending)
 func sortRecords(records []GuestRecord) {
 	sort.Slice(records, func(i, j int) bool {
-		if records[i].CheckInDate != records[j].CheckInDate {
-			return records[i].CheckInDate < records[j].CheckInDate
-		}
-		return records[i].RoomNumber < records[j].RoomNumber
+		return records[i].CheckInDate < records[j].CheckInDate
 	})
 }
 
