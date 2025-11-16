@@ -111,30 +111,17 @@ jobs:
         run: |
           echo "=== Updating Twilio Stack with CloudFront URL ==="
 
-          # Twilio stackの現在のパラメータを取得
-          PARAMS=$(aws cloudformation describe-stacks \
-            --stack-name obw-twilio-functions \
-            --region ap-northeast-1 \
-            --query 'Stacks[0].Parameters' \
-            --output json)
-
-          # 必要なパラメータを抽出
-          OPENAI_API_KEY=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiApiKey") | .ParameterValue')
-          OPENAI_VECTOR_STORE_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiVectorStoreId") | .ParameterValue')
-          TWILIO_ACCOUNT_SID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TwilioAccountSid") | .ParameterValue')
-          TWILIO_AUTH_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TwilioAuthToken") | .ParameterValue')
-
-          # CloudFront URLとSecretでパラメータ更新
+          # CloudFront URLとSecretでパラメータ更新（GitHub Secretsから直接取得）
           aws cloudformation update-stack \
             --stack-name obw-twilio-functions \
             --region ap-northeast-1 \
             --use-previous-template \
             --capabilities CAPABILITY_IAM \
             --parameters \
-              ParameterKey=OpenAiApiKey,ParameterValue="${OPENAI_API_KEY}" \
-              ParameterKey=OpenAiVectorStoreId,ParameterValue="${OPENAI_VECTOR_STORE_ID}" \
-              ParameterKey=TwilioAccountSid,ParameterValue="${TWILIO_ACCOUNT_SID}" \
-              ParameterKey=TwilioAuthToken,ParameterValue="${TWILIO_AUTH_TOKEN}" \
+              ParameterKey=OpenAiApiKey,ParameterValue="${{ secrets.OPENAI_API_KEY }}" \
+              ParameterKey=OpenAiVectorStoreId,ParameterValue="${{ secrets.OPENAI_VECTOR_STORE_ID }}" \
+              ParameterKey=TwilioAccountSid,ParameterValue="${{ secrets.TWILIO_ACCOUNT_SID }}" \
+              ParameterKey=TwilioAuthToken,ParameterValue="${{ secrets.TWILIO_AUTH_TOKEN }}" \
               ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_cloudfront_urls.outputs.immediate_url }}" \
               ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
           || echo "No updates required for Twilio stack"
@@ -146,30 +133,17 @@ jobs:
         run: |
           echo "=== Updating ResponseApi Stack with CloudFront Secret ==="
 
-          # ResponseApi stackの現在のパラメータを取得
-          PARAMS=$(aws cloudformation describe-stacks \
-            --stack-name obw-responseapi-function \
-            --region ap-northeast-1 \
-            --query 'Stacks[0].Parameters' \
-            --output json)
-
-          # 必要なパラメータを抽出
-          OPENAI_API_KEY=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiApiKey") | .ParameterValue')
-          OPENAI_VECTOR_STORE_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="OpenAiVectorStoreId") | .ParameterValue')
-          TELEGRAM_BOT_TOKEN=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramBotToken") | .ParameterValue')
-          TELEGRAM_CHAT_ID=$(echo $PARAMS | jq -r '.[] | select(.ParameterKey=="TelegramChatId") | .ParameterValue')
-
-          # CloudFront Secretでパラメータ更新
+          # CloudFront Secretでパラメータ更新（GitHub Secretsから直接取得）
           aws cloudformation update-stack \
             --stack-name obw-responseapi-function \
             --region ap-northeast-1 \
             --use-previous-template \
             --capabilities CAPABILITY_IAM \
             --parameters \
-              ParameterKey=OpenAiApiKey,ParameterValue="${OPENAI_API_KEY}" \
-              ParameterKey=OpenAiVectorStoreId,ParameterValue="${OPENAI_VECTOR_STORE_ID}" \
-              ParameterKey=TelegramBotToken,ParameterValue="${TELEGRAM_BOT_TOKEN}" \
-              ParameterKey=TelegramChatId,ParameterValue="${TELEGRAM_CHAT_ID}" \
+              ParameterKey=OpenAiApiKey,ParameterValue="${{ secrets.OPENAI_API_KEY }}" \
+              ParameterKey=OpenAiVectorStoreId,ParameterValue="${{ secrets.OPENAI_VECTOR_STORE_ID }}" \
+              ParameterKey=TelegramBotToken,ParameterValue="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+              ParameterKey=TelegramChatId,ParameterValue="${{ secrets.TELEGRAM_CHAT_ID }}" \
               ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
           || echo "No updates required for ResponseApi stack"
 
