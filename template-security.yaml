@@ -1,0 +1,280 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFront + WAF security layer for public Lambda Function URLs"
+
+Parameters:
+  ImmediateResponseFunctionUrl:
+    Type: String
+    Description: "Full Function URL for ImmediateResponse Lambda (e.g., https://xxx.lambda-url.ap-northeast-1.on.aws/)"
+    Default: ""
+
+  ResponseApiFunctionUrl:
+    Type: String
+    Description: "Full Function URL for ResponseApi Lambda (e.g., https://yyy.lambda-url.ap-northeast-1.on.aws/)"
+    Default: ""
+
+  OriginCustomHeaderSecret:
+    Type: String
+    Description: "Secret value for X-CloudFront-Secret header (use AWS Secrets Manager in production)"
+    Default: "CHANGE_ME_IN_PRODUCTION"
+    NoEcho: true
+
+Conditions:
+  HasImmediateResponseUrl:
+    !Not [!Equals [!Ref ImmediateResponseFunctionUrl, ""]]
+  HasResponseApiUrl: !Not [!Equals [!Ref ResponseApiFunctionUrl, ""]]
+
+Resources:
+  # WAF WebACL (必ずus-east-1リージョンで作成 - CloudFront用)
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: obw-cloudfront-waf
+      Scope: CLOUDFRONT
+      Description: "WAF for OBW Lambda Function URLs via CloudFront"
+      DefaultAction:
+        Allow: {}
+      Rules:
+        # AWSマネージドルール: 共通脆弱性対策
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesCommonRuleSetMetric
+
+        # AWSマネージドルール: 既知の不正IPアドレス
+        - Name: AWSManagedRulesAmazonIpReputationList
+          Priority: 2
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesAmazonIpReputationListMetric
+
+        # Rate limiting: 同一IPから5分間に1000リクエスト以上でブロック
+        - Name: RateLimitRule
+          Priority: 3
+          Statement:
+            RateBasedStatement:
+              Limit: 1000
+              AggregateKeyType: IP
+          Action:
+            Block: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RateLimitRuleMetric
+
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: obw-cloudfront-waf
+
+  # CloudFront Distribution for ImmediateResponse
+  ImmediateResponseDistribution:
+    Condition: HasImmediateResponseUrl
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: "CloudFront distribution for ImmediateResponse Lambda"
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_200 # 米国、欧州、アジア、中東、アフリカ
+
+        Origins:
+          - Id: ImmediateResponseLambdaOrigin
+            # Function URLからhttps://を除去してドメインだけ取得
+            DomainName:
+              !Select [2, !Split ["/", !Ref ImmediateResponseFunctionUrl]]
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            OriginCustomHeaders:
+              - HeaderName: X-CloudFront-Secret
+                HeaderValue: !Ref OriginCustomHeaderSecret
+
+        DefaultCacheBehavior:
+          TargetOriginId: ImmediateResponseLambdaOrigin
+          ViewerProtocolPolicy: https-only
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled (マネージドポリシー)
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader (マネージドポリシー)
+          Compress: true
+
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+        WebACLId: !GetAtt WebACL.Arn
+
+        Logging:
+          Bucket: !GetAtt CloudFrontLogsBucket.DomainName
+          Prefix: immediate-response/
+          IncludeCookies: false
+
+  # CloudFront Distribution for ResponseApi
+  ResponseApiDistribution:
+    Condition: HasResponseApiUrl
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: "CloudFront distribution for ResponseApi Lambda"
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_200
+
+        Origins:
+          - Id: ResponseApiLambdaOrigin
+            DomainName: !Select [2, !Split ["/", !Ref ResponseApiFunctionUrl]]
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            OriginCustomHeaders:
+              - HeaderName: X-CloudFront-Secret
+                HeaderValue: !Ref OriginCustomHeaderSecret
+
+        DefaultCacheBehavior:
+          TargetOriginId: ResponseApiLambdaOrigin
+          ViewerProtocolPolicy: https-only
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader
+          Compress: true
+
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+        WebACLId: !GetAtt WebACL.Arn
+
+        Logging:
+          Bucket: !GetAtt CloudFrontLogsBucket.DomainName
+          Prefix: response-api/
+          IncludeCookies: false
+
+  # CloudFront アクセスログ用S3バケット
+  CloudFrontLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "obw-cloudfront-logs-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: 90
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+
+  # CloudFrontがログを書き込めるようにするバケットポリシー
+  CloudFrontLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudFrontLogsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AWSCloudFrontLogsWrite
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${CloudFrontLogsBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceAccount": !Ref AWS::AccountId
+
+Outputs:
+  WebACLArn:
+    Description: "WAF WebACL ARN"
+    Value: !GetAtt WebACL.Arn
+    Export:
+      Name: Obw-WebACLArn
+
+  WebACLId:
+    Description: "WAF WebACL ID"
+    Value: !GetAtt WebACL.Id
+    Export:
+      Name: Obw-WebACLId
+
+  ImmediateResponseCloudFrontDomain:
+    Condition: HasImmediateResponseUrl
+    Description: "CloudFront domain for ImmediateResponse (use this instead of direct Function URL)"
+    Value: !GetAtt ImmediateResponseDistribution.DomainName
+    Export:
+      Name: Obw-ImmediateResponseCloudFrontDomain
+
+  ImmediateResponseCloudFrontUrl:
+    Condition: HasImmediateResponseUrl
+    Description: "Full HTTPS URL for ImmediateResponse via CloudFront"
+    Value: !Sub "https://${ImmediateResponseDistribution.DomainName}"
+    Export:
+      Name: Obw-ImmediateResponseCloudFrontUrl
+
+  ResponseApiCloudFrontDomain:
+    Condition: HasResponseApiUrl
+    Description: "CloudFront domain for ResponseApi (use this instead of direct Function URL)"
+    Value: !GetAtt ResponseApiDistribution.DomainName
+    Export:
+      Name: Obw-ResponseApiCloudFrontDomain
+
+  ResponseApiCloudFrontUrl:
+    Condition: HasResponseApiUrl
+    Description: "Full HTTPS URL for ResponseApi via CloudFront"
+    Value: !Sub "https://${ResponseApiDistribution.DomainName}"
+    Export:
+      Name: Obw-ResponseApiCloudFrontUrl
+
+  CloudFrontLogsBucketName:
+    Description: "S3 bucket for CloudFront access logs"
+    Value: !Ref CloudFrontLogsBucket
+    Export:
+      Name: Obw-CloudFrontLogsBucketName

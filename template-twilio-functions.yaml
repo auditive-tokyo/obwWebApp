@@ -30,6 +30,20 @@ Parameters:
     Default: ""
 
 Resources:
+  # CloudWatch Logs - ImmediateResponseFunction
+  ImmediateResponseFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-immediate-response-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - AiProcessingFunction
+  AiProcessingFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-ai-processing-function
+      RetentionInDays: 365
+
   # TwilioのLambda用レイヤー
   TwilioFunctionLayer:
     Type: AWS::Serverless::LayerVersion
@@ -50,6 +64,7 @@ Resources:
   # TwilioのLambda1
   ImmediateResponseFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ImmediateResponseFunctionLogGroup
     Properties:
       Layers:
         - !Ref TwilioFunctionLayer
@@ -83,6 +98,7 @@ Resources:
   # TwilioのLambda2
   AiProcessingFunction:
     Type: AWS::Serverless::Function
+    DependsOn: AiProcessingFunctionLogGroup
     Properties:
       Layers:
         - !Ref TwilioFunctionLayer

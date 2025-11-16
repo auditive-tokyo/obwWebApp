@@ -6,6 +6,8 @@ type OptionalUserInfo = {
   representativeEmail?: string;
   representativePhone?: string;
   currentLocation?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
 };
 
 export async function fetchAIResponseStream(

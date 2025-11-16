@@ -26,4 +26,6 @@ export type RoomProps = {
   representativeEmail?: string;
   representativePhone?: string;
   currentLocation?: string;
+  checkInDate?: Date | null;
+  checkOutDate?: Date | null;
 };

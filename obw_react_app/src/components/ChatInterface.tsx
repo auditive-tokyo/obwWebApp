@@ -19,6 +19,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   representativeEmail,
   representativePhone,
   currentLocation,
+  checkInDate,
+  checkOutDate,
   messages, 
   setMessages, 
   nextId 
@@ -93,6 +95,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         representativeEmail,
         representativePhone,
         currentLocation,
+        ...(checkInDate ? { checkInDate: checkInDate.toISOString().split('T')[0] } : {}),
+        ...(checkOutDate ? { checkOutDate: checkOutDate.toISOString().split('T')[0] } : {}),
       }
     );
   }
