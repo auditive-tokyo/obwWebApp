@@ -94,7 +94,6 @@ Resources:
         AllowOrigins:
           - http://localhost:5173 # TODO: テスト終わったら削除
           - https://app.osakabaywheel.com
-          - https://*.cloudfront.net
         AllowHeaders:
           - content-type
         AllowMethods:
