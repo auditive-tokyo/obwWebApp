@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: ResponseAPI Lambda functions for obwWebApp
 
@@ -65,7 +65,7 @@ Resources:
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
@@ -94,6 +94,7 @@ Resources:
         AllowOrigins:
           - http://localhost:5173 # TODO: テスト終わったら削除
           - https://app.osakabaywheel.com
+          - https://*.cloudfront.net
         AllowHeaders:
           - content-type
         AllowMethods:
@@ -118,14 +119,14 @@ Resources:
           TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
           TELEGRAM_CHAT_ID: !Ref TelegramChatId
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
                 - logs:PutLogEvents
-              Resource: '*'
+              Resource: "*"
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
