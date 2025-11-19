@@ -58,7 +58,8 @@ jobs:
 
       - name: SAM Deploy
         env:
-          SENDGRID_API_KEY_FROM_SECRET: ${{ secrets.SENDGRID_API_KEY }}
+          SMTP_USER_FROM_SECRET: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD_FROM_SECRET: ${{ secrets.SMTP_PASSWORD }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
@@ -67,7 +68,8 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
-              SendGridApiKey="$SENDGRID_API_KEY_FROM_SECRET" \
+              SmtpUser="$SMTP_USER_FROM_SECRET" \
+              SmtpPassword="$SMTP_PASSWORD_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
       - name: Wait for Lambda exports (Function ARNs)

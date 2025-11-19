@@ -3,9 +3,13 @@ Transform: AWS::Serverless-2016-10-31
 Description: AppSync Lambda functions for obwWebApp
 
 Parameters:
-  SendGridApiKey:
+  SmtpUser:
     Type: String
-    Description: "SendGrid API Key"
+    Description: "Zoho SMTP User (email address)"
+    NoEcho: true
+  SmtpPassword:
+    Type: String
+    Description: "Zoho SMTP Password"
     NoEcho: true
 
 Resources:
@@ -125,7 +129,8 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
-          SENDGRID_API_KEY: !Ref SendGridApiKey
+          SMTP_USER: !Ref SmtpUser
+          SMTP_PASSWORD: !Ref SmtpPassword
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName
@@ -192,9 +197,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
-          SENDGRID_API_KEY: !Ref SendGridApiKey
+          SMTP_USER: !Ref SmtpUser
+          SMTP_PASSWORD: !Ref SmtpPassword
           APP_BASE_URL: "https://app.osakabaywheel.com"
-          MAIL_FROM: "osakabaywheel4224@gmail.com"
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName

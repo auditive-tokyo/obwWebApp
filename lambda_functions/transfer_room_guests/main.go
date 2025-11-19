@@ -1,16 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
+	"net"
+	"net/smtp"
 	"os"
 	"time"
 
@@ -70,30 +70,37 @@ type GuestRecord struct {
 }
 
 var (
-	dynamoClient   *dynamodb.Client
-	snsClient      *sns.Client
-	tableName      string
-	sendGridAPIKey string
-	appBaseURL     string
-	mailFrom       string
+	dynamoClient *dynamodb.Client
+	snsClient    *sns.Client
+	tableName    string
+	smtpServer   = "smtp.zoho.jp"
+	smtpPort     = 465
+	smtpUser     string
+	smtpPassword string
+	appBaseURL   string
 )
 
 func init() {
 	// 環境変数からテーブル名を取得
 	tableName = os.Getenv("TABLE_NAME")
 	if tableName == "" {
-		tableName = "obw-guest" // デフォルト値
+		log.Fatal("TABLE_NAME environment variable is required")
 	}
 
-	// SendGrid と通知用の環境変数を取得
-	sendGridAPIKey = os.Getenv("SENDGRID_API_KEY")
+	// Zoho SMTP と通知用の環境変数を取得
+	smtpUser = os.Getenv("SMTP_USER")
+	if smtpUser == "" {
+		log.Fatal("SMTP_USER environment variable is required")
+	}
+
+	smtpPassword = os.Getenv("SMTP_PASSWORD")
+	if smtpPassword == "" {
+		log.Fatal("SMTP_PASSWORD environment variable is required")
+	}
+
 	appBaseURL = os.Getenv("APP_BASE_URL")
 	if appBaseURL == "" {
 		appBaseURL = "https://app.osakabaywheel.com"
-	}
-	mailFrom = os.Getenv("MAIL_FROM")
-	if mailFrom == "" {
-		mailFrom = "osakabaywheel4224@gmail.com"
 	}
 
 	// AWS SDK v2 の初期化
@@ -110,7 +117,7 @@ func init() {
 // Lambda ハンドラー
 func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult, error) {
 	input := event.Arguments.Input
-	
+
 	if len(input.BookingIDs) > 0 {
 		log.Printf("🔄 部屋移動開始: %s → %s (bookingIds: %v)", input.OldRoomNumber, input.NewRoomNumber, input.BookingIDs)
 	} else {
@@ -226,10 +233,7 @@ func transferGuestsWithTransaction(ctx context.Context, guests []GuestRecord, ne
 	const maxGuestsPerBatch = 50
 
 	for i := 0; i < len(guests); i += maxGuestsPerBatch {
-		end := i + maxGuestsPerBatch
-		if end > len(guests) {
-			end = len(guests)
-		}
+		end := min(i+maxGuestsPerBatch, len(guests))
 
 		batch := guests[i:end]
 		err := transferBatch(ctx, batch, newRoomNumber)
@@ -342,82 +346,99 @@ func hashToken(token string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// SendGrid経由でメール送信
-func sendEmail(ctx context.Context, toEmail, guestName, roomNumber, guestID, token, nationality string) error {
-	if sendGridAPIKey == "" {
-		return fmt.Errorf("SENDGRID_API_KEY is not configured")
+// Zoho SMTP経由でメール送信
+func sendEmail(_ context.Context, toEmail, guestName, roomNumber, guestID, token, nationality string) error {
+	if smtpUser == "" || smtpPassword == "" {
+		return fmt.Errorf("SMTP_USER or SMTP_PASSWORD is not configured")
 	}
 
 	verifyURL := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s", appBaseURL, roomNumber, guestID, token)
 
 	// 国籍に応じてメッセージを切り替え
-	var subject, htmlContent string
+	var subject, textBody string
 	if nationality == "Japan" {
 		subject = "部屋移動のお知らせ"
-		htmlContent = fmt.Sprintf(`
-			<h2>部屋移動のお知らせ</h2>
-			<p>%s 様</p>
-			<p>お部屋が <strong>%s</strong> に変更されました。</p>
-			<p>新しいお部屋でのアクセスを有効にするため、以下のリンクをクリックしてください：</p>
-			<p><a href="%s">アクセスを確認する</a></p>
-		`, guestName, roomNumber, verifyURL)
+		textBody = fmt.Sprintf(
+			"【部屋移動のお知らせ】\n\n"+
+				"%s 様\n\n"+
+				"お部屋が %s に変更されました。\n\n"+
+				"新しいお部屋でのアクセスを有効にするため、以下のリンクをクリックしてください：\n"+
+				"%s\n",
+			guestName, roomNumber, verifyURL)
 	} else {
 		subject = "Room Transfer Notification"
-		htmlContent = fmt.Sprintf(`
-			<h2>Room Transfer Notice</h2>
-			<p>Dear %s,</p>
-			<p>Your room has been changed to <strong>%s</strong>.</p>
-			<p>Please click the link below to activate access for your new room:</p>
-			<p><a href="%s">Verify Access</a></p>
-		`, guestName, roomNumber, verifyURL)
+		textBody = fmt.Sprintf(
+			"【Room Transfer Notice】\n\n"+
+				"Dear %s,\n\n"+
+				"Your room has been changed to %s.\n\n"+
+				"Please click the link below to activate access for your new room:\n"+
+				"%s\n",
+			guestName, roomNumber, verifyURL)
 	}
 
-	// SendGrid API v3 のペイロード
-	payload := map[string]interface{}{
-		"personalizations": []map[string]interface{}{
-			{
-				"to": []map[string]string{
-					{"email": toEmail},
-				},
-				"subject": subject,
-			},
-		},
-		"from": map[string]string{
-			"email": mailFrom,
-			"name":  "Osaka Bay Wheel",
-		},
-		"content": []map[string]string{
-			{
-				"type": "text/html",
-				"value": htmlContent,
-			},
-		},
+	// RFC 5322 format email
+	from := smtpUser
+	to := toEmail
+
+	msg := []byte("From: " + from + "\r\n" +
+		"To: " + to + "\r\n" +
+		"Subject: " + subject + "\r\n" +
+		"Content-Type: text/plain; charset=UTF-8\r\n" +
+		"\r\n" +
+		textBody + "\r\n")
+
+	// Connect to SMTP server with TLS
+	serverAddr := fmt.Sprintf("%s:%d", smtpServer, smtpPort)
+
+	// Create TLS connection
+	tlsConfig := &tls.Config{
+		ServerName: smtpServer,
 	}
 
-	jsonData, err := json.Marshal(payload)
+	conn, err := tls.Dial("tcp", serverAddr, tlsConfig)
 	if err != nil {
-		return fmt.Errorf("failed to marshal email payload: %w", err)
+		return fmt.Errorf("TLS dial error: %w", err)
 	}
+	defer conn.Close()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.sendgrid.com/v3/mail/send", bytes.NewBuffer(jsonData))
+	// Create SMTP client
+	host, _, _ := net.SplitHostPort(serverAddr)
+	client, err := smtp.NewClient(conn, host)
 	if err != nil {
-		return fmt.Errorf("failed to create email request: %w", err)
+		return fmt.Errorf("SMTP client error: %w", err)
+	}
+	defer client.Close()
+
+	// Authenticate
+	auth := smtp.PlainAuth("", smtpUser, smtpPassword, smtpServer)
+	if err = client.Auth(auth); err != nil {
+		return fmt.Errorf("SMTP auth error: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+sendGridAPIKey)
-	req.Header.Set("Content-Type", "application/json")
+	// Send email
+	if err = client.Mail(from); err != nil {
+		return fmt.Errorf("MAIL FROM error: %w", err)
+	}
+	if err = client.Rcpt(to); err != nil {
+		return fmt.Errorf("RCPT TO error: %w", err)
+	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	w, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("sendgrid returned status %d", resp.StatusCode)
+		return fmt.Errorf("DATA error: %w", err)
 	}
 
+	_, err = w.Write(msg)
+	if err != nil {
+		return fmt.Errorf("write error: %w", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		return fmt.Errorf("close error: %w", err)
+	}
+
+	client.Quit()
 	log.Printf("✅ Email sent to %s", toEmail)
 	return nil
 }
