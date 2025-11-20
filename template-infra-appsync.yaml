@@ -166,6 +166,7 @@ Resources:
           createdAt: AWSDateTime
           updatedAt: AWSDateTime
           currentLocation: String
+          pushSubscription: String
         }
 
         input CreateGuestInput {
@@ -203,6 +204,7 @@ Resources:
           isFamilyMember: Boolean
           currentLocation: String
           sessionTokenExpiresAt: Int
+          pushSubscription: String
         }
 
         input RequestAccessInput {
@@ -504,6 +506,13 @@ Resources:
             $util.qr($names.put("#currentLocation","currentLocation"))
             $util.qr($values.put(":currentLocation", { "S": "$ctx.args.input.currentLocation" }))
           #end
+        #end
+
+        ## pushSubscription の処理
+        #if(!$util.isNullOrEmpty($ctx.args.input.pushSubscription))
+          #set($setExp = $setExp + ", #pushSubscription = :pushSubscription")
+          $util.qr($names.put("#pushSubscription","pushSubscription"))
+          $util.qr($values.put(":pushSubscription", { "S": "$ctx.args.input.pushSubscription" }))
         #end
 
         ## 最終的な UpdateExpression を構築
