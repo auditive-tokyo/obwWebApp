@@ -4,10 +4,11 @@ on:
   push:
     branches: [main, feature/*]
     paths:
-      - 'lambda_functions/notify_admin/**'
-      - 'lambda_functions/sync_family_token_expiration/**'
-      - '.github/workflows/dynamostreams-actions-deploy.yml'
-      - 'template-dynamostreams-actions.yaml'
+      - "lambda_functions/notify_admin/**"
+      - "lambda_functions/sync_family_token_expiration/**"
+      - "lambda_functions/change_session_expiry/**"
+      - ".github/workflows/dynamostreams-actions-deploy.yml"
+      - "template-dynamostreams-actions.yaml"
   workflow_dispatch:
 
 jobs:
@@ -30,7 +31,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
