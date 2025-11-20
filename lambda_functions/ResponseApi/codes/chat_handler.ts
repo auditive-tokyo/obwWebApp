@@ -13,6 +13,8 @@ interface UserInfo {
     representativeEmail?: string;
     representativePhone?: string;
     currentLocation?: string;
+    checkInDate?: string;
+    checkOutDate?: string;
 }
 
 interface RequestBody {
@@ -33,6 +35,21 @@ declare const awslambda: {
 export const handler = awslambda.streamifyResponse(
     async (event: LambdaFunctionURLEvent, responseStream: { write: (chunk: string) => void; end: () => void }) => {
         try {
+            // CloudFront Secret検証（セキュリティ）
+            const expectedSecret = process.env.CLOUDFRONT_SECRET;
+            if (expectedSecret) {
+                const receivedSecret = event.headers?.['x-cloudfront-secret'];
+                if (receivedSecret !== expectedSecret) {
+                    console.warn('⚠️ CloudFront Secret検証失敗 - 不正なアクセス試行');
+                    responseStream.write(JSON.stringify({ 
+                        error: 'Forbidden',
+                        message: 'Access denied. Invalid CloudFront secret.'
+                    }));
+                    responseStream.end();
+                    return;
+                }
+            }
+
             if (!event.body) {
                 responseStream.write(JSON.stringify({ error: 'Request body is required' }));
                 responseStream.end();
@@ -50,6 +67,8 @@ export const handler = awslambda.streamifyResponse(
             const representativeEmail = userInfo.representativeEmail || null;
             const representativePhone = userInfo.representativePhone || null;
             const currentLocation = userInfo.currentLocation || undefined;
+            const checkInDate = userInfo.checkInDate || undefined;
+            const checkOutDate = userInfo.checkOutDate || undefined;
 
             if (!userMessage) {
                 responseStream.write(JSON.stringify({ error: 'Message is required' }));
@@ -61,6 +80,8 @@ export const handler = awslambda.streamifyResponse(
             console.info("👤 ユーザーメッセージ:", userMessage);
             console.info("🧾 代表者情報:", { representativeName, representativeEmail, representativePhone });
             console.info("📍 位置情報:", currentLocation || 'なし');
+            console.info("📅 チェックイン日:", checkInDate || '未設定');
+            console.info("📅 チェックアウト日:", checkOutDate || '未設定');
 
             // Telegram Lambda呼び出しの重複を防ぐフラグ
             let telegramNotificationSent = false;
@@ -74,7 +95,9 @@ export const handler = awslambda.streamifyResponse(
                 representativeName,
                 representativeEmail,
                 representativePhone,
-                currentLocation
+                currentLocation,
+                checkInDate,
+                checkOutDate
             })) {
                 if (DEBUG) {
                     console.debug("OpenAI chunk:", chunk);

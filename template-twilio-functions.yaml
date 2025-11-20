@@ -28,8 +28,27 @@ Parameters:
     Type: String
     Description: "Function URL for Immediate Response, provided from Outputs"
     Default: ""
+  CloudFrontSecret:
+    Type: String
+    Description: "Secret for CloudFront origin custom header verification"
+    NoEcho: true
+    Default: ""
 
 Resources:
+  # CloudWatch Logs - ImmediateResponseFunction
+  ImmediateResponseFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-immediate-response-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - AiProcessingFunction
+  AiProcessingFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-ai-processing-function
+      RetentionInDays: 365
+
   # TwilioのLambda用レイヤー
   TwilioFunctionLayer:
     Type: AWS::Serverless::LayerVersion
@@ -50,6 +69,7 @@ Resources:
   # TwilioのLambda1
   ImmediateResponseFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ImmediateResponseFunctionLogGroup
     Properties:
       Layers:
         - !Ref TwilioFunctionLayer
@@ -74,6 +94,7 @@ Resources:
         Variables:
           AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
           GUEST_TABLE_NAME: !ImportValue Obw-GuestTableName
+          CLOUDFRONT_SECRET: !Ref CloudFrontSecret
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref AiProcessingLambdaFunctionName
@@ -83,6 +104,7 @@ Resources:
   # TwilioのLambda2
   AiProcessingFunction:
     Type: AWS::Serverless::Function
+    DependsOn: AiProcessingFunctionLogGroup
     Properties:
       Layers:
         - !Ref TwilioFunctionLayer

@@ -1,10 +1,68 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Daily actions for obwWebApp
 
 Resources:
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: obw-db-backups
+      # KMS暗号化を有効化（AWS managed key使用）
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              # KMSMasterKeyIDを指定しない = AWS managed key (aws/s3) を使用
+            BucketKeyEnabled: true # S3 Bucket Keyでコスト削減
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteAfter3Years
+            Status: Enabled
+            ExpirationInDays: 1095
+          - Id: ArchiveOldBackups
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - http://localhost:5173 # 開発環境
+              - https://app.osakabaywheel.com # 本番環境
+            AllowedMethods:
+              - GET
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - ETag
+              - Content-Length
+              - Content-Type
+            MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # CloudWatch Logs - DailyRecordsCleanupFunction
+  DailyRecordsCleanupFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-daily-records-cleanup
+      RetentionInDays: 365
+
+  # CloudWatch Logs - DailyS3BackupFunction
+  DailyS3BackupFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-daily-s3-backup
+      RetentionInDays: 365
+
   DailyRecordsCleanupFunction:
     Type: AWS::Serverless::Function
+    DependsOn: DailyRecordsCleanupFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -24,20 +82,67 @@ Resources:
         MidnightJSTTrigger:
           Type: Schedule
           Properties:
-            Schedule: cron(5 15 * * ? *)   # 00:05 JST (UTC+9)
+            Schedule: cron(5 15 * * ? *) # 00:05 JST (UTC+9)
             Name: obw-daily-records-cleanup-midnight
             Description: Run guest cleanup at 00:05 JST
             Enabled: true
         NoonJSTTrigger:
           Type: Schedule
           Properties:
-            Schedule: cron(5 3 * * ? *)    # 12:05 JST (UTC+9)
+            Schedule: cron(5 3 * * ? *) # 12:05 JST (UTC+9)
             Name: obw-daily-records-cleanup-noon
             Description: Run guest cleanup at 12:05 JST
             Enabled: true
 
+  DailyS3BackupFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: DailyS3BackupFunctionLogGroup
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: obw-daily-s3-backup
+      MemorySize: 256
+      CodeUri: lambda_functions/daily_s3_backup/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Timeout: 300
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue Obw-GuestTableName
+          BACKUP_BUCKET: !Ref BackupBucket
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue Obw-GuestTableName
+        - S3CrudPolicy:
+            BucketName: !Ref BackupBucket
+      Events:
+        MidnightJSTTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: cron(5 15 * * ? *) # 00:05 JST (UTC+9)
+            Name: obw-daily-s3-backup-midnight
+            Description: Run S3 backup at 00:05 JST
+            Enabled: true
+        NoonJSTTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: cron(5 3 * * ? *) # 12:05 JST (UTC+9)
+            Name: obw-daily-s3-backup-noon
+            Description: Run S3 backup at 12:05 JST
+            Enabled: true
+
 Outputs:
+  BackupBucketName:
+    Value: !Ref BackupBucket
+    Export:
+      Name: BackupBucketName
+
   DailyRecordsCleanupFunctionArn:
     Value: !GetAtt DailyRecordsCleanupFunction.Arn
     Export:
       Name: DailyRecordsCleanupFunctionArn
+
+  DailyS3BackupFunctionArn:
+    Value: !GetAtt DailyS3BackupFunction.Arn
+    Export:
+      Name: DailyS3BackupFunctionArn

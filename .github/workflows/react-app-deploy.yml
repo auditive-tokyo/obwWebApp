@@ -60,12 +60,13 @@ jobs:
           echo "VITE_COGNITO_REDIRECT_SIGNIN=${CALLBACK_URL}" >> $GITHUB_ENV
           echo "VITE_COGNITO_REDIRECT_SIGNOUT=${LOGOUT_URL}" >> $GITHUB_ENV
 
-          # ResponseAPI スタックからの変数取得
+          # Security スタックからCloudFront URL取得
           aws cloudformation describe-stacks \
-            --stack-name obw-responseapi-function \
+            --stack-name obw-security \
+            --region us-east-1 \
             --query "Stacks[0].Outputs" \
-            --output json > responseapi_outputs.json
-          echo "VITE_CHAT_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="ChatFunctionUrl") | .OutputValue // empty' responseapi_outputs.json)" >> $GITHUB_ENV
+            --output json > security_outputs.json
+          echo "VITE_CHAT_LAMBDA_URL=$(jq -r '.[] | select(.OutputKey=="ResponseApiCloudFrontUrl") | .OutputValue // empty' security_outputs.json)" >> $GITHUB_ENV
 
       - name: Create .env file
         run: |

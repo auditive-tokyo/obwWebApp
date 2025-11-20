@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: ResponseAPI Lambda functions for obwWebApp
 
@@ -18,8 +18,27 @@ Parameters:
     Type: String
     Description: "Telegram Chat ID for notifications"
     NoEcho: true
+  CloudFrontSecret:
+    Type: String
+    Description: "Secret for CloudFront origin custom header verification"
+    NoEcho: true
+    Default: ""
 
 Resources:
+  # CloudWatch Logs - ResponseApiFunction
+  ResponseApiFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-response-api-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - TelegramNotifierFunction
+  TelegramNotifierFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-telegram-notifier-function
+      RetentionInDays: 365
+
   LayerForResponseAPI:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -35,6 +54,7 @@ Resources:
 
   ResponseApiFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ResponseApiFunctionLogGroup
     Properties:
       FunctionName: obw-response-api-function
       CodeUri: lambda_functions/ResponseApi/
@@ -49,8 +69,9 @@ Resources:
           OPENAI_API_KEY: !Ref OpenAiApiKey
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
+          CLOUDFRONT_SECRET: !Ref CloudFrontSecret
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
@@ -76,18 +97,14 @@ Resources:
       AuthType: NONE
       InvokeMode: RESPONSE_STREAM
       Cors:
-        AllowOrigins:
-          - http://localhost:5173 # TODO: テスト終わったら削除
-          - https://app.osakabaywheel.com
-        AllowHeaders:
-          - content-type
-        AllowMethods:
-          - POST
-        AllowCredentials: false
+        AllowOrigins: ["*"]
+        AllowMethods: ["POST"]
+        AllowHeaders: ["content-type"]
         MaxAge: 300
 
   TelegramNotifierFunction:
     Type: AWS::Serverless::Function
+    DependsOn: TelegramNotifierFunctionLogGroup
     Properties:
       FunctionName: obw-telegram-notifier-function
       CodeUri: lambda_functions/SummarizeInquiry/
@@ -102,14 +119,14 @@ Resources:
           TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
           TELEGRAM_CHAT_ID: !Ref TelegramChatId
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
                 - logs:PutLogEvents
-              Resource: '*'
+              Resource: "*"
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

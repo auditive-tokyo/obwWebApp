@@ -1,16 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
+	"net"
+	"net/smtp"
 	"os"
 	"strconv"
 	"time"
@@ -28,8 +27,10 @@ var (
 	snsClient    *sns.Client
 	tableName    string
 	appBaseURL   = "https://app.osakabaywheel.com"
-	mailFrom     = "osakabaywheel4224@gmail.com"
-	sendGridKey  string
+	smtpServer   = "smtp.zoho.jp"
+	smtpPort     = 465
+	smtpUser     string
+	smtpPassword string
 )
 
 type RequestAccessInput struct {
@@ -62,7 +63,19 @@ func init() {
 	snsClient = sns.NewFromConfig(cfg)
 
 	tableName = os.Getenv("TABLE_NAME")
-	sendGridKey = os.Getenv("SENDGRID_API_KEY")
+	if tableName == "" {
+		panic("TABLE_NAME environment variable is required")
+	}
+
+	smtpUser = os.Getenv("SMTP_USER")
+	if smtpUser == "" {
+		panic("SMTP_USER environment variable is required")
+	}
+
+	smtpPassword = os.Getenv("SMTP_PASSWORD")
+	if smtpPassword == "" {
+		panic("SMTP_PASSWORD environment variable is required")
+	}
 }
 
 // generateToken generates a URL-safe base64 encoded random token
@@ -99,50 +112,76 @@ func generateBookingID(length int) (string, error) {
 	return string(result), nil
 }
 
-// sendViaSendGrid sends email via SendGrid API
-func sendViaSendGrid(toEmail, subject, textBody string) error {
-	if sendGridKey == "" {
-		return fmt.Errorf("Missing SENDGRID_API_KEY env")
+// sendViaZoho sends email via Zoho SMTP server
+func sendViaZoho(toEmail, subject, textBody string) error {
+	if smtpUser == "" || smtpPassword == "" {
+		return fmt.Errorf("Missing SMTP_USER or SMTP_PASSWORD env")
 	}
 
-	payload := map[string]interface{}{
-		"personalizations": []map[string]interface{}{
-			{
-				"to":      []map[string]string{{"email": toEmail}},
-				"subject": subject,
-			},
-		},
-		"from": map[string]string{"email": mailFrom},
-		"content": []map[string]string{
-			{"type": "text/plain", "value": textBody},
-		},
+	// Build email message
+	from := smtpUser
+	to := toEmail
+
+	// RFC 5322 format email
+	msg := []byte("From: " + from + "\r\n" +
+		"To: " + to + "\r\n" +
+		"Subject: " + subject + "\r\n" +
+		"Content-Type: text/plain; charset=UTF-8\r\n" +
+		"\r\n" +
+		textBody + "\r\n")
+
+	// Connect to SMTP server with TLS
+	serverAddr := fmt.Sprintf("%s:%d", smtpServer, smtpPort)
+
+	// Create TLS connection
+	tlsConfig := &tls.Config{
+		ServerName: smtpServer,
 	}
 
-	data, err := json.Marshal(payload)
+	conn, err := tls.Dial("tcp", serverAddr, tlsConfig)
 	if err != nil {
-		return fmt.Errorf("json marshal error: %w", err)
+		return fmt.Errorf("TLS dial error: %w", err)
 	}
+	defer conn.Close()
 
-	req, err := http.NewRequest("POST", "https://api.sendgrid.com/v3/mail/send", bytes.NewBuffer(data))
+	// Create SMTP client
+	host, _, _ := net.SplitHostPort(serverAddr)
+	client, err := smtp.NewClient(conn, host)
 	if err != nil {
-		return fmt.Errorf("request creation error: %w", err)
+		return fmt.Errorf("SMTP client error: %w", err)
+	}
+	defer client.Close()
+
+	// Authenticate
+	auth := smtp.PlainAuth("", smtpUser, smtpPassword, smtpServer)
+	if err = client.Auth(auth); err != nil {
+		return fmt.Errorf("SMTP auth error: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+sendGridKey)
-	req.Header.Set("Content-Type", "application/json")
+	// Send email
+	if err = client.Mail(from); err != nil {
+		return fmt.Errorf("MAIL FROM error: %w", err)
+	}
+	if err = client.Rcpt(to); err != nil {
+		return fmt.Errorf("RCPT TO error: %w", err)
+	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	w, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("SendGrid URLError: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 202 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("SendGrid HTTPError %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("DATA error: %w", err)
 	}
 
+	_, err = w.Write(msg)
+	if err != nil {
+		return fmt.Errorf("Write error: %w", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		return fmt.Errorf("Close error: %w", err)
+	}
+
+	client.Quit()
 	return nil
 }
 
@@ -269,7 +308,7 @@ func HandleRequest(ctx context.Context, event Event) (Response, error) {
 				subject = "Osaka Bay Wheel ゲストアクセス"
 			}
 			textBody := buildEmailBody(lang, link)
-			if err := sendViaSendGrid(email, subject, textBody); err != nil {
+			if err := sendViaZoho(email, subject, textBody); err != nil {
 				return Response{Success: false, Error: fmt.Sprintf("Email send failed: %v", err)}, nil
 			}
 		}

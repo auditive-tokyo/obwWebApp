@@ -4,9 +4,10 @@ on:
   push:
     branches: [main, feature/*]
     paths:
-      - 'lambda_functions/daily_records_cleanup/**'
-      - '.github/workflows/daily-actions-deploy.yml'
-      - 'template-daily-actions.yaml'
+      - "lambda_functions/daily_records_cleanup/**"
+      - "lambda_functions/daily_s3_backup/**"
+      - ".github/workflows/daily-actions-deploy.yml"
+      - "template-daily-actions.yaml"
   workflow_dispatch:
 
 jobs:
@@ -29,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli

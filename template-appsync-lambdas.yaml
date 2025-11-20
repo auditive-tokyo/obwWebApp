@@ -2,17 +2,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: AppSync Lambda functions for obwWebApp
 
-Globals:
-  Function:
-    Timeout: 30
-    Runtime: python3.13
-    Architectures:
-      - x86_64
-
 Parameters:
-  SendGridApiKey:
+  SmtpUser:
     Type: String
-    Description: "SendGrid API Key"
+    Description: "Zoho SMTP User (email address)"
+    NoEcho: true
+  SmtpPassword:
+    Type: String
+    Description: "Zoho SMTP Password"
     NoEcho: true
 
 Resources:
@@ -20,7 +17,7 @@ Resources:
   PassportUploadBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "privacy-obw-id-upload"
+      BucketName: privacy-obw-id-upload
       # KMS暗号化を有効化（AWS managed key使用）
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -28,6 +25,18 @@ Resources:
               SSEAlgorithm: aws:kms
               # KMSMasterKeyIDを指定しない = AWS managed key (aws/s3) を使用
             BucketKeyEnabled: true  # S3 Bucket Keyでコスト削減
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteAfter3Years
+            Status: Enabled
+            ExpirationInDays: 1095
+          - Id: ArchiveOldBackups
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins:
@@ -42,10 +51,51 @@ Resources:
             ExposedHeaders:
               - ETag
             MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # CloudWatch Logs - GetPresignedUrlFunction
+  GetPresignedUrlFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-get-presigned-url-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - RequestAccessFunction
+  RequestAccessFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-request-access-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - VerifyAccessTokenFunction
+  VerifyAccessTokenFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-verify-access-token-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - AdminApproveGuestFunction
+  AdminApproveGuestFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-admin-approve-guest-function
+      RetentionInDays: 365
+
+  # CloudWatch Logs - TransferRoomGuestsFunction
+  TransferRoomGuestsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-transfer-room-guests-function
+      RetentionInDays: 365
 
   # 署名付きURL用Lambda
   GetPresignedUrlFunction:
     Type: AWS::Serverless::Function
+    DependsOn: GetPresignedUrlFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -66,6 +116,7 @@ Resources:
 
   RequestAccessFunction:
     Type: AWS::Serverless::Function
+    DependsOn: RequestAccessFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -78,7 +129,8 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
-          SENDGRID_API_KEY: !Ref SendGridApiKey
+          SMTP_USER: !Ref SmtpUser
+          SMTP_PASSWORD: !Ref SmtpPassword
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName
@@ -90,6 +142,7 @@ Resources:
 
   VerifyAccessTokenFunction:
     Type: AWS::Serverless::Function
+    DependsOn: VerifyAccessTokenFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -110,6 +163,7 @@ Resources:
 
   AdminApproveGuestFunction:
     Type: AWS::Serverless::Function
+    DependsOn: AdminApproveGuestFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -130,6 +184,7 @@ Resources:
 
   TransferRoomGuestsFunction:
     Type: AWS::Serverless::Function
+    DependsOn: TransferRoomGuestsFunctionLogGroup
     Metadata:
       BuildMethod: makefile
     Properties:
@@ -142,9 +197,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !ImportValue Obw-GuestTableName
-          SENDGRID_API_KEY: !Ref SendGridApiKey
+          SMTP_USER: !Ref SmtpUser
+          SMTP_PASSWORD: !Ref SmtpPassword
           APP_BASE_URL: "https://app.osakabaywheel.com"
-          MAIL_FROM: "osakabaywheel4224@gmail.com"
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName

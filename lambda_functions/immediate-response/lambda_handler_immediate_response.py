@@ -32,6 +32,25 @@ def is_valid_room_number(room_number):
 def lambda_handler(event, context):
     print(f"ImmediateResponse Lambda Event: {json.dumps(event)}")
 
+    # CloudFront Secret検証（セキュリティ）
+    expected_secret = os.environ.get('CLOUDFRONT_SECRET')
+    if expected_secret:
+        headers = event.get('headers', {})
+        # Lambda Function URLはヘッダー名を小文字に正規化する
+        received_secret = headers.get('x-cloudfront-secret')
+        if received_secret != expected_secret:
+            print('⚠️ CloudFront Secret検証失敗 - 不正なアクセス試行')
+            return {
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({
+                    'error': 'Forbidden',
+                    'message': 'Access denied. Invalid CloudFront secret.'
+                })
+            }
+
     # リクエストヘッダー全体をログに出力してOriginを確認
     if 'headers' in event:
         print(f"Request Headers: {json.dumps(event['headers'])}")
