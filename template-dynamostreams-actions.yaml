@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: DynamoDB Streams Lambda functions for obwWebApp
 
@@ -126,7 +126,7 @@ Resources:
       BuildMethod: makefile
     Properties:
       FunctionName: obw-change-session-expiry
-      CodeUri: lambda_functions/change_session_exiry/
+      CodeUri: lambda_functions/change_session_expiry/
       Handler: bootstrap
       Runtime: provided.al2023
       MemorySize: 256
