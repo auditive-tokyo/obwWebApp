@@ -37,7 +37,12 @@ export async function requestPushNotificationPermission(
     }
 
     // 4. Request notification permission
+    console.log('🔔 Requesting notification permission...');
+    console.log('Current permission status:', Notification.permission);
+    
     const permission = await Notification.requestPermission();
+    console.log('Permission result:', permission);
+    
     if (permission !== 'granted') {
       console.log('❌ Notification permission denied');
       return false;
