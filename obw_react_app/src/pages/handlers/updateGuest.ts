@@ -37,6 +37,7 @@ export async function updateGuest({
           isFamilyMember
           currentLocation
           sessionTokenExpiresAt
+          pushSubscription
           createdAt
           updatedAt
         }
@@ -62,6 +63,7 @@ export async function updateGuest({
         // isFamilyMember は Guest型に未定義
         currentLocation: guest.currentLocation || undefined,
         sessionTokenExpiresAt: guest.sessionTokenExpiresAt || undefined,
+        pushSubscription: guest.pushSubscription || undefined,
       }
     };
 

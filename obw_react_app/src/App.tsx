@@ -1,4 +1,5 @@
 import { matchPath, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import AdminAuth from './auth/AdminAuth'
 import AdminLogout from './auth/AdminLogout'
 import Auth from './auth/Auth'
@@ -25,6 +26,20 @@ function App() {
   const adminMatch = matchPath("/admin/:roomId/*", location.pathname);
   const adminRoomId = adminMatch?.params?.roomId;
   const isValidAdminRoom = adminRoomId && allowedRooms.includes(adminRoomId);
+
+  // Service Worker登録（プッシュ通知用）
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then(registration => {
+          console.log('✅ Service Worker registered:', registration.scope);
+        })
+        .catch(error => {
+          console.error('❌ Service Worker registration failed:', error);
+        });
+    }
+  }, []);
 
   return (
     <>

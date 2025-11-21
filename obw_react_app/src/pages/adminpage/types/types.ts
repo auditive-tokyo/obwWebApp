@@ -21,4 +21,5 @@ export type Guest = {
   passportImageUrl?: string;
   currentLocation?: string;
   sessionTokenExpiresAt?: number;  // Unix epoch (秒単位)
+  pushSubscription?: string;  // Web Push subscription (JSON string)
 };

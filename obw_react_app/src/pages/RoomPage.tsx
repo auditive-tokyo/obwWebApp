@@ -11,6 +11,8 @@ import { syncGeoAndResolveAddress } from './roompage/services/geolocation'
 import { dbg } from '@/utils/debugLogger'
 import { getMessage } from '@/i18n/messages'
 import SmsWelcomeModal from './roompage/components/SmsWelcomeModal'
+import { requestPushNotificationPermission } from '@/utils/pushNotifications'
+import { updateGuest as updateGuestHandler } from './handlers/updateGuest'
 
 export default function RoomPage() {
   const { roomId = '' } = useParams<{ roomId: string }>()
@@ -290,6 +292,32 @@ export default function RoomPage() {
   useEffect(() => {
     if (sessionValid) loadMyGuest()
   }, [sessionValid, loadMyGuest])
+
+  // プッシュ通知許可をリクエスト（セッション有効時のみ）
+  useEffect(() => {
+    const requestPush = async () => {
+      const gid = localStorage.getItem('guestId');
+      if (!sessionValid || !roomId || !gid) return;
+
+      // updateGuest用のラッパー関数
+      const updateGuestFn = async (params: { roomNumber: string; guestId: string; pushSubscription: string }) => {
+        await updateGuestHandler({
+          client,
+          guest: {
+            roomNumber: params.roomNumber,
+            guestId: params.guestId,
+            guestName: name || 'Guest',
+            approvalStatus: 'approved',
+            pushSubscription: params.pushSubscription,
+          },
+        });
+      };
+
+      await requestPushNotificationPermission(roomId, gid, updateGuestFn);
+    };
+
+    requestPush();
+  }, [sessionValid, roomId, client, name]);
 
 // 位置情報の同期（ワンショット）
 const handleSyncGeo = useCallback(async () => {
