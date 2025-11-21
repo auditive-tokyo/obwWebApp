@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/SherClockHolmes/webpush-go"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -67,17 +69,21 @@ type GuestRecord struct {
 	CreatedAt             *string `dynamodbav:"createdAt,omitempty"`
 	UpdatedAt             *string `dynamodbav:"updatedAt,omitempty"`
 	CurrentLocation       *string `dynamodbav:"currentLocation,omitempty"`
+	PushSubscription      *string `dynamodbav:"pushSubscription,omitempty"`
 }
 
 var (
-	dynamoClient *dynamodb.Client
-	snsClient    *sns.Client
-	tableName    string
-	smtpServer   = "smtp.zoho.jp"
-	smtpPort     = 465
-	smtpUser     string
-	smtpPassword string
-	appBaseURL   string
+	dynamoClient     *dynamodb.Client
+	snsClient        *sns.Client
+	tableName        string
+	smtpServer       = "smtp.zoho.jp"
+	smtpPort         = 465
+	smtpUser         string
+	smtpPassword     string
+	appBaseURL       string
+	vapidPublicKey   string
+	vapidPrivateKey  string
+	vapidSubject     string
 )
 
 func init() {
@@ -101,6 +107,14 @@ func init() {
 	appBaseURL = os.Getenv("APP_BASE_URL")
 	if appBaseURL == "" {
 		appBaseURL = "https://app.osakabaywheel.com"
+	}
+
+	// VAPID keys for Web Push (optional)
+	vapidPublicKey = os.Getenv("VAPID_PUBLIC_KEY")
+	vapidPrivateKey = os.Getenv("VAPID_PRIVATE_KEY")
+	vapidSubject = os.Getenv("VAPID_SUBJECT")
+	if vapidSubject == "" {
+		vapidSubject = "mailto:" + smtpUser
 	}
 
 	// AWS SDK v2 の初期化
@@ -482,7 +496,19 @@ func notifyRoomTransfer(ctx context.Context, guest GuestRecord, newRoomNumber, t
 		nationality = *guest.Nationality
 	}
 
-	// contactChannel が "sms" の場合は SMS で送信
+	// 1. Web Push送信を試みる（最優先）
+	if guest.PushSubscription != nil && *guest.PushSubscription != "" {
+		err := sendWebPush(ctx, *guest.PushSubscription, newRoomNumber, token, guest.GuestID, nationality)
+		if err != nil {
+			log.Printf("⚠️ Web Push failed for guest %s: %v", guest.GuestID, err)
+			// プッシュ失敗してもEmail/SMS送信を続行
+		} else {
+			log.Printf("✅ Web Push sent successfully to guest %s", guest.GuestID)
+			// プッシュ成功してもEmail/SMSも送信（バックアップ通知として）
+		}
+	}
+
+	// 2. contactChannel が "sms" の場合は SMS で送信
 	if guest.ContactChannel != nil && *guest.ContactChannel == "sms" {
 		if guest.Phone == nil || *guest.Phone == "" {
 			return fmt.Errorf("phone number is missing for SMS notification (guestId: %s)", guest.GuestID)
@@ -497,6 +523,66 @@ func notifyRoomTransfer(ctx context.Context, guest GuestRecord, newRoomNumber, t
 
 	// Email も Phone もない場合はエラー（通常は発生しないはず）
 	return fmt.Errorf("no contact method available for guest %s (guestId: %s) - both email and phone are missing", guest.GuestName, guest.GuestID)
+}
+
+// Web Push送信
+func sendWebPush(_ context.Context, subscriptionJSON, roomNumber, token, guestID, nationality string) error {
+	// VAPID鍵が設定されていない場合はスキップ
+	if vapidPublicKey == "" || vapidPrivateKey == "" {
+		return fmt.Errorf("VAPID keys not configured")
+	}
+
+	// サブスクリプションをパース
+	var subscription webpush.Subscription
+	if err := json.Unmarshal([]byte(subscriptionJSON), &subscription); err != nil {
+		return fmt.Errorf("failed to parse push subscription: %w", err)
+	}
+
+	// 通知メッセージを作成
+	verifyURL := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s", appBaseURL, roomNumber, guestID, token)
+
+	var title, body string
+	if nationality == "Japan" {
+		title = "部屋移動のお知らせ"
+		body = fmt.Sprintf("お部屋が %s に変更されました。タップして新しいお部屋のアクセスを有効にしてください。", roomNumber)
+	} else {
+		title = "Room Transfer Notification"
+		body = fmt.Sprintf("Your room has been changed to %s. Tap to activate access for your new room.", roomNumber)
+	}
+
+	// Push通知ペイロード
+	payload := map[string]interface{}{
+		"title": title,
+		"body":  body,
+		"data": map[string]string{
+			"url":        verifyURL,
+			"roomNumber": roomNumber,
+			"guestId":    guestID,
+		},
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal push payload: %w", err)
+	}
+
+	// Web Push送信
+	resp, err := webpush.SendNotification(payloadBytes, &subscription, &webpush.Options{
+		Subscriber:      vapidSubject,
+		VAPIDPublicKey:  vapidPublicKey,
+		VAPIDPrivateKey: vapidPrivateKey,
+		TTL:             86400, // 24時間有効
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send web push: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("web push returned status %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func main() {
