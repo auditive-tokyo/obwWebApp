@@ -501,6 +501,14 @@ func notifyRoomTransfer(ctx context.Context, guest GuestRecord, newRoomNumber, t
 		err := sendWebPush(ctx, *guest.PushSubscription, newRoomNumber, token, guest.GuestID, nationality)
 		if err != nil {
 			log.Printf("⚠️ Web Push failed for guest %s: %v", guest.GuestID, err)
+			
+			// 410 Gone エラーの場合は購読が無効なのでDynamoDBから削除
+			if err.Error() == "web push returned status 410" {
+				log.Printf("🗑️ Removing expired push subscription for guest %s", guest.GuestID)
+				if removeErr := removePushSubscription(ctx, newRoomNumber, guest.GuestID); removeErr != nil {
+					log.Printf("⚠️ Failed to remove push subscription: %v", removeErr)
+				}
+			}
 			// プッシュ失敗してもEmail/SMS送信を続行
 		} else {
 			log.Printf("✅ Web Push sent successfully to guest %s", guest.GuestID)
@@ -583,6 +591,19 @@ func sendWebPush(_ context.Context, subscriptionJSON, roomNumber, token, guestID
 	}
 
 	return nil
+}
+
+// 期限切れのプッシュ購読をDynamoDBから削除
+func removePushSubscription(ctx context.Context, roomNumber, guestID string) error {
+	_, err := dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"roomNumber": &types.AttributeValueMemberS{Value: roomNumber},
+			"guestId":    &types.AttributeValueMemberS{Value: guestID},
+		},
+		UpdateExpression: aws.String("REMOVE pushSubscription"),
+	})
+	return err
 }
 
 func main() {
