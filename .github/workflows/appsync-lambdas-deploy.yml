@@ -60,6 +60,8 @@ jobs:
         env:
           SMTP_USER_FROM_SECRET: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD_FROM_SECRET: ${{ secrets.SMTP_PASSWORD }}
+          VAPID_PUBLIC_KEY_FROM_SECRET: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY_FROM_SECRET: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
@@ -70,6 +72,8 @@ jobs:
             --parameter-overrides \
               SmtpUser="$SMTP_USER_FROM_SECRET" \
               SmtpPassword="$SMTP_PASSWORD_FROM_SECRET" \
+              VapidPublicKey="$VAPID_PUBLIC_KEY_FROM_SECRET" \
+              VapidPrivateKey="$VAPID_PRIVATE_KEY_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
       - name: Wait for Lambda exports (Function ARNs)

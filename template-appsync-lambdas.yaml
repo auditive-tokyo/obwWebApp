@@ -11,6 +11,14 @@ Parameters:
     Type: String
     Description: "Zoho SMTP Password"
     NoEcho: true
+  VapidPublicKey:
+    Type: String
+    Description: "VAPID Public Key for Web Push notifications"
+    NoEcho: false
+  VapidPrivateKey:
+    Type: String
+    Description: "VAPID Private Key for Web Push notifications"
+    NoEcho: true
 
 Resources:
   # S3バケットの作成
@@ -200,6 +208,8 @@ Resources:
           SMTP_USER: !Ref SmtpUser
           SMTP_PASSWORD: !Ref SmtpPassword
           APP_BASE_URL: "https://app.osakabaywheel.com"
+          VAPID_PUBLIC_KEY: !Ref VapidPublicKey
+          VAPID_PRIVATE_KEY: !Ref VapidPrivateKey
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !ImportValue Obw-GuestTableName
