@@ -326,8 +326,9 @@ export default function RoomPage() {
         
         // 自分のレコードが見つからない = 部屋移動済み
         if (!myGuest) {
-          alert(`お部屋が変更されました。\nEmailまたはSMSで送信されたリンクをご確認ください。`);
-          // ポーリング停止（無限ループ防止）
+          alert(getMessage('roomTransferAlert'));
+          // ページをリロード
+          window.location.reload();
           return;
         }
       } catch (error) {
