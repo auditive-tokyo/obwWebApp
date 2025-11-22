@@ -260,7 +260,7 @@ Resources:
 
         type Query {
           getGuest(roomNumber: String!, guestId: String!): Guest
-          listGuestsByRoom(roomNumber: String!): [Guest] @aws_cognito_user_pools
+          listGuestsByRoom(roomNumber: String!): [Guest] @aws_cognito_user_pools @aws_iam
           listGuestsByBooking(bookingId: String!): [Guest]
           listGuestsByApprovalStatus(approvalStatus: String!): [Guest] @aws_cognito_user_pools
         }
@@ -658,6 +658,7 @@ Resources:
                   - appsync:GraphQL
                 Resource:
                   - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/getGuest
+                  - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/listGuestsByRoom
                   - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Query/fields/listGuestsByBooking
                   - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/verifyAccessToken
                   - !Sub arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${AppSyncApi.ApiId}/types/Mutation/fields/getPresignedUrl
