@@ -111,7 +111,8 @@ type MessageKeys =
   | "save"
   | "bookingNotFound"
   | "dateUpdateFailed"
-  | "editLockedAfterApproval";
+  | "editLockedAfterApproval"
+  | "roomTransferAlert";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -226,6 +227,7 @@ type Messages = {
     bookingNotFound: string;
     dateUpdateFailed: string;
     editLockedAfterApproval: string;
+    roomTransferAlert: string;
   };
 };
 
@@ -369,6 +371,7 @@ const messages: Messages = {
     bookingNotFound: "予約情報が見つかりません",
     dateUpdateFailed: "日付の更新に失敗しました。再度お試しください。",
     editLockedAfterApproval: "承認申請後は変更不可",
+    roomTransferAlert: "お部屋が変更されました。\nEmailまたはSMSで送信されたリンクをご確認ください。",
   },
   en: {
     close: "Close",
@@ -508,6 +511,7 @@ const messages: Messages = {
     bookingNotFound: "Booking information not found",
     dateUpdateFailed: "Failed to update dates. Please try again.",
     editLockedAfterApproval: "Locked after approval request",
+    roomTransferAlert: "Your room has been changed.\nPlease check the link sent via Email or SMS.",
   },
 };
 

@@ -291,6 +291,81 @@ export default function RoomPage() {
     if (sessionValid) loadMyGuest()
   }, [sessionValid, loadMyGuest])
 
+  // 部屋変更を監視（ポーリング）
+  useEffect(() => {
+    if (!sessionValid || !roomId) return;
+
+    const gid = localStorage.getItem('guestId');
+    if (!gid) return;
+
+    // 初回の部屋番号を記録
+    const initialRoom = roomId;
+    let isChecking = false;
+    let hasAlerted = false;
+
+    const checkRoomTransfer = async () => {
+      // タブが非アクティブならスキップ
+      if (document.hidden) return;
+      // すでにアラート表示済みならスキップ
+      if (hasAlerted) return;
+      // 実行中ならスキップ（重複防止）
+      if (isChecking) return;
+      
+      isChecking = true;
+
+      try {
+        // guestIdから最新のゲスト情報を検索（部屋番号は使わない）
+        const query = `
+          query ListGuestsByRoom($roomNumber: String!) {
+            listGuestsByRoom(roomNumber: $roomNumber) {
+              roomNumber
+              guestId
+            }
+          }
+        `;
+        
+        const result = await client.graphql({
+          query,
+          variables: { roomNumber: initialRoom }
+        }) as { data: { listGuestsByRoom: Array<{ roomNumber: string; guestId: string }> } };
+        
+        const guests = result.data.listGuestsByRoom;
+        const myGuest = guests.find(g => g.guestId === gid);
+        
+        // 自分のレコードが見つからない = 部屋移動済み
+        if (!myGuest) {
+          hasAlerted = true;
+          alert(getMessage('roomTransferAlert'));
+          // ページをリロード
+          window.location.reload();
+          return;
+        }
+      } catch (error) {
+        console.error('Room check error:', error);
+      } finally {
+        isChecking = false;
+      }
+    };
+    
+    // タブがアクティブになった時にチェック
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkRoomTransfer();
+      }
+    };
+    
+    // イベントリスナー登録
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 60秒ごとにチェック（初回は60秒後）
+    const interval = setInterval(checkRoomTransfer, 60000);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [sessionValid, roomId, client]);
+
 // 位置情報の同期（ワンショット）
 const handleSyncGeo = useCallback(async () => {
   try {
