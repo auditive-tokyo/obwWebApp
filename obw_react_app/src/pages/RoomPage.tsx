@@ -300,10 +300,18 @@ export default function RoomPage() {
 
     // 初回の部屋番号を記録
     const initialRoom = roomId;
+    let isChecking = false;
+    let hasAlerted = false;
 
     const checkRoomTransfer = async () => {
       // タブが非アクティブならスキップ
       if (document.hidden) return;
+      // すでにアラート表示済みならスキップ
+      if (hasAlerted) return;
+      // 実行中ならスキップ（重複防止）
+      if (isChecking) return;
+      
+      isChecking = true;
 
       try {
         // guestIdから最新のゲスト情報を検索（部屋番号は使わない）
@@ -326,6 +334,7 @@ export default function RoomPage() {
         
         // 自分のレコードが見つからない = 部屋移動済み
         if (!myGuest) {
+          hasAlerted = true;
           alert(getMessage('roomTransferAlert'));
           // ページをリロード
           window.location.reload();
@@ -333,6 +342,8 @@ export default function RoomPage() {
         }
       } catch (error) {
         console.error('Room check error:', error);
+      } finally {
+        isChecking = false;
       }
     };
     
