@@ -100,9 +100,20 @@ const ChatInterfaceView: React.FC<Props> = ({
                         <div className="reference-files">
                           <strong>Reference(s):</strong>
                           <ul>
-                            {msg.text.reference_sources.map((file, idx) => (
-                              <li key={idx}>{file}</li>
-                            ))}
+                            {msg.text.reference_sources.map((file, idx) => {
+                              const isUrl = file.startsWith('https://') || file.startsWith('http://');
+                              return (
+                                <li key={idx}>
+                                  {isUrl ? (
+                                    <a href={file} target="_blank" rel="noopener noreferrer" style={{ color: '#4fc3f7', textDecoration: 'underline' }}>
+                                      {file}
+                                    </a>
+                                  ) : (
+                                    file
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       )}
