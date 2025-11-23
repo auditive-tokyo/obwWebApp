@@ -36,6 +36,10 @@ Chat
   justify-content: space-between;
   flex-direction: column;
   // overflow: hidden;
+  
+  // 絵文字対応フォントスタック
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 
