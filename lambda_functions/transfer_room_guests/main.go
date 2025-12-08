@@ -114,19 +114,6 @@ func init() {
 	log.Printf("DynamoDB client initialized. Table: %s", tableName)
 }
 
-// checkoutNoonEpoch calculates Unix timestamp for checkout date at JST noon (UTC 03:00)
-func checkoutNoonEpoch(dateStr string) (int64, error) {
-	// Parse date string "YYYY-MM-DD"
-	t, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid date format: %w", err)
-	}
-
-	// Set time to JST noon (12:00 JST = 03:00 UTC)
-	t = time.Date(t.Year(), t.Month(), t.Day(), 3, 0, 0, 0, time.UTC)
-	return t.Unix(), nil
-}
-
 // Lambda ハンドラー
 func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult, error) {
 	input := event.Arguments.Input
@@ -286,37 +273,10 @@ func transferBatch(ctx context.Context, guests []GuestRecord, newRoomNumber stri
 
 			tokenHash := hashToken(token)
 
-			// checkOutDateがあればその日のJST正午に設定
-			// checkOutDateがなければ元のsessionTokenExpiresAtを保持
-			var expiresAt int64
-			if guest.CheckOutDate != nil && *guest.CheckOutDate != "" {
-				var err error
-				expiresAt, err = checkoutNoonEpoch(*guest.CheckOutDate)
-				if err != nil {
-					log.Printf("⚠️ Failed to parse checkOutDate for guest %s: %v", guest.GuestID, err)
-					// パースエラーの場合は元の有効期限を保持
-					if guest.SessionTokenExpiresAt != nil {
-						expiresAt = *guest.SessionTokenExpiresAt
-					} else {
-						// 最終手段: 48時間後（admin_approve_guestと同じフォールバック）
-						expiresAt = time.Now().Add(48 * time.Hour).Unix()
-						log.Printf("⚠️ No existing sessionTokenExpiresAt, using 48h fallback for guest %s", guest.GuestID)
-					}
-				}
-			} else {
-				// checkOutDateがない場合は元の有効期限を保持
-				if guest.SessionTokenExpiresAt != nil {
-					expiresAt = *guest.SessionTokenExpiresAt
-					log.Printf("ℹ️ No checkOutDate for guest %s, keeping existing sessionTokenExpiresAt", guest.GuestID)
-				} else {
-					// 最終手段: 48時間後
-					expiresAt = time.Now().Add(48 * time.Hour).Unix()
-					log.Printf("⚠️ No checkOutDate and no existing sessionTokenExpiresAt for guest %s, using 48h fallback", guest.GuestID)
-				}
-			}
-
+			// トークンハッシュのみ更新、sessionTokenExpiresAtは元の値を保持
+			// （有効期限は部屋移動では変わらない、checkOutDate変更時に別途更新される）
 			newGuest.SessionTokenHash = &tokenHash
-			newGuest.SessionTokenExpiresAt = &expiresAt
+			// newGuest.SessionTokenExpiresAt は guest からコピー済みなのでそのまま
 
 			// 通知用にトークンを保存（代表者のみ）
 			guestsWithTokens = append(guestsWithTokens, guestWithToken{
