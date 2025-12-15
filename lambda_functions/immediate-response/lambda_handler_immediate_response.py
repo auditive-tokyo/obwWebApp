@@ -9,6 +9,7 @@ from authenticate_guest import authenticate_guest
 
 # Lambda関数2の名前を環境変数から取得
 AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function')
+OPERATOR_PHONE_NUMBER = os.environ.get('OPERATOR_PHONE_NUMBER', '+15005550006')  # デフォルトはTwilioのテスト番号
 
 lambda_client = boto3.client('lambda')
 lingual_mgr = LingualManager() # LingualManagerのインスタンスを作成
@@ -120,13 +121,12 @@ def lambda_handler(event, context):
     if source == 'operator_choice_dtmf':
         print("Handling response from 'operator_choice_dtmf' prompt.")
         if digits_result == '1':
-            # オペレーターに転送
+            # オペレーターに転送（グローバル定数を使用）
             print("User pressed 1 for operator. Transferring...")
-            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+819016968466") # テスト用番号
             transfer_message = lingual_mgr.get_message(language, "transferring_to_operator")
             voice = lingual_mgr.get_voice(language)
             twilio_response.say(transfer_message, language=language, voice=voice)
-            twilio_response.dial(operator_phone_number)
+            twilio_response.dial(OPERATOR_PHONE_NUMBER)
         elif digits_result == '2':
             # 他の用件を伺う
             print("User pressed 2 for other inquiries. Re-prompting.")

@@ -17,6 +17,7 @@ AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 OPENAI_VECTOR_STORE_ID = os.environ.get('OPENAI_VECTOR_STORE_ID')
+OPERATOR_PHONE_NUMBER = os.environ.get('OPERATOR_PHONE_NUMBER', '+15005550006')  # デフォルトはTwilioのテスト番号
 
 validate_essential_env_vars()
 
@@ -255,9 +256,8 @@ async def lambda_handler_async(event, context):
             response_twiml_obj = VoiceResponse()
             response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
             
-            # オペレーターに転送
-            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+819016968466")
-            response_twiml_obj.dial(operator_phone_number)
+            # オペレーターに転送（グローバル定数を使用）
+            response_twiml_obj.dial(OPERATOR_PHONE_NUMBER)
             
             try:
                 await update_twilio_call_async(twilio_client, call_sid, str(response_twiml_obj))

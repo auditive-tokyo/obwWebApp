@@ -33,6 +33,11 @@ Parameters:
     Description: "Secret for CloudFront origin custom header verification"
     NoEcho: true
     Default: ""
+  OperatorPhoneNumber:
+    Type: String
+    Description: "Operator phone number for call forwarding (E.164 format)"
+    NoEcho: true
+    Default: ""
 
 Resources:
   # CloudWatch Logs - ImmediateResponseFunction
@@ -95,6 +100,7 @@ Resources:
           AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
           GUEST_TABLE_NAME: !ImportValue Obw-GuestTableName
           CLOUDFRONT_SECRET: !Ref CloudFrontSecret
+          OPERATOR_PHONE_NUMBER: !Ref OperatorPhoneNumber
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref AiProcessingLambdaFunctionName
@@ -123,6 +129,7 @@ Resources:
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
           LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam
+          OPERATOR_PHONE_NUMBER: !Ref OperatorPhoneNumber
 
 Outputs:
   ImmediateResponseFunctionArn:
