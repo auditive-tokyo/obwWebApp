@@ -122,7 +122,7 @@ def lambda_handler(event, context):
         if digits_result == '1':
             # オペレーターに転送
             print("User pressed 1 for operator. Transferring...")
-            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+15005550006") # テスト用番号
+            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+819016968466") # テスト用番号
             transfer_message = lingual_mgr.get_message(language, "transferring_to_operator")
             voice = lingual_mgr.get_voice(language)
             twilio_response.say(transfer_message, language=language, voice=voice)

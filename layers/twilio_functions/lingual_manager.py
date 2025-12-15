@@ -14,7 +14,7 @@ class LingualManager:
                 "hangup": "お手数ですが、もう一度おかけ直しください。",
                 "processing_error": "システムエラーが発生しました。申し訳ありませんが、後ほどおかけ直しください。",
                 # 緊急度判定用メッセージを追加
-                "urgent_inquiry": "緊急のお問い合わせと判断しました。これは、デモバージョンですが、本番環境ではここで担当者にお繋ぎします。",
+                "urgent_inquiry": "緊急のお問い合わせと判断しました。担当者にお繋ぎします。少々お待ちください。",
                 "general_inquiry": "回答を生成します。少々お待ちください。",
                 "inquiry_not_understood": "お問い合わせ内容を解析できませんでした。可能な限りゆっくり話してください。",
                 "follow_up_question": "他にもご用件がある場合は続けてお話しください。",
@@ -37,7 +37,7 @@ class LingualManager:
                 "hangup": "Please try calling again.",
                 "processing_error": "A system error occurred. I apologize, please try calling back later.",
                 # 英語版の緊急度判定用メッセージを追加
-                "urgent_inquiry": "I've identified this as an urgent inquiry. This is a demo version, but in the production environment, I would connect you with a representative.",
+                "urgent_inquiry": "I've identified this as an urgent inquiry. Connecting you to a representative. Please wait a moment.",
                 "general_inquiry": "I'm generating a response. Please wait a moment.",
                 "inquiry_not_understood": "I was unable to analyze your inquiry. Please try speaking as slowly as possible.",
                 "follow_up_question": "If you have any other inquiries, please continue speaking.",

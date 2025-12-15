@@ -256,7 +256,7 @@ async def lambda_handler_async(event, context):
             response_twiml_obj.say(ai_response_segment, language=language, voice=voice)
             
             # オペレーターに転送
-            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+15005550006")
+            operator_phone_number = os.environ.get("OPERATOR_PHONE_NUMBER", "+819016968466")
             response_twiml_obj.dial(operator_phone_number)
             
             try:
