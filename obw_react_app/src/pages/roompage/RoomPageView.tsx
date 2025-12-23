@@ -572,14 +572,42 @@ export function RoomPageView(
           </div>
         )}
 
-        {/* ステータスメッセージ */}
-        {showStatus && (
-          <div className="bg-white rounded-lg shadow-md p-6 mt-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              {selectedSession?.guestName}
-            </h2>
-            <p className="text-gray-700">{getStatusMessage(selectedSession)}</p>
-          </div>
+        {/* ステータスメッセージと入力済み情報の表示（pending/approved/rejected時） */}
+        {showStatus && selectedSession && (
+          <BasicInfoFormAny
+            name={selectedSession.guestName || ""}
+            setName={() => {}}
+            phone={selectedSession.phone || ""}
+            setPhone={() => {}}
+            email={selectedSession.email || ""}
+            setEmail={() => {}}
+            address={selectedSession.address || ""}
+            setAddress={() => {}}
+            occupation={selectedSession.occupation || ""}
+            setOccupation={() => {}}
+            nationality={selectedSession.nationality || ""}
+            setNationality={() => {}}
+            checkInDate={
+              selectedSession.checkInDate
+                ? new Date(selectedSession.checkInDate)
+                : null
+            }
+            setCheckInDate={() => {}}
+            checkOutDate={
+              selectedSession.checkOutDate
+                ? new Date(selectedSession.checkOutDate)
+                : null
+            }
+            setCheckOutDate={() => {}}
+            promoConsent={selectedSession.promoConsent || false}
+            setPromoConsent={() => {}}
+            isRepresentativeFamily={selectedSession.isFamilyMember || false}
+            hasRoomCheckDates={hasRoomCheckDates}
+            isInfoComplete={true}
+            onNext={() => {}}
+            readOnly={true}
+            statusMessage={getStatusMessage(selectedSession) || ""}
+          />
         )}
 
         {/* メッセージ表示 */}

@@ -1,59 +1,65 @@
-import { useState } from "react"
-import DatePicker from "react-datepicker"
-import './BasicCheckInOutDate.css'
-import { getMessage } from '@/i18n/messages'
+import { useState } from "react";
+import DatePicker from "react-datepicker";
+import "./BasicCheckInOutDate.css";
+import { getMessage } from "@/i18n/messages";
 
 type Props = {
-  checkInDate: Date | null
-  setCheckInDate: (date: Date | null) => void
-  checkOutDate: Date | null
-  setCheckOutDate: (date: Date | null) => void
-}
+  checkInDate: Date | null;
+  setCheckInDate: (date: Date | null) => void;
+  checkOutDate: Date | null;
+  setCheckOutDate: (date: Date | null) => void;
+  readOnly?: boolean;
+};
 
 // JST正午の日付を作成するヘルパー関数
 const createJSTDate = (date: Date | null): Date | null => {
-  if (!date) return null
+  if (!date) return null;
   // 選択された日付をJST正午に設定（タイムゾーン問題を回避）
-  const year = date.getFullYear()
-  const month = date.getMonth()
-  const day = date.getDate()
-  return new Date(year, month, day, 12, 0, 0, 0) // ローカルタイムの正午
-}
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+  return new Date(year, month, day, 12, 0, 0, 0); // ローカルタイムの正午
+};
 
 // JST表示用のヘルパー関数
 const formatJSTDate = (date: Date | null): string => {
-  if (!date) return '未選択'
-  return date.toLocaleDateString('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric'
-  })
-}
+  if (!date) return "未選択";
+  return date.toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+};
 
 export function BasicCheckInOutDate({
   checkInDate,
   setCheckInDate,
   checkOutDate,
-  setCheckOutDate
+  setCheckOutDate,
+  readOnly = false,
 }: Props) {
-  const [calendarModalOpen, setCalendarModalOpen] = useState(false)
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const handleDateChange = (dates: [Date | null, Date | null]) => {
-    const [start, end] = dates
+    const [start, end] = dates;
     // JST正午に統一して設定
-    setCheckInDate(createJSTDate(start))
-    setCheckOutDate(createJSTDate(end))
-  }
+    setCheckInDate(createJSTDate(start));
+    setCheckOutDate(createJSTDate(end));
+  };
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        {getMessage("checkInOutDate")}<span className="text-red-500">*</span>
+        {getMessage("checkInOutDate")}
+        {!readOnly && <span className="text-red-500">*</span>}
       </label>
       <button
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left"
-        onClick={() => setCalendarModalOpen(true)}
+        className={`w-full px-4 py-3 border border-gray-300 rounded-lg text-left ${
+          readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
+        }`}
+        onClick={() => !readOnly && setCalendarModalOpen(true)}
+        disabled={readOnly}
       >
         {checkInDate && checkOutDate
           ? `${formatJSTDate(checkInDate)} 〜 ${formatJSTDate(checkOutDate)}`
@@ -62,7 +68,10 @@ export function BasicCheckInOutDate({
 
       {calendarModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 mx-auto shadow-2xl flex flex-col items-center" style={{ width: 'fit-content', minWidth: '320px' }}>
+          <div
+            className="bg-white rounded-lg p-6 mx-auto shadow-2xl flex flex-col items-center"
+            style={{ width: "fit-content", minWidth: "320px" }}
+          >
             <DatePicker
               selected={checkInDate}
               onChange={handleDateChange}
@@ -91,5 +100,5 @@ export function BasicCheckInOutDate({
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { getMessage } from '@/i18n/messages'
+import { useState } from "react";
+import { getMessage } from "@/i18n/messages";
 
 /**
  * セキュリティ・法的情報に関するカード表示コンポーネント
@@ -8,7 +8,7 @@ import { getMessage } from '@/i18n/messages'
  * - プロフェッショナルで信頼感のあるデザイン
  */
 export function SecurityInfoCards() {
-  const [expanded, setExpanded] = useState<null | "law" | "security">(null)
+  const [expanded, setExpanded] = useState<null | "law" | "security">(null);
 
   // カード内容
   const lawCard = (
@@ -17,18 +17,30 @@ export function SecurityInfoCards() {
       onClick={() => setExpanded("law")}
     >
       <div className="flex items-start space-x-2">
-        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        <svg
+          className="w-5 h-5 text-blue-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+          ></path>
         </svg>
         <div>
-          <h3 className="font-semibold text-blue-900 mb-1 text-base">{getMessage("aboutPassport") as string}</h3>
+          <h3 className="font-semibold text-blue-900 mb-1 text-base">
+            {getMessage("aboutPassport") as string}
+          </h3>
           <div className="text-blue-800">
             {getMessage("lawInfoShort") as string}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 
   const securityCard = (
     <div
@@ -36,18 +48,30 @@ export function SecurityInfoCards() {
       onClick={() => setExpanded("security")}
     >
       <div className="flex items-start space-x-2">
-        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        <svg
+          className="w-5 h-5 text-green-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          ></path>
         </svg>
         <div>
-          <h3 className="font-semibold text-green-900 mb-1 text-base">{getMessage("aboutSecurity") as string}</h3>
+          <h3 className="font-semibold text-green-900 mb-1 text-base">
+            {getMessage("aboutSecurity") as string}
+          </h3>
           <div className="text-green-800">
             {getMessage("securityInfoShort") as string}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 
   const lawInfo = getMessage("lawInfo") as string[];
   const securityInfo = getMessage("securityInfo") as string[];
@@ -64,15 +88,27 @@ export function SecurityInfoCards() {
             ? "bg-blue-50 border-blue-200"
             : "bg-green-50 border-green-200"
         } border rounded-lg p-6 w-full max-w-xl mx-auto shadow-2xl text-base cursor-pointer`}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {expanded === "law" ? (
           <>
             <div className="flex items-start space-x-3 mb-2">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              <svg
+                className="w-6 h-6 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                ></path>
               </svg>
-              <h3 className="text-lg font-semibold text-blue-900">{getMessage("aboutPassport") as string}</h3>
+              <h3 className="text-lg font-semibold text-blue-900">
+                {getMessage("aboutPassport") as string}
+              </h3>
             </div>
             <div className="text-blue-800 space-y-2">
               {lawInfo.map((text, i) => (
@@ -83,10 +119,22 @@ export function SecurityInfoCards() {
         ) : (
           <>
             <div className="flex items-start space-x-3 mb-2">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              <svg
+                className="w-6 h-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                ></path>
               </svg>
-              <h3 className="text-lg font-semibold text-green-900">{getMessage("aboutSecurity") as string}</h3>
+              <h3 className="text-lg font-semibold text-green-900">
+                {getMessage("aboutSecurity") as string}
+              </h3>
             </div>
             <div className="text-green-800 space-y-1">
               {securityInfo.map((text, i) => (
@@ -105,13 +153,13 @@ export function SecurityInfoCards() {
         </div>
       </div>
     </div>
-  )
+  );
 
   return (
-    <div className="flex flex-row">
+    <div className="flex flex-col">
       {lawCard}
       {securityCard}
       {expandedCard}
     </div>
-  )
+  );
 }

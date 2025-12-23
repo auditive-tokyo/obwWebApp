@@ -20,6 +20,7 @@ type MessageKeys =
   | "uploadError"
   | "enterBasicInfo"
   | "enterPassportImage"
+  | "selectPhoto"
   | "statusPending"
   | "statusApproved"
   | "statusRejected"
@@ -135,6 +136,7 @@ type Messages = {
     uploadError: string;
     enterBasicInfo: string;
     enterPassportImage: string;
+    selectPhoto: string;
     statusPending: string;
     statusApproved: string;
     statusRejected: string;
@@ -254,6 +256,7 @@ const messages: Messages = {
     uploadError: "ID画像のアップロードに失敗しました。もう一度お試しください。",
     enterBasicInfo: "基本情報を入力してください",
     enterPassportImage: "ID画像をアップロードしてください",
+    selectPhoto: "📷 写真を選択",
     statusPending: "現在承認待ちです。",
     statusApproved: "承認されました。",
     statusRejected: "承認されませんでした。",
@@ -394,6 +397,7 @@ const messages: Messages = {
     uploadError: "ID image upload failed. Please try again.",
     enterBasicInfo: "Please enter your basic information.",
     enterPassportImage: "Please upload your ID image.",
+    selectPhoto: "📷 Select Photo",
     statusPending: "Currently pending approval.",
     statusApproved: "Approved.",
     statusRejected: "Rejected.",

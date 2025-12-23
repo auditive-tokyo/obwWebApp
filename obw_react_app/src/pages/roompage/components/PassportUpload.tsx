@@ -147,12 +147,15 @@ export function PassportUpload({
       
       <div className="space-y-6">
         <div className="space-y-4">
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileChange}
-            className="w-full"
-          />
+          <label className="cursor-pointer w-full py-3 px-4 rounded-lg font-medium text-gray-700 bg-gradient-to-r from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 transition-colors duration-200 shadow-sm hover:shadow text-center block">
+            {file ? file.name : getMessage("selectPhoto")}
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
           
           {/* プレビュー表示 */}
           {previewUrl && (
