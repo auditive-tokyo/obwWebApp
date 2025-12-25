@@ -28,13 +28,9 @@ jobs:
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
 
-      - name: Generate CloudFront Secret
-        id: generate_secret
-        run: |
-          # ランダムな32文字の英数字を生成
-          SECRET=$(openssl rand -hex 32)
-          echo "secret=${SECRET}" >> $GITHUB_OUTPUT
-          echo "Generated CloudFront secret (hidden)"
+      # CloudFront SecretはGitHub Secretsから取得（毎回生成するとSnapStartと不整合が起きる）
+      # 新しいシークレットを設定する場合は、GitHub SecretsのCLOUDFRONT_SECRETを更新し、
+      # その後twilio-deploy.ymlを実行してLambdaの新しいバージョンをパブリッシュする必要がある
 
       - name: Get ResponseApi Function URL
         id: get_responseapi
@@ -70,87 +66,24 @@ jobs:
             --parameter-overrides \
               ResponseApiFunctionUrl="${{ steps.get_responseapi.outputs.url }}" \
               ImmediateResponseFunctionUrl="${{ steps.get_immediate.outputs.url }}" \
-              OriginCustomHeaderSecret="${{ steps.generate_secret.outputs.secret }}" \
+              OriginCustomHeaderSecret="${{ secrets.CLOUDFRONT_SECRET }}" \
             --no-fail-on-empty-changeset
-
-      - name: Get CloudFront URLs from Security Stack
-        id: get_cloudfront_urls
-        run: |
-          echo "=== Getting CloudFront URLs ==="
-
-          # ImmediateResponse CloudFront URL
-          IMMEDIATE_CF_URL=$(aws cloudformation describe-stacks \
-            --stack-name obw-security \
-            --region us-east-1 \
-            --query 'Stacks[0].Outputs[?OutputKey==`ImmediateResponseCloudFrontUrl`].OutputValue' \
-            --output text 2>/dev/null || echo "")
-
-          # ResponseApi CloudFront URL
-          RESPONSEAPI_CF_URL=$(aws cloudformation describe-stacks \
-            --stack-name obw-security \
-            --region us-east-1 \
-            --query 'Stacks[0].Outputs[?OutputKey==`ResponseApiCloudFrontUrl`].OutputValue' \
-            --output text 2>/dev/null || echo "")
-
-          echo "immediate_url=${IMMEDIATE_CF_URL}" >> $GITHUB_OUTPUT
-          echo "responseapi_url=${RESPONSEAPI_CF_URL}" >> $GITHUB_OUTPUT
-
-          echo "ImmediateResponse CloudFront URL: ${IMMEDIATE_CF_URL}"
-          echo "ResponseApi CloudFront URL: ${RESPONSEAPI_CF_URL}"
-
-      - name: Update Twilio Stack with CloudFront URL
-        if: steps.get_cloudfront_urls.outputs.immediate_url != ''
-        run: |
-          echo "=== Updating Twilio Stack with CloudFront URL ==="
-
-          # CloudFront URLとSecretでパラメータ更新（GitHub Secretsから直接取得）
-          aws cloudformation update-stack \
-            --stack-name obw-twilio-functions \
-            --region ap-northeast-1 \
-            --use-previous-template \
-            --capabilities CAPABILITY_IAM \
-            --parameters \
-              ParameterKey=OpenAiApiKey,ParameterValue="${{ secrets.OPENAI_API_KEY }}" \
-              ParameterKey=OpenAiVectorStoreId,ParameterValue="${{ secrets.OPENAI_VECTOR_STORE_ID }}" \
-              ParameterKey=TwilioAccountSid,ParameterValue="${{ secrets.TWILIO_ACCOUNT_SID }}" \
-              ParameterKey=TwilioAuthToken,ParameterValue="${{ secrets.TWILIO_AUTH_TOKEN }}" \
-              ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_cloudfront_urls.outputs.immediate_url }}" \
-              ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
-              ParameterKey=OperatorPhoneNumber,ParameterValue="${{ secrets.OPERATOR_PHONE_NUMBER }}" \
-          || echo "No updates required for Twilio stack"
-
-          echo "✅ Twilio stack updated with CloudFront URL and Secret"
-
-      - name: Update ResponseApi Stack with CloudFront Secret
-        if: steps.get_cloudfront_urls.outputs.responseapi_url != ''
-        run: |
-          echo "=== Updating ResponseApi Stack with CloudFront Secret ==="
-
-          # CloudFront Secretでパラメータ更新（GitHub Secretsから直接取得）
-          aws cloudformation update-stack \
-            --stack-name obw-responseapi-function \
-            --region ap-northeast-1 \
-            --use-previous-template \
-            --capabilities CAPABILITY_IAM \
-            --parameters \
-              ParameterKey=OpenAiApiKey,ParameterValue="${{ secrets.OPENAI_API_KEY }}" \
-              ParameterKey=OpenAiVectorStoreId,ParameterValue="${{ secrets.OPENAI_VECTOR_STORE_ID }}" \
-              ParameterKey=TelegramBotToken,ParameterValue="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
-              ParameterKey=TelegramChatId,ParameterValue="${{ secrets.TELEGRAM_CHAT_ID }}" \
-              ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
-          || echo "No updates required for ResponseApi stack"
-
-          echo "✅ ResponseApi stack updated with CloudFront Secret"
 
       - name: Output Summary
         run: |
           echo "=== Security Stack Deployment Complete ==="
           echo ""
-          echo "📋 CloudFront URLs:"
-          echo "  ImmediateResponse: ${{ steps.get_cloudfront_urls.outputs.immediate_url }}"
-          echo "  ResponseApi: ${{ steps.get_cloudfront_urls.outputs.responseapi_url }}"
+          echo "📋 CloudFront URLs (from stack outputs):"
+          aws cloudformation describe-stacks \
+            --stack-name obw-security \
+            --region us-east-1 \
+            --query 'Stacks[0].Outputs[*].[OutputKey,OutputValue]' \
+            --output table
           echo ""
-          echo "✅ Twilio Lambda updated with CloudFront URL and Secret"
-          echo "✅ ResponseApi Lambda updated with CloudFront Secret"
-          echo "✅ Lambda functions protected with X-CloudFront-Secret header validation"
+          echo "⚠️  重要: CloudFront URLやSecretの変更をLambdaに反映するには、"
+          echo "   以下のワークフローを実行してください:"
+          echo "   - twilio-deploy.yml"
+          echo "   - responseapi-deploy.yml"
+          echo ""
+          echo "✅ CloudFront distributions configured"
           echo "✅ WAF enabled with OWASP rules, IP reputation, and rate limiting"
