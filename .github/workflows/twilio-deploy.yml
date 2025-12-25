@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, feature/*]
     paths:
-      - 'lambda_functions/ai_processing/**'
-      - 'lambda_functions/immediate-response/**'
-      - 'layers/twilio_functions/**'
-      - '.github/workflows/twilio-functions.yml'
-      - 'template-twilio-functions.yaml'
+      - "lambda_functions/ai_processing/**"
+      - "lambda_functions/immediate-response/**"
+      - "layers/twilio_functions/**"
+      - ".github/workflows/twilio-functions.yml"
+      - "template-twilio-functions.yaml"
   workflow_dispatch:
 
 jobs:
@@ -31,13 +31,42 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
       - name: Install AWS SAM CLI
         run: pip install aws-sam-cli
 
       - name: SAM Build
         run: sam build --use-container --template-file template-twilio-functions.yaml
+
+      - name: Get CloudFront URL for ImmediateResponse
+        id: get_cloudfront_url
+        run: |
+          # CloudFront URLを取得（security stackから）
+          # 初回デプロイ時はsecurity stackが存在しないため空になる
+          # その場合、Lambda関数は作成されるがLAMBDA1_FUNCTION_URLは空
+          # 
+          # 初回セットアップ順序:
+          # 1. twilio-deploy.yml (Lambda作成、CloudFront URLは空)
+          # 2. responseapi-deploy.yml (Lambda作成)
+          # 3. security-deploy.yml (CloudFront作成)
+          # 4. twilio-deploy.yml (再度実行してCloudFront URLを設定)
+
+          CF_URL=$(aws cloudformation describe-stacks \
+            --stack-name obw-security \
+            --region us-east-1 \
+            --query 'Stacks[0].Outputs[?OutputKey==`ImmediateResponseCloudFrontUrl`].OutputValue' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$CF_URL" ]; then
+            echo "⚠️ CloudFront URL not found (security stack may not exist yet)"
+            echo "   This is expected for initial deployment."
+            echo "   After security-deploy.yml runs, re-run this workflow to set CloudFront URL."
+          else
+            echo "✅ CloudFront URL found: ${CF_URL}"
+          fi
+
+          echo "cloudfront_url=${CF_URL}" >> $GITHUB_OUTPUT
 
       - name: SAM Deploy
         env:
@@ -46,6 +75,7 @@ jobs:
           TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
           OPERATOR_PHONE_NUMBER_FROM_SECRET: ${{ secrets.OPERATOR_PHONE_NUMBER }}
+          CLOUDFRONT_SECRET_FROM_SECRET: ${{ secrets.CLOUDFRONT_SECRET }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
@@ -54,48 +84,14 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --parameter-overrides \
+              ImmediateResponseFunctionUrlParam="${{ steps.get_cloudfront_url.outputs.cloudfront_url }}" \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
               OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
               OperatorPhoneNumber="$OPERATOR_PHONE_NUMBER_FROM_SECRET" \
+              CloudFrontSecret="$CLOUDFRONT_SECRET_FROM_SECRET" \
             --no-fail-on-empty-changeset
-
-      - name: Get Immediate Response Function URL from Alias
-        id: get_function_url
-        run: |
-          # エイリアス "live" 経由の Function URL を取得します
-          FUNCTION_URL=$(aws lambda get-function-url-config --function-name obw-immediate-response-function:live --query 'FunctionUrl' --output text)
-          echo "Function URL is: ${FUNCTION_URL}"
-          echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
-      
-      - name: Update CloudFormation Stack with Function URL 
-        env:
-          OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
-          TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          OPERATOR_PHONE_NUMBER_FROM_SECRET: ${{ secrets.OPERATOR_PHONE_NUMBER }}
-        run: |
-          echo "Updating stack with ImmediateResponseFunctionUrlParam=${{ steps.get_function_url.outputs.function_url }}"
-
-          # sam deploy を再度実行して、Function URL をパラメータとして渡す
-          sam deploy \
-            --template-file .aws-sam/build/template.yaml \
-            --stack-name obw-twilio-functions \
-            --capabilities CAPABILITY_IAM \
-            --resolve-s3 \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              ImmediateResponseFunctionUrlParam="${{ steps.get_function_url.outputs.function_url }}" \
-              OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
-              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
-              TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
-              TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
-              OperatorPhoneNumber="$OPERATOR_PHONE_NUMBER_FROM_SECRET"
-
-          aws cloudformation wait stack-update-complete --stack-name obw-twilio-functions
 
       - name: Clean up old Lambda versions
         run: |
