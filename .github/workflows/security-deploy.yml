@@ -116,6 +116,7 @@ jobs:
               ParameterKey=TwilioAuthToken,ParameterValue="${{ secrets.TWILIO_AUTH_TOKEN }}" \
               ParameterKey=ImmediateResponseFunctionUrlParam,ParameterValue="${{ steps.get_cloudfront_urls.outputs.immediate_url }}" \
               ParameterKey=CloudFrontSecret,ParameterValue="${{ steps.generate_secret.outputs.secret }}" \
+              ParameterKey=OperatorPhoneNumber,ParameterValue="${{ secrets.OPERATOR_PHONE_NUMBER }}" \
           || echo "No updates required for Twilio stack"
 
           echo "✅ Twilio stack updated with CloudFront URL and Secret"
