@@ -93,6 +93,36 @@ jobs:
               CloudFrontSecret="$CLOUDFRONT_SECRET_FROM_SECRET" \
             --no-fail-on-empty-changeset
 
+      - name: Publish new Lambda version and update alias
+        run: |
+          # SnapStart を使用している場合、環境変数の変更だけでは新バージョンが公開されない
+          # そのため、手動で新バージョンを公開し、live エイリアスを更新する
+          FUNCTION_NAME="obw-immediate-response-function"
+          
+          echo "📦 Publishing new version for $FUNCTION_NAME..."
+          NEW_VERSION=$(aws lambda publish-version \
+            --function-name "$FUNCTION_NAME" \
+            --query 'Version' \
+            --output text)
+          
+          echo "✅ Published version: $NEW_VERSION"
+          
+          echo "🔄 Updating 'live' alias to version $NEW_VERSION..."
+          aws lambda update-alias \
+            --function-name "$FUNCTION_NAME" \
+            --name live \
+            --function-version "$NEW_VERSION"
+          
+          echo "✅ Alias 'live' now points to version $NEW_VERSION"
+          
+          # 新しいバージョンの環境変数を確認
+          echo "🔍 Verifying CLOUDFRONT_SECRET in new version..."
+          SECRET_VALUE=$(aws lambda get-function-configuration \
+            --function-name "$FUNCTION_NAME:$NEW_VERSION" \
+            --query 'Environment.Variables.CLOUDFRONT_SECRET' \
+            --output text)
+          echo "   CLOUDFRONT_SECRET (first 8 chars): ${SECRET_VALUE:0:8}..."
+
       - name: Clean up old Lambda versions
         run: |
           # ImmediateResponseFunction の古いバージョンをクリーンアップ
