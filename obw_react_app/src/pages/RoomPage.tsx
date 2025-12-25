@@ -1,102 +1,128 @@
-import { useParams, useLocation } from 'react-router-dom' // useLocationを追加
-import AccessForm from '@/components/AccessForm'
-import { useState, useMemo, useEffect, useCallback } from 'react'
-import { generateClient } from 'aws-amplify/api'
-import type { GuestSession } from './roompage/types'
-import { RoomPageView } from './roompage/RoomPageView' 
-import { handleNextAction, handleRegisterAction, verifyOnLoad } from './roompage/handlers/roomPageHandlers'
-import { refreshGuestSessions as refreshGuestSessionsSvc, loadMyGuest as loadMyGuestSvc, deleteGuestLocation } from './roompage/services/apiCalls'
-import { checkFormCompletion } from './roompage/utils/formValidation'
-import { syncGeoAndResolveAddress } from './roompage/services/geolocation'
-import { dbg } from '@/utils/debugLogger'
-import { getMessage } from '@/i18n/messages'
-import SmsWelcomeModal from './roompage/components/SmsWelcomeModal'
+import { useParams, useLocation } from "react-router-dom"; // useLocationを追加
+import AccessForm from "@/components/AccessForm";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { generateClient } from "aws-amplify/api";
+import type { GuestSession } from "./roompage/types";
+import { RoomPageView } from "./roompage/RoomPageView";
+import {
+  handleNextAction,
+  verifyOnLoad,
+} from "./roompage/handlers/roomPageHandlers";
+import {
+  refreshGuestSessions as refreshGuestSessionsSvc,
+  loadMyGuest as loadMyGuestSvc,
+  deleteGuestLocation,
+} from "./roompage/services/apiCalls";
+import { checkFormCompletion } from "./roompage/utils/formValidation";
+import { syncGeoAndResolveAddress } from "./roompage/services/geolocation";
+import { dbg } from "@/utils/debugLogger";
+import { getMessage } from "@/i18n/messages";
+import SmsWelcomeModal from "./roompage/components/SmsWelcomeModal";
 
 export default function RoomPage() {
-  const { roomId = '' } = useParams<{ roomId: string }>()
-  const location = useLocation()
+  const { roomId = "" } = useParams<{ roomId: string }>();
+  const location = useLocation();
 
   // SMS Welcome Modal 用の state
-  const [showSmsWelcome, setShowSmsWelcome] = useState(false)
+  const [showSmsWelcome, setShowSmsWelcome] = useState(false);
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [address, setAddress] = useState("")
-  const [phone, setPhone] = useState("")
-  const [occupation, setOccupation] = useState("")
-  const [nationality, setNationality] = useState("")
-  const [checkInDate, setCheckInDate] = useState<Date | null>(null)
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null)
-  const [promoConsent, setPromoConsent] = useState(false)
-  const [passportImageUrl, setPassportImageUrl] = useState<string | null>(null)
-  const [message, setMessage] = useState("")
-  const [guestSessions, setGuestSessions] = useState<GuestSession[]>([])
-  const [sessionChecked, setSessionChecked] = useState(false)
-  const [sessionValid, setSessionValid] = useState(false)
-  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null)
-  const [isRepresentativeFamily, setIsRepresentativeFamily] = useState(false)
-  const [showFamilyQuestion, setShowFamilyQuestion] = useState(false)
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
+  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+  const [promoConsent, setPromoConsent] = useState(false);
+  const [message, setMessage] = useState("");
+  const [guestSessions, setGuestSessions] = useState<GuestSession[]>([]);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionValid, setSessionValid] = useState(false);
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
+  const [isRepresentativeFamily, setIsRepresentativeFamily] = useState(false);
+  const [showFamilyQuestion, setShowFamilyQuestion] = useState(false);
   // 「編集に戻る」用の制御フラグ（親で制御）
-  const [forceShowForm, setForceShowForm] = useState<boolean | null>(null)
-  const [overrideFamilyForEdit, setOverrideFamilyForEdit] = useState<boolean | null>(null)
-  const [myCurrentLocation, setMyCurrentLocation] = useState<string | null>(null)
-  const selectedGuest = guestSessions.find(g => g.guestId === selectedGuestId) || null
+  const [forceShowForm, setForceShowForm] = useState<boolean | null>(null);
+  const [overrideFamilyForEdit, setOverrideFamilyForEdit] = useState<
+    boolean | null
+  >(null);
+  const [myCurrentLocation, setMyCurrentLocation] = useState<string | null>(
+    null
+  );
+  const selectedGuest =
+    guestSessions.find((g) => g.guestId === selectedGuestId) || null;
   const bookingId =
-    typeof window !== 'undefined' ? localStorage.getItem('bookingId') : null
+    typeof window !== "undefined" ? localStorage.getItem("bookingId") : null;
 
-  const client = useMemo(() => generateClient(), [])
+  const client = useMemo(() => generateClient(), []);
 
   // SMS検出のuseEffect（最初に配置）
   useEffect(() => {
     if (location.state?.smsAccess) {
-      setShowSmsWelcome(true)
+      setShowSmsWelcome(true);
     }
-  }, [location.state])
+  }, [location.state]);
 
   // セッション状態に応じて responseId をクリアする
   useEffect(() => {
-    const tok = localStorage.getItem('token')
+    const tok = localStorage.getItem("token");
     if (!tok) {
-      localStorage.removeItem('responseId')
-      return
+      localStorage.removeItem("responseId");
+      return;
     }
     if (sessionChecked && !sessionValid) {
-      localStorage.removeItem('responseId')
+      localStorage.removeItem("responseId");
     }
-  }, [sessionChecked, sessionValid])
+  }, [sessionChecked, sessionValid]);
 
   // 部屋レベルのチェックイン/アウト日を guestSessions から算出（先頭に見つかった値で可）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parseToDate = (d: any): Date | null => {
-    if (!d) return null
-    if (d instanceof Date) return d
-    const dt = new Date(d)
-    return isNaN(dt.getTime()) ? null : dt
-  }
+    if (!d) return null;
+    if (d instanceof Date) return d;
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
 
   const roomCheckInDate = useMemo(() => {
-    const found = guestSessions.find(g => g.checkInDate)?.checkInDate ?? null
-    return parseToDate(found)
-  }, [guestSessions])
+    const found = guestSessions.find((g) => g.checkInDate)?.checkInDate ?? null;
+    return parseToDate(found);
+  }, [guestSessions]);
 
   const roomCheckOutDate = useMemo(() => {
-    const found = guestSessions.find(g => g.checkOutDate)?.checkOutDate ?? null
-    return parseToDate(found)
-  }, [guestSessions])
+    const found =
+      guestSessions.find((g) => g.checkOutDate)?.checkOutDate ?? null;
+    return parseToDate(found);
+  }, [guestSessions]);
 
   const hasRoomCheckDates = useMemo(
     () => !!(roomCheckInDate && roomCheckOutDate),
     [roomCheckInDate, roomCheckOutDate]
-  )
+  );
 
   // サービス関数のラッパー（引数を束ねる）
   const refreshGuestSessions = useCallback(() => {
-    return refreshGuestSessionsSvc({ client, roomId, setGuestSessions })
-  }, [client, roomId, setGuestSessions])
+    return refreshGuestSessionsSvc({ client, roomId, setGuestSessions });
+  }, [client, roomId, setGuestSessions]);
 
   // 入力完了判定
-  const isInfoComplete = useMemo(() => 
-    checkFormCompletion({
+  const isInfoComplete = useMemo(
+    () =>
+      checkFormCompletion({
+        name,
+        email,
+        address,
+        phone,
+        occupation,
+        nationality,
+        checkInDate,
+        checkOutDate,
+        guestCount: guestSessions.length,
+        isRepresentativeFamily,
+        hasRoomCheckDates,
+      }),
+    [
       name,
       email,
       address,
@@ -105,23 +131,24 @@ export default function RoomPage() {
       nationality,
       checkInDate,
       checkOutDate,
-      guestCount: guestSessions.length,
+      guestSessions.length,
       isRepresentativeFamily,
-      hasRoomCheckDates
-    }), [name, email, address, phone, occupation, nationality, checkInDate, checkOutDate, guestSessions.length, isRepresentativeFamily, hasRoomCheckDates])
+      hasRoomCheckDates,
+    ]
+  );
 
   // 戻る（ID→基本情報フォームへ。家族は名前のみ）
   const handleBack = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isFamily = !!(selectedGuest as any)?.isFamilyMember
-    setIsRepresentativeFamily(isFamily)
-    setForceShowForm(true)
-    setOverrideFamilyForEdit(isFamily)
-  }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const isFamily = !!(selectedGuest as any)?.isFamilyMember;
+    setIsRepresentativeFamily(isFamily);
+    setForceShowForm(true);
+    setOverrideFamilyForEdit(isFamily);
+  };
 
   // 次へ（基本情報送信）
   const handleNext = async () => {
-    if (!isInfoComplete) return
+    if (!isInfoComplete) return;
     await handleNextAction({
       roomId,
       bookingId,
@@ -139,69 +166,65 @@ export default function RoomPage() {
       guestId: selectedGuestId,
       selectedGuest: selectedGuest,
       isFamilyMember: isRepresentativeFamily,
-    })
+    });
 
     // 編集モードの強制表示を解除し、ID画面へ切り替えられるようにする
-    setForceShowForm(null)
-    setOverrideFamilyForEdit(null)
-    
-    await refreshGuestSessions()
-  }
+    setForceShowForm(null);
+    setOverrideFamilyForEdit(null);
 
-  // 登録（ID画像など）
-  const handleRegister = async (rid: string, guestId: string) => {
-    await handleRegisterAction({
-      roomId: rid,
-      guestId: guestId,
-      passportImageUrl,
-      client,
-      setMessage,
-    })
-    await refreshGuestSessions()
-  }
+    await refreshGuestSessions();
+  };
 
   // 認証チェック（ページロード/リロード時）
   useEffect(() => {
-    verifyOnLoad({ roomId, client, setSessionChecked, setSessionValid })
-  }, [roomId, client])
+    verifyOnLoad({ roomId, client, setSessionChecked, setSessionValid });
+  }, [roomId, client]);
 
   useEffect(() => {
     if (selectedGuest) {
-      setName(selectedGuest.guestName || '')
-      setEmail(selectedGuest.email || '')
-      setAddress(selectedGuest.address || '')
-      setPhone(selectedGuest.phone || '')
-      setOccupation(selectedGuest.occupation || '')
-      setNationality(selectedGuest.nationality || '')
-      setCheckInDate(selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null)
-      setCheckOutDate(selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null)
-      setPassportImageUrl(selectedGuest.passportImageUrl ?? null)
-      setPromoConsent(!!selectedGuest.promoConsent)
+      setName(selectedGuest.guestName || "");
+      setEmail(selectedGuest.email || "");
+      setAddress(selectedGuest.address || "");
+      setPhone(selectedGuest.phone || "");
+      setOccupation(selectedGuest.occupation || "");
+      setNationality(selectedGuest.nationality || "");
+      setCheckInDate(
+        selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null
+      );
+      setCheckOutDate(
+        selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null
+      );
+      setPromoConsent(!!selectedGuest.promoConsent);
       // 家族フラグはサーバ値をそのまま採用
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setIsRepresentativeFamily(!!(selectedGuest as any)?.isFamilyMember)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setIsRepresentativeFamily(!!(selectedGuest as any)?.isFamilyMember);
     } else {
-      setName(''); setEmail(''); setAddress(''); setPhone('')
-      setOccupation(''); setNationality('')
-      setCheckInDate(null); setCheckOutDate(null)
-      setPassportImageUrl(null); setPromoConsent(false)
+      setName("");
+      setEmail("");
+      setAddress("");
+      setPhone("");
+      setOccupation("");
+      setNationality("");
+      setCheckInDate(null);
+      setCheckOutDate(null);
+      setPromoConsent(false);
     }
-  }, [selectedGuest])
+  }, [selectedGuest]);
 
   // 検証OKのときだけ一覧取得（このガードは残す）
   useEffect(() => {
-    if (sessionValid) refreshGuestSessions()
-  }, [sessionValid, refreshGuestSessions])
+    if (sessionValid) refreshGuestSessions();
+  }, [sessionValid, refreshGuestSessions]);
 
   // デバッグ: 選択中ゲストの情報がリスト更新でどう変化したか追跡
   useEffect(() => {
-    const g = guestSessions.find(gs => gs.guestId === selectedGuestId)
+    const g = guestSessions.find((gs) => gs.guestId === selectedGuestId);
     if (g) {
-      dbg('guestSessions updated for selected guest', {
+      dbg("guestSessions updated for selected guest", {
         guestId: g.guestId,
         approvalStatus: g.approvalStatus,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  isFamilyMember: (g as any)?.isFamilyMember,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        isFamilyMember: (g as any)?.isFamilyMember,
         flags: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           isRepresentativeFamily: (g as any)?.isRepresentativeFamily,
@@ -209,93 +232,98 @@ export default function RoomPage() {
           isFamily: (g as any)?.isFamily,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           role: (g as any)?.role,
-        }
-      })
+        },
+      });
     }
-  }, [guestSessions, selectedGuestId])
+  }, [guestSessions, selectedGuestId]);
 
   // 自分のゲスト情報をDynamoDBから読み込む（services 経由）
   const loadMyGuest = useCallback(async () => {
-    if (!roomId) return
-    const g = await loadMyGuestSvc({ client, roomId })
-    if (!g) return
-    setName(g.guestName || "")
-    setEmail(g.email || "")
-    setAddress(g.address || "")
-    setPhone(g.phone || "")
-    setOccupation(g.occupation || "")
-    setNationality(g.nationality || "")
-    setPassportImageUrl(g.passportImageUrl || null)
-    setMyCurrentLocation(g.currentLocation || null)
+    if (!roomId) return;
+    const g = await loadMyGuestSvc({ client, roomId });
+    if (!g) return;
+    setName(g.guestName || "");
+    setEmail(g.email || "");
+    setAddress(g.address || "");
+    setPhone(g.phone || "");
+    setOccupation(g.occupation || "");
+    setNationality(g.nationality || "");
+    setMyCurrentLocation(g.currentLocation || null);
     // 日付は必要に応じて
-    setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null)
-    setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null)
-  }, [client, roomId])
+    setCheckInDate(g.checkInDate ? new Date(g.checkInDate) : null);
+    setCheckOutDate(g.checkOutDate ? new Date(g.checkOutDate) : null);
+  }, [client, roomId]);
 
   // 実際の新規ゲスト作成処理
-  const handleCreateNewGuest = useCallback((isFamily: boolean) => {
-    const newId =
-      (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
-      Math.random().toString(36).slice(0) + Date.now().toString(36)
-    
-    setIsRepresentativeFamily(isFamily)
-    setSelectedGuestId(newId)
-    // 未保存の新規ゲストを一時的にリストへ反映（表示上のプレースホルダー）
-    setGuestSessions(prev => {
-      if (prev.some(p => p.guestId === newId)) return prev
-      const placeholder: GuestSession = {
-        roomNumber: roomId || '',
-        guestId: newId,
-        guestName: '',
-        phone: '',
-        registrationDate: new Date().toISOString().slice(0,10),
-        approvalStatus: 'waitingForBasicInfo',
-        lastUpdated: new Date().toISOString(),
-        isFamilyMember: isFamily
-      }
-      dbg('created placeholder guest', placeholder)
-      return [placeholder, ...prev]
-    })
-    // 入力欄をクリア
-    setName('')
-    setEmail('')
-    setAddress('')
-    setPhone('')
-    setOccupation('')
-    setNationality('')
-    setCheckInDate(null)
-    setCheckOutDate(null)
-    setPromoConsent(false)
-  }, [roomId])
+  const handleCreateNewGuest = useCallback(
+    (isFamily: boolean) => {
+      const newId =
+        (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
+        Math.random().toString(36).slice(0) + Date.now().toString(36);
+
+      setIsRepresentativeFamily(isFamily);
+      setSelectedGuestId(newId);
+      // 未保存の新規ゲストを一時的にリストへ反映（表示上のプレースホルダー）
+      setGuestSessions((prev) => {
+        if (prev.some((p) => p.guestId === newId)) return prev;
+        const placeholder: GuestSession = {
+          roomNumber: roomId || "",
+          guestId: newId,
+          guestName: "",
+          phone: "",
+          registrationDate: new Date().toISOString().slice(0, 10),
+          approvalStatus: "waitingForBasicInfo",
+          lastUpdated: new Date().toISOString(),
+          isFamilyMember: isFamily,
+        };
+        dbg("created placeholder guest", placeholder);
+        return [placeholder, ...prev];
+      });
+      // 入力欄をクリア
+      setName("");
+      setEmail("");
+      setAddress("");
+      setPhone("");
+      setOccupation("");
+      setNationality("");
+      setCheckInDate(null);
+      setCheckOutDate(null);
+      setPromoConsent(false);
+    },
+    [roomId]
+  );
 
   // 新規ゲスト追加のクリック処理（家族質問を表示）
   const handleAddGuestClick = useCallback(() => {
-    const hasExistingGuests = guestSessions.length > 0
+    const hasExistingGuests = guestSessions.length > 0;
     if (hasExistingGuests) {
       // 既存ゲストがいる場合は家族質問を表示
-      setShowFamilyQuestion(true)
+      setShowFamilyQuestion(true);
     } else {
       // 初回ゲストの場合は直接フォームへ
-      handleCreateNewGuest(false)
+      handleCreateNewGuest(false);
     }
-  }, [guestSessions.length, handleCreateNewGuest])
+  }, [guestSessions.length, handleCreateNewGuest]);
 
   // 家族質問への回答処理
-  const handleFamilyResponse = useCallback((isFamily: boolean) => {
-    setShowFamilyQuestion(false)
-    handleCreateNewGuest(isFamily)
-  }, [handleCreateNewGuest])
-  
+  const handleFamilyResponse = useCallback(
+    (isFamily: boolean) => {
+      setShowFamilyQuestion(false);
+      handleCreateNewGuest(isFamily);
+    },
+    [handleCreateNewGuest]
+  );
+
   // 検証OKのときだけ自分の情報を取得
   useEffect(() => {
-    if (sessionValid) loadMyGuest()
-  }, [sessionValid, loadMyGuest])
+    if (sessionValid) loadMyGuest();
+  }, [sessionValid, loadMyGuest]);
 
   // 部屋変更を監視（ポーリング）
   useEffect(() => {
     if (!sessionValid || !roomId) return;
 
-    const gid = localStorage.getItem('guestId');
+    const gid = localStorage.getItem("guestId");
     if (!gid) return;
 
     // 初回の部屋番号を記録
@@ -310,7 +338,7 @@ export default function RoomPage() {
       if (hasAlerted) return;
       // 実行中ならスキップ（重複防止）
       if (isChecking) return;
-      
+
       isChecking = true;
 
       try {
@@ -323,95 +351,109 @@ export default function RoomPage() {
             }
           }
         `;
-        
-        const result = await client.graphql({
+
+        const result = (await client.graphql({
           query,
-          variables: { roomNumber: initialRoom }
-        }) as { data: { listGuestsByRoom: Array<{ roomNumber: string; guestId: string }> } };
-        
+          variables: { roomNumber: initialRoom },
+        })) as {
+          data: {
+            listGuestsByRoom: Array<{ roomNumber: string; guestId: string }>;
+          };
+        };
+
         const guests = result.data.listGuestsByRoom;
-        const myGuest = guests.find(g => g.guestId === gid);
-        
+        const myGuest = guests.find((g) => g.guestId === gid);
+
         // 自分のレコードが見つからない = 部屋移動済み
         if (!myGuest) {
           hasAlerted = true;
-          alert(getMessage('roomTransferAlert'));
+          alert(getMessage("roomTransferAlert"));
           // ページをリロード
           window.location.reload();
           return;
         }
       } catch (error) {
-        console.error('Room check error:', error);
+        console.error("Room check error:", error);
       } finally {
         isChecking = false;
       }
     };
-    
+
     // タブがアクティブになった時にチェック
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         checkRoomTransfer();
       }
     };
-    
+
     // イベントリスナー登録
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     // 60秒ごとにチェック（初回は60秒後）
     const interval = setInterval(checkRoomTransfer, 60000);
-    
+
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [sessionValid, roomId, client]);
 
-// 位置情報の同期（ワンショット）
-const handleSyncGeo = useCallback(async () => {
-  try {
-    const gid = localStorage.getItem('guestId')
-    if (!gid) return
-    const { fix, addressText } = await syncGeoAndResolveAddress({ client, roomId, guestId: gid })
-    dbg('[geo] saved', fix, addressText)
-    await loadMyGuest()
-    alert(getMessage("locationSyncSuccess"))
-  } catch (e) {
-    console.warn('syncGeo failed', e)
-    alert(`${getMessage("locationSyncError")}${getMessage("pleaseRetryLater")}`)
-  }
-}, [client, roomId, loadMyGuest])
+  // 位置情報の同期（ワンショット）
+  const handleSyncGeo = useCallback(async () => {
+    try {
+      const gid = localStorage.getItem("guestId");
+      if (!gid) return;
+      const { fix, addressText } = await syncGeoAndResolveAddress({
+        client,
+        roomId,
+        guestId: gid,
+      });
+      dbg("[geo] saved", fix, addressText);
+      await loadMyGuest();
+      alert(getMessage("locationSyncSuccess"));
+    } catch (e) {
+      console.warn("syncGeo failed", e);
+      alert(
+        `${getMessage("locationSyncError")}${getMessage("pleaseRetryLater")}`
+      );
+    }
+  }, [client, roomId, loadMyGuest]);
 
-// 位置情報の削除
-const handleClearLocation = useCallback(async () => {
-  try {
-    const gid = localStorage.getItem('guestId')
-    if (!gid) return
-    await deleteGuestLocation({ client, roomId, guestId: gid })
-    dbg('deleted location')
-    await loadMyGuest()
-    alert(getMessage("locationDeleteSuccess"))
-  } catch (e) {
-    console.warn('deleteGuestLocation failed', e)
-    alert(`${getMessage("locationDeleteError")}${getMessage("pleaseRetryLater")}`)
-  }
-}, [client, roomId, loadMyGuest])
+  // 位置情報の削除
+  const handleClearLocation = useCallback(async () => {
+    try {
+      const gid = localStorage.getItem("guestId");
+      if (!gid) return;
+      await deleteGuestLocation({ client, roomId, guestId: gid });
+      dbg("deleted location");
+      await loadMyGuest();
+      alert(getMessage("locationDeleteSuccess"));
+    } catch (e) {
+      console.warn("deleteGuestLocation failed", e);
+      alert(
+        `${getMessage("locationDeleteError")}${getMessage("pleaseRetryLater")}`
+      );
+    }
+  }, [client, roomId, loadMyGuest]);
 
   // 全てのHooks定義が終わってから条件分岐
 
   // 認証していない/検証未完了の分岐
   if (!sessionChecked) {
-    return <div style={{ padding: 16 }}>Loading...</div>
+    return <div style={{ padding: 16 }}>Loading...</div>;
   }
-  
-  const gid = typeof window !== 'undefined' ? localStorage.getItem('guestId') : null
-  const tok = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  
+
+  const gid =
+    typeof window !== "undefined" ? localStorage.getItem("guestId") : null;
+  const tok =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
   if (!gid || !tok) {
     return (
       <div style={{ padding: 16 }}>
         <AccessForm roomNumber={roomId} />
       </div>
-    )
+    );
   }
 
   // メインレンダリング
@@ -447,7 +489,6 @@ const handleClearLocation = useCallback(async () => {
         onFamilyResponse={handleFamilyResponse}
         handleNext={handleNext}
         handleBack={handleBack}
-        handleRegister={handleRegister}
         isInfoComplete={isInfoComplete}
         message={message}
         client={client}
@@ -455,13 +496,13 @@ const handleClearLocation = useCallback(async () => {
         selectedGuest={selectedGuest}
         // 文字列(gid)でも、オブジェクト(GuestSession)でも受けられるようにする
         onSelectGuest={(g) => {
-          const id = typeof g === 'string' ? g : g?.guestId ?? null
+          const id = typeof g === "string" ? g : g?.guestId ?? null;
           if (id) {
             // ゲスト切替時は強制表示フラグをリセット
-            setForceShowForm(null)
-            setOverrideFamilyForEdit(null)
+            setForceShowForm(null);
+            setOverrideFamilyForEdit(null);
           }
-          setSelectedGuestId(id)
+          setSelectedGuestId(id);
         }}
         onAddGuest={handleAddGuestClick}
         myCurrentLocation={myCurrentLocation}
@@ -472,11 +513,11 @@ const handleClearLocation = useCallback(async () => {
 
       {/* SMS Welcome Modal */}
       {showSmsWelcome && (
-        <SmsWelcomeModal 
+        <SmsWelcomeModal
           onClose={() => setShowSmsWelcome(false)}
           originalUrl={location.state?.originalUrl || window.location.href}
         />
       )}
     </>
-  )
+  );
 }

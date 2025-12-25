@@ -29,6 +29,7 @@ export function PassportUpload({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null
@@ -139,6 +140,18 @@ export function PassportUpload({
     }
   }
 
+  // 送信ボタンクリック時に確認モーダルを表示
+  const handleUploadClick = () => {
+    if (!file || !previewUrl) return
+    setShowConfirmModal(true)
+  }
+
+  // 確認モーダルで送信を確定
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false)
+    await handleUploadAndRegister()
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">
@@ -183,7 +196,7 @@ export function PassportUpload({
             </button>
           )}
           <button
-            onClick={handleUploadAndRegister}
+            onClick={handleUploadClick}
             disabled={!file || uploading}
             className="flex-1 py-3 px-4 rounded-lg font-medium text-gray-800 bg-gradient-to-r from-green-200 to-green-400 hover:from-green-300 hover:to-green-500 transition-colors duration-200 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed"
           >
@@ -191,6 +204,34 @@ export function PassportUpload({
           </button>
         </div>
       </div>
+
+      {/* 送信確認モーダル */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              {getMessage("confirmSubmitTitle")}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {getMessage("confirmSubmitMessage")}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-2 px-4 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors"
+              >
+                {getMessage("cancel")}
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="flex-1 py-2 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+              >
+                {getMessage("submit")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

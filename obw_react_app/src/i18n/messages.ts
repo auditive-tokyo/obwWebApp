@@ -113,7 +113,10 @@ type MessageKeys =
   | "bookingNotFound"
   | "dateUpdateFailed"
   | "editLockedAfterApproval"
-  | "roomTransferAlert";
+  | "roomTransferAlert"
+  | "confirmSubmitTitle"
+  | "confirmSubmitMessage"
+  | "submit";
 
 type Messages = {
   [lang in SupportedLang]: {
@@ -230,6 +233,9 @@ type Messages = {
     dateUpdateFailed: string;
     editLockedAfterApproval: string;
     roomTransferAlert: string;
+    confirmSubmitTitle: string;
+    confirmSubmitMessage: string;
+    submit: string;
   };
 };
 
@@ -375,6 +381,9 @@ const messages: Messages = {
     dateUpdateFailed: "日付の更新に失敗しました。再度お試しください。",
     editLockedAfterApproval: "承認申請後は変更不可",
     roomTransferAlert: "お部屋が変更されました。\nEmailまたはSMSで送信されたリンクをご確認ください。",
+    confirmSubmitTitle: "申請を送信しますか？",
+    confirmSubmitMessage: "申請後は修正できません。送信してよろしいですか？",
+    submit: "送信する",
   },
   en: {
     close: "Close",
@@ -516,6 +525,9 @@ const messages: Messages = {
     dateUpdateFailed: "Failed to update dates. Please try again.",
     editLockedAfterApproval: "Locked after approval request",
     roomTransferAlert: "Your room has been changed.\nPlease check the link sent via Email or SMS.",
+    confirmSubmitTitle: "Submit Application?",
+    confirmSubmitMessage: "You cannot edit after submission. Are you sure you want to submit?",
+    submit: "Submit",
   },
 };
 
