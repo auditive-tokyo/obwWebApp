@@ -30,7 +30,22 @@ jobs:
 
       # CloudFront SecretはGitHub Secretsから取得（毎回生成するとSnapStartと不整合が起きる）
       # 新しいシークレットを設定する場合は、GitHub SecretsのCLOUDFRONT_SECRETを更新し、
-      # その後twilio-deploy.ymlを実行してLambdaの新しいバージョンをパブリッシュする必要がある
+      # その後 twilio-deploy.yml と responseapi-deploy.yml を実行して
+      # Lambdaの新しいバージョンをパブリッシュする必要がある
+      #
+      # 【初回デプロイ順序】
+      # 1. twilio-deploy.yml (Lambda作成、CloudFront URLは空だが Default:"" でエラーにならない)
+      # 2. responseapi-deploy.yml (Lambda作成、CloudFront Secretは設定済み)
+      # 3. security-deploy.yml (CloudFront作成、Lambda URLを参照)
+      # 4. twilio-deploy.yml (再度実行してCloudFront URLを設定)
+      #
+      # ※ 1,2 の時点では Lambda は作成されるが CloudFront URL が空のため正常動作しない
+      # ※ 4 完了後に全機能が正常に動作する
+      #
+      # 【通常運用（初回デプロイ完了後）】
+      # - Lambdaコード更新: 該当する twilio-deploy.yml または responseapi-deploy.yml のみ実行
+      # - CloudFront/WAF設定変更: security-deploy.yml を実行
+      # - Secret変更: security-deploy.yml → twilio-deploy.yml → responseapi-deploy.yml の順で実行
 
       - name: Get ResponseApi Function URL
         id: get_responseapi
