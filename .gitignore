@@ -32,6 +32,8 @@ docs/
 # synbolic links
 lambda_functions/immediate-response/lingual_manager.py
 lambda_functions/ai_processing/lingual_manager.py
+lambda_functions/immediate-response/ssml_helper.py
+lambda_functions/ai_processing/ssml_helper.py
 
 # misc
 venv/
