@@ -6,6 +6,7 @@ import os
 from twilio.twiml.voice_response import VoiceResponse, Gather
 from lingual_manager import LingualManager
 from authenticate_guest import authenticate_guest
+from ssml_helper import wrap_with_prosody
 
 # Lambda関数2の名前を環境変数から取得
 AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function')
@@ -125,7 +126,7 @@ def lambda_handler(event, context):
             print("User pressed 1 for operator. Transferring...")
             transfer_message = lingual_mgr.get_message(language, "transferring_to_operator")
             voice = lingual_mgr.get_voice(language)
-            twilio_response.say(transfer_message, language=language, voice=voice)
+            twilio_response.say(wrap_with_prosody(transfer_message), language=language, voice=voice)
             twilio_response.dial(OPERATOR_PHONE_NUMBER)
         elif digits_result == '2':
             # 他の用件を伺う
@@ -137,18 +138,20 @@ def lambda_handler(event, context):
             phone_param = f"&phone_last4={phone_last4}" if phone_last4 else ""
             gather = Gather(
                 input='speech', method='POST', language=language,
-                speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
+                speechTimeout='auto', timeout=7, speechModel='deepgram-nova-3',
                 action=f'?language={language}&previous_openai_response_id={previous_openai_response_id_from_query}{room_param}{phone_param}'
             )
-            gather.say(follow_up_msg, language=language, voice=voice)
+            gather.say(wrap_with_prosody(follow_up_msg), language=language, voice=voice)
             twilio_response.append(gather)
+            twilio_response.pause(length=3)
             twilio_response.hangup() # タイムアウトしたら通話終了
         else:
             # タイムアウトまたは無効な入力
             print("Timeout or invalid input after operator choice prompt.")
             timeout_message = lingual_mgr.get_message(language, "timeout_message")
             voice = lingual_mgr.get_voice(language)
-            twilio_response.say(timeout_message, language=language, voice=voice)
+            twilio_response.say(wrap_with_prosody(timeout_message), language=language, voice=voice)
+            twilio_response.pause(length=3)
             twilio_response.hangup()
 
     # B. 部屋番号入力からの応答
@@ -164,11 +167,12 @@ def lambda_handler(event, context):
                 input='dtmf', numDigits=4, method='POST',
                 action=f'?language={language}&source=phone_last4_input&room_number={digits_result}&attempt=1'
             )
-            gather_phone.say(phone_prompt, language=language, voice=voice)
+            gather_phone.say(wrap_with_prosody(phone_prompt), language=language, voice=voice)
             twilio_response.append(gather_phone)
             # タイムアウト時
             timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-            twilio_response.say(timeout_msg, language=language, voice=voice)
+            twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+            twilio_response.pause(length=3)
             twilio_response.hangup()
         else:
             # 無効な部屋番号
@@ -178,22 +182,24 @@ def lambda_handler(event, context):
             
             if attempt < 2:
                 # 1回目の失敗：再プロンプト
-                twilio_response.say(invalid_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(invalid_msg), language=language, voice=voice)
                 room_prompt = lingual_mgr.get_message(language, "prompt_room_number")
                 gather_room_retry = Gather(
                     input='dtmf', numDigits=3, method='POST',
                     action=f'?language={language}&source=room_number_input&attempt=2'
                 )
-                gather_room_retry.say(room_prompt, language=language, voice=voice)
+                gather_room_retry.say(wrap_with_prosody(room_prompt), language=language, voice=voice)
                 twilio_response.append(gather_room_retry)
                 timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+                twilio_response.pause(length=3)
                 twilio_response.hangup()
             else:
                 # 2回目の失敗：切断
-                twilio_response.say(invalid_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(invalid_msg), language=language, voice=voice)
                 timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+                twilio_response.pause(length=3)
                 twilio_response.hangup()
 
     # C. 電話番号下4桁入力からの応答
@@ -218,13 +224,14 @@ def lambda_handler(event, context):
                 voice = lingual_mgr.get_voice(language)
                 gather_inquiry = Gather(
                     input='speech', method='POST', language=language,
-                    speechTimeout='auto', timeout=5, speechModel='deepgram-nova-3',
+                    speechTimeout='auto', timeout=7, speechModel='deepgram-nova-3',
                     action=f'?language={language}&room_number={room_number}&phone_last4={digits_result}&attempt=1'
                 )
-                gather_inquiry.say(welcome_message, language=language, voice=voice)
+                gather_inquiry.say(wrap_with_prosody(welcome_message), language=language, voice=voice)
                 twilio_response.append(gather_inquiry)
                 timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+                twilio_response.pause(length=3)
                 twilio_response.hangup()
             else:
                 # 認証失敗
@@ -234,7 +241,8 @@ def lambda_handler(event, context):
                 # 認証失敗メッセージを再生して切断
                 voice = lingual_mgr.get_voice(language)
                 auth_failed_msg = lingual_mgr.get_message(language, "authentication_failed")
-                twilio_response.say(auth_failed_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(auth_failed_msg), language=language, voice=voice)
+                twilio_response.pause(length=3)
                 twilio_response.hangup()
         else:
             # 無効な電話番号
@@ -244,22 +252,24 @@ def lambda_handler(event, context):
             
             if attempt < 2:
                 # 1回目の失敗：再プロンプト
-                twilio_response.say(invalid_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(invalid_msg), language=language, voice=voice)
                 phone_prompt = lingual_mgr.get_message(language, "prompt_phone_last4")
                 gather_phone_retry = Gather(
                     input='dtmf', numDigits=4, method='POST',
                     action=f'?language={language}&source=phone_last4_input&room_number={room_number}&attempt=2'
                 )
-                gather_phone_retry.say(phone_prompt, language=language, voice=voice)
+                gather_phone_retry.say(wrap_with_prosody(phone_prompt), language=language, voice=voice)
                 twilio_response.append(gather_phone_retry)
                 timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+                twilio_response.pause(length=3)
                 twilio_response.hangup()
             else:
                 # 2回目の失敗：切断
-                twilio_response.say(invalid_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(invalid_msg), language=language, voice=voice)
                 timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-                twilio_response.say(timeout_msg, language=language, voice=voice)
+                twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+                twilio_response.pause(length=3)
                 twilio_response.hangup()
 
     # D. ユーザーが言語選択の番号を入力した場合
@@ -278,9 +288,10 @@ def lambda_handler(event, context):
             print(f"Invalid digit input: {digits_result}. Re-prompting for language.")
             # 不正な入力の場合、再度言語選択を促す
             gather_lang = Gather(input='dtmf', numDigits=1, method='POST', action='?action=language_selected')
-            gather_lang.say("For English, press 1.", language="en-US", voice=lingual_mgr.get_voice("en-US"))
-            gather_lang.say("日本語をご希望の場合は2を押してください。", language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
+            gather_lang.say(wrap_with_prosody("For English, press 1."), language="en-US", voice=lingual_mgr.get_voice("en-US"))
+            gather_lang.say(wrap_with_prosody("日本語をご希望の場合は2を押してください。"), language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
             twilio_response.append(gather_lang)
+            twilio_response.pause(length=3)
             twilio_response.hangup()
 
         if language_selection_valid:
@@ -291,11 +302,12 @@ def lambda_handler(event, context):
                 input='dtmf', numDigits=3, method='POST',
                 action=f'?language={language}&source=room_number_input&attempt=1'
             )
-            gather_room.say(room_prompt, language=language, voice=voice)
+            gather_room.say(wrap_with_prosody(room_prompt), language=language, voice=voice)
             twilio_response.append(gather_room)
             # タイムアウト時
             timeout_msg = lingual_mgr.get_message(language, "timeout_message")
-            twilio_response.say(timeout_msg, language=language, voice=voice)
+            twilio_response.say(wrap_with_prosody(timeout_msg), language=language, voice=voice)
+            twilio_response.pause(length=3)
             twilio_response.hangup()
 
     # E. ユーザーの発話を受け取った場合
@@ -338,7 +350,8 @@ def lambda_handler(event, context):
             # エラー発生時
             error_message_text = lingual_mgr.get_message(language, "processing_error")
             voice = lingual_mgr.get_voice(language)
-            twilio_response.say(error_message_text, language=language, voice=voice)
+            twilio_response.say(wrap_with_prosody(error_message_text), language=language, voice=voice)
+            twilio_response.pause(length=3)
             twilio_response.hangup()
             # レスポンスを返す前に終了
             twiml_body_error = str(twilio_response)
@@ -352,7 +365,7 @@ def lambda_handler(event, context):
         # Twilioに即時応答
         analyzing_message_text = lingual_mgr.get_message(language, "received_and_analyzing")
         voice = lingual_mgr.get_voice(language)
-        twilio_response.say(analyzing_message_text, language=language, voice=voice)
+        twilio_response.say(wrap_with_prosody(analyzing_message_text), language=language, voice=voice)
         twilio_response.pause(length=30)  # AI処理完了まで30秒待機（Classification + Vector Search）
 
     # D. 初回呼び出し (GETリクエスト、または入力なしのPOST)
@@ -362,21 +375,22 @@ def lambda_handler(event, context):
         # 1秒ポーズをGatherの内側の最初に配置
         gather_lang.pause(length=1)
         # Gather内に音声プロンプトを配置することで、再生中でもボタン入力を検知できるようになる
-        gather_lang.say("For English, press 1.", language="en-US", voice=lingual_mgr.get_voice("en-US"))
-        gather_lang.say("日本語をご希望の場合は2を押してください。", language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
+        gather_lang.say(wrap_with_prosody("For English, press 1."), language="en-US", voice=lingual_mgr.get_voice("en-US"))
+        gather_lang.say(wrap_with_prosody("日本語をご希望の場合は2を押してください。"), language="ja-JP", voice=lingual_mgr.get_voice("ja-JP"))
 
         # 作成したGatherをレスポンスに追加
         twilio_response.append(gather_lang)
 
         # Gatherがタイムアウトした場合のフォールバック - バイリンガルで案内
         twilio_response.say(
-            "We could not understand your input. Please try calling again.",
+            wrap_with_prosody("We could not understand your input. Please try calling again."),
             language="en-US", voice=lingual_mgr.get_voice("en-US")
         )
         twilio_response.say(
-            "入力が確認できませんでした。もう一度おかけ直しください。",
+            wrap_with_prosody("入力が確認できませんでした。もう一度おかけ直しください。"),
             language="ja-JP", voice=lingual_mgr.get_voice("ja-JP")
         )
+        twilio_response.pause(length=3)
         twilio_response.hangup()
 
     # TwiMLを返す
