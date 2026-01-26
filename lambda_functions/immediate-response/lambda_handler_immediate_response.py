@@ -2,6 +2,7 @@ import json
 import urllib.parse
 import base64
 import boto3
+from botocore.config import Config
 import os
 from twilio.twiml.voice_response import VoiceResponse, Gather
 from lingual_manager import LingualManager
@@ -12,7 +13,13 @@ from ssml_helper import wrap_with_prosody
 AI_PROCESSING_LAMBDA_NAME = os.environ.get('AI_PROCESSING_LAMBDA_NAME', 'obw-ai-processing-function')
 OPERATOR_PHONE_NUMBER = os.environ.get('OPERATOR_PHONE_NUMBER', '+15005550006')  # デフォルトはTwilioのテスト番号
 
-lambda_client = boto3.client('lambda')
+# boto3クライアントにタイムアウトを設定（SonarQube対応）
+boto3_config = Config(
+    connect_timeout=5,    # 接続タイムアウト: 5秒
+    read_timeout=30,      # 読み取りタイムアウト: 30秒
+    retries={'max_attempts': 3}  # リトライ回数
+)
+lambda_client = boto3.client('lambda', config=boto3_config)
 lingual_mgr = LingualManager() # LingualManagerのインスタンスを作成
 
 
