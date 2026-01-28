@@ -45,6 +45,114 @@ function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+/**
+ * 住所の不足フィールドを取得
+ */
+function getAddressMissingFields(address: string): string[] {
+  const fields: string[] = [];
+  const parsedAddress = parseAddressFields(address);
+
+  if (!parsedAddress) {
+    fields.push(getMessage("addressLine1") as string);
+    fields.push(getMessage("city") as string);
+    fields.push(getMessage("state") as string);
+    fields.push(getMessage("country") as string);
+    fields.push(getMessage("zipcode") as string);
+    return fields;
+  }
+
+  if (!parsedAddress.addressLine1.trim()) {
+    fields.push(getMessage("addressLine1") as string);
+  }
+  if (!parsedAddress.city.trim()) {
+    fields.push(getMessage("city") as string);
+  }
+  if (!parsedAddress.state.trim()) {
+    fields.push(getMessage("state") as string);
+  }
+  if (!parsedAddress.country.trim()) {
+    fields.push(getMessage("country") as string);
+  }
+  if (!parsedAddress.zipcode.trim()) {
+    fields.push(getMessage("zipcode") as string);
+  }
+
+  return fields;
+}
+
+/**
+ * 代表者家族以外の不足フィールドを計算
+ */
+function getNonFamilyMissingFields(
+  name: string,
+  email: string,
+  address: string,
+  phone: string,
+  occupation: string,
+  nationality: string,
+  checkInDate: Date | null,
+  checkOutDate: Date | null,
+  hasRoomCheckDates: boolean,
+): string[] {
+  const fields: string[] = [];
+
+  if (!name.trim()) fields.push(getMessage("name") as string);
+  if (!email.trim()) fields.push(getMessage("email") as string);
+
+  fields.push(...getAddressMissingFields(address));
+
+  if (!phone.trim()) fields.push(getMessage("phone") as string);
+  if (!occupation.trim()) fields.push(getMessage("occupation") as string);
+  if (!nationality.trim()) fields.push(getMessage("nationality") as string);
+
+  if (!hasRoomCheckDates) {
+    if (!checkInDate) fields.push(getMessage("checkInDate") as string);
+    if (!checkOutDate) fields.push(getMessage("checkOutDate") as string);
+  }
+
+  return fields;
+}
+
+/**
+ * 不足フィールドを計算
+ */
+function computeMissingFields(
+  isRepresentativeFamily: boolean,
+  name: string,
+  email: string,
+  address: string,
+  phone: string,
+  occupation: string,
+  nationality: string,
+  checkInDate: Date | null,
+  checkOutDate: Date | null,
+  hasRoomCheckDates: boolean,
+): string[] {
+  if (isRepresentativeFamily) {
+    return !name.trim() ? [getMessage("name") as string] : [];
+  }
+
+  return getNonFamilyMissingFields(
+    name,
+    email,
+    address,
+    phone,
+    occupation,
+    nationality,
+    checkInDate,
+    checkOutDate,
+    hasRoomCheckDates,
+  );
+}
+
+/**
+ * 必須マーク表示用コンポーネント
+ */
+function RequiredMark({ show }: { show: boolean }) {
+  if (!show) return null;
+  return <span className="text-red-500">*</span>;
+}
+
 export default function BasicInfoForm(props: BasicInfoFormProps) {
   const {
     name,
@@ -82,92 +190,55 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
       : "";
 
   // 不足している項目のリスト
-  const missingFields: string[] = [];
+  const missingFields = computeMissingFields(
+    isRepresentativeFamily,
+    name,
+    email,
+    address,
+    phone,
+    occupation,
+    nationality,
+    checkInDate,
+    checkOutDate,
+    hasRoomCheckDates,
+  );
 
-  if (isRepresentativeFamily) {
-    // 代表者の家族の場合：名前のみ必須
-    if (!name.trim()) {
-      missingFields.push(getMessage("name") as string);
-    }
-  } else {
-    // 家族以外：各項目をチェック
-    if (!name.trim()) {
-      missingFields.push(getMessage("name") as string);
-    }
-    if (!email.trim()) {
-      missingFields.push(getMessage("email") as string);
-    }
-
-    // 住所の個別フィールドチェック
-    const parsedAddress = parseAddressFields(address);
-    if (parsedAddress) {
-      if (!parsedAddress.addressLine1.trim()) {
-        missingFields.push(getMessage("addressLine1") as string);
-      }
-      if (!parsedAddress.city.trim()) {
-        missingFields.push(getMessage("city") as string);
-      }
-      if (!parsedAddress.state.trim()) {
-        missingFields.push(getMessage("state") as string);
-      }
-      if (!parsedAddress.country.trim()) {
-        missingFields.push(getMessage("country") as string);
-      }
-      if (!parsedAddress.zipcode.trim()) {
-        missingFields.push(getMessage("zipcode") as string);
-      }
-    } else {
-      // address が空またはパース失敗の場合
-      missingFields.push(getMessage("addressLine1") as string);
-      missingFields.push(getMessage("city") as string);
-      missingFields.push(getMessage("state") as string);
-      missingFields.push(getMessage("country") as string);
-      missingFields.push(getMessage("zipcode") as string);
-    }
-
-    if (!phone.trim()) {
-      missingFields.push(getMessage("phone") as string);
-    }
-    if (!occupation.trim()) {
-      missingFields.push(getMessage("occupation") as string);
-    }
-    if (!nationality.trim()) {
-      missingFields.push(getMessage("nationality") as string);
-    }
-    // チェックイン・アウト日（部屋日付未設定のときのみチェック）
-    if (!hasRoomCheckDates) {
-      if (!checkInDate) {
-        missingFields.push(getMessage("checkInDate") as string);
-      }
-      if (!checkOutDate) {
-        missingFields.push(getMessage("checkOutDate") as string);
-      }
-    }
-  }
+  // 条件の事前計算
+  const isEditable = !isAdmin && !readOnly;
+  const showRequiredMark = isEditable;
+  const showHeader = !isAdmin && !readOnly;
+  const showStatusMessage = readOnly && statusMessage;
+  const showFamilyMessage = isRepresentativeFamily && !readOnly;
+  const showPromoConsent = !isAdmin && !readOnly;
+  const showNonFamilyFields = !isRepresentativeFamily;
+  const showDateFields = !hasRoomCheckDates;
+  const showNextButton = !isAdmin && !readOnly;
+  const showMissingFields = !isInfoComplete && missingFields.length > 0;
 
   // readOnlyモード用の共通inputクラス
   const inputBaseClass =
     "w-full px-4 py-3 border border-gray-300 rounded-lg transition-colors";
   const inputEditableClass = `${inputBaseClass} focus:ring-2 focus:ring-blue-500 focus:border-blue-500`;
   const inputReadOnlyClass = `${inputBaseClass} bg-gray-100 text-gray-600 cursor-not-allowed`;
+  const inputClass = readOnly ? inputReadOnlyClass : inputEditableClass;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      {!isAdmin && !readOnly && (
+      {showHeader && (
         <h2 className="text-xl font-semibold text-gray-800 mb-6">
           {getMessage("enterBasicInfo")}
         </h2>
       )}
 
       {/* readOnlyモード時のステータスメッセージ */}
-      {readOnly && statusMessage && (
+      {showStatusMessage && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm font-medium text-yellow-800">{statusMessage}</p>
         </div>
       )}
 
       {/* 家族の場合は案内メッセージを表示 */}
-      {isRepresentativeFamily && !readOnly && (
+      {showFamilyMessage && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-700">
             {getMessage("familyRegistrationMessage")}
@@ -180,37 +251,35 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {getMessage("name")}
-            {!isAdmin && !readOnly && <span className="text-red-500">*</span>}
+            <RequiredMark show={showRequiredMark} />
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={readOnly}
-            className={readOnly ? inputReadOnlyClass : inputEditableClass}
+            className={inputClass}
             placeholder={getMessage("namePlaceholder") as string}
           />
         </div>
 
         {/* 代表者の家族でない場合のみ、以下の項目を表示 */}
-        {!isRepresentativeFamily && (
+        {showNonFamilyFields && (
           <>
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {getMessage("email")}
-                {!isAdmin && !readOnly && (
-                  <span className="text-red-500">*</span>
-                )}
+                <RequiredMark show={showRequiredMark} />
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={readOnly}
-                className={readOnly ? inputReadOnlyClass : inputEditableClass}
+                className={inputClass}
                 placeholder="sample@example.com"
-                required={!isAdmin && !readOnly}
+                required={isEditable}
               />
               {!readOnly && emailError && (
                 <p className="mt-2 text-sm text-red-600">{emailError}</p>
@@ -218,7 +287,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             </div>
 
             {/* プロモーション同意（isAdminがfalseかつreadOnlyがfalseの場合のみ表示） */}
-            {!isAdmin && !readOnly && (
+            {showPromoConsent && (
               <div
                 className={
                   `rounded-md border border-gray-200 px-3 py-2 ` +
@@ -272,9 +341,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {getMessage("phone")}
-                {!isAdmin && !readOnly && (
-                  <span className="text-red-500">*</span>
-                )}
+                <RequiredMark show={showRequiredMark} />
               </label>
               <PhoneInput
                 international
@@ -304,16 +371,14 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {getMessage("occupation")}
-                {!isAdmin && !readOnly && (
-                  <span className="text-red-500">*</span>
-                )}
+                <RequiredMark show={showRequiredMark} />
               </label>
               <input
                 type="text"
                 value={occupation}
                 onChange={(e) => setOccupation(e.target.value)}
                 disabled={readOnly}
-                className={readOnly ? inputReadOnlyClass : inputEditableClass}
+                className={inputClass}
                 placeholder={getMessage("occupationPlaceholder") as string}
               />
             </div>
@@ -322,9 +387,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {getMessage("nationality")}
-                {!isAdmin && !readOnly && (
-                  <span className="text-red-500">*</span>
-                )}
+                <RequiredMark show={showRequiredMark} />
               </label>
               <CountrySelect
                 value={nationality}
@@ -335,7 +398,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             </div>
 
             {/* チェックイン・アウト日（非家族 かつ 部屋日付未設定のときのみ表示、readOnly時も表示） */}
-            {!hasRoomCheckDates && (
+            {showDateFields && (
               <BasicCheckInOutDate
                 checkInDate={checkInDate}
                 setCheckInDate={setCheckInDate}
@@ -348,7 +411,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
         )}
 
         {/* 次へボタン（AdminモードまたはreadOnlyモード時は非表示） */}
-        {!isAdmin && !readOnly && (
+        {showNextButton && (
           <div className="pt-4">
             <button
               onClick={onNext}
@@ -359,7 +422,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
             </button>
 
             {/* 不足項目リスト */}
-            {!isInfoComplete && missingFields.length > 0 && (
+            {showMissingFields && (
               <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm font-medium text-red-700 mb-2">
                   {getMessage("missingFieldsPrompt")}
