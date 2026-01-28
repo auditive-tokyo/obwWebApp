@@ -76,6 +76,79 @@ function parseBookingFromUrl(): string {
   return "";
 }
 
+/**
+ * 一括更新の結果型
+ */
+interface BulkUpdateResult {
+  success: number;
+  fail: number;
+}
+
+/**
+ * ゲストの宿泊日を一括更新
+ */
+async function executeBulkDateChange(
+  affected: Guest[],
+  newCheckIn: string,
+  newCheckOut: string,
+  updateFn: (params: {
+    client: ReturnType<typeof generateClient>;
+    guest: Guest;
+    onSuccess: () => void;
+    onError: (err: Error) => void;
+  }) => Promise<void>,
+  clientInstance: ReturnType<typeof generateClient>,
+  setAll: React.Dispatch<React.SetStateAction<Guest[]>>,
+  detail: Guest | null,
+  setDetail: React.Dispatch<React.SetStateAction<Guest | null>>,
+): Promise<BulkUpdateResult> {
+  let success = 0;
+  let fail = 0;
+
+  for (const g of affected) {
+    const sessionTokenExpiresAt = calculateSessionExpiry(newCheckOut);
+    const updatedGuest: Guest = {
+      ...g,
+      checkInDate: newCheckIn,
+      checkOutDate: newCheckOut,
+      sessionTokenExpiresAt,
+    };
+    try {
+      await updateFn({
+        client: clientInstance,
+        guest: updatedGuest,
+        onSuccess: () => {
+          setAll((prev) =>
+            prev.map((p) =>
+              p.roomNumber === updatedGuest.roomNumber &&
+              p.guestId === updatedGuest.guestId
+                ? updatedGuest
+                : p,
+            ),
+          );
+          if (
+            detail &&
+            detail.roomNumber === updatedGuest.roomNumber &&
+            detail.guestId === updatedGuest.guestId
+          ) {
+            setDetail(updatedGuest);
+          }
+          success += 1;
+        },
+        onError: (err) => {
+          console.error("bulk update failed for", g, err);
+          fail += 1;
+        },
+      });
+    } catch (err) {
+      console.error("bulk update exception", err);
+      fail += 1;
+    }
+  }
+
+  return { success, fail };
+}
+
 export default function AdminPage({
   roomId,
   bookingFilter: initialBookingFilter,
@@ -356,50 +429,16 @@ export default function AdminPage({
                     }
 
                     setBulkProcessing(true);
-                    let success = 0;
-                    let fail = 0;
-
-                    for (const g of affected) {
-                      const sessionTokenExpiresAt =
-                        calculateSessionExpiry(newCheckOut);
-                      const updatedGuest: Guest = {
-                        ...g,
-                        checkInDate: newCheckIn,
-                        checkOutDate: newCheckOut,
-                        sessionTokenExpiresAt,
-                      };
-                      try {
-                        await updateGuest({
-                          client,
-                          guest: updatedGuest,
-                          onSuccess: () => {
-                            setAll((prev) =>
-                              prev.map((p) =>
-                                p.roomNumber === updatedGuest.roomNumber &&
-                                p.guestId === updatedGuest.guestId
-                                  ? updatedGuest
-                                  : p,
-                              ),
-                            );
-                            if (
-                              detail &&
-                              detail.roomNumber === updatedGuest.roomNumber &&
-                              detail.guestId === updatedGuest.guestId
-                            ) {
-                              setDetail(updatedGuest);
-                            }
-                            success += 1;
-                          },
-                          onError: (err) => {
-                            console.error("bulk update failed for", g, err);
-                            fail += 1;
-                          },
-                        });
-                      } catch (err) {
-                        console.error("bulk update exception", err);
-                        fail += 1;
-                      }
-                    }
+                    const { success, fail } = await executeBulkDateChange(
+                      affected,
+                      newCheckIn,
+                      newCheckOut,
+                      updateGuest,
+                      client,
+                      setAll,
+                      detail,
+                      setDetail,
+                    );
 
                     setBulkProcessing(false);
                     setBulkModalOpen(false);
