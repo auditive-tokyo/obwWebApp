@@ -148,6 +148,34 @@ async function executeBulkDateChange(
   return { success, fail };
 }
 
+/**
+ * ゲスト状態を更新するヘルパー（detail更新を含む）
+ */
+function updateGuestInState(
+  updatedGuest: Guest,
+  setAll: React.Dispatch<React.SetStateAction<Guest[]>>,
+  detail: Guest | null,
+  setDetail: React.Dispatch<React.SetStateAction<Guest | null>>,
+): void {
+  setAll((prev) =>
+    prev.map((g) =>
+      g.roomNumber === updatedGuest.roomNumber &&
+      g.guestId === updatedGuest.guestId
+        ? updatedGuest
+        : g,
+    ),
+  );
+
+  const shouldUpdateDetail =
+    detail &&
+    detail.roomNumber === updatedGuest.roomNumber &&
+    detail.guestId === updatedGuest.guestId;
+
+  if (shouldUpdateDetail) {
+    setDetail(updatedGuest);
+  }
+}
+
 export default function AdminPage({
   roomId,
   bookingFilter: initialBookingFilter,
@@ -289,25 +317,7 @@ export default function AdminPage({
       client,
       guest: updatedGuest,
       onSuccess: () => {
-        // ローカル状態を更新
-        setAll((prev) =>
-          prev.map((g) =>
-            g.roomNumber === updatedGuest.roomNumber &&
-            g.guestId === updatedGuest.guestId
-              ? updatedGuest
-              : g,
-          ),
-        );
-
-        // 詳細モーダルの表示も更新
-        if (
-          detail &&
-          detail.roomNumber === updatedGuest.roomNumber &&
-          detail.guestId === updatedGuest.guestId
-        ) {
-          setDetail(updatedGuest);
-        }
-
+        updateGuestInState(updatedGuest, setAll, detail, setDetail);
         alert("更新しました！");
       },
       onError: (error) => {
