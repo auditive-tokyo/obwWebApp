@@ -8,7 +8,7 @@ on:
       - 'lambda_functions/get_presigned_url/**'
       - 'lambda_functions/request_access/**'
       - 'lambda_functions/transfer_room_guests/**'
-      - 'lambda_functions/verify_access/**'
+      - 'lambda_functions/verify_access_token/**'
       - '.github/workflows/appsync-lambdas-deploy.yml'
       - 'template-appsync-lambdas.yaml'
   workflow_dispatch:
