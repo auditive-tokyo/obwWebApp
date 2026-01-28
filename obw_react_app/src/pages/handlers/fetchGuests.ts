@@ -82,6 +82,24 @@ async function fetchByStatuses(
   return results.flat().map((i: unknown) => i as Guest);
 }
 
+/**
+ * statusFilterを配列に正規化
+ */
+function normalizeStatusFilter(statusFilter?: string | string[]): string[] {
+  if (Array.isArray(statusFilter)) return statusFilter;
+  if (statusFilter) return [statusFilter];
+  return [];
+}
+
+/**
+ * エラーからメッセージを抽出
+ */
+function extractErrorMessage(e: unknown): string {
+  if (typeof e === 'string') return e;
+  if (e instanceof Error) return e.message;
+  return 'Failed to load';
+}
+
 export async function fetchGuests({
   client,
   setAll,
@@ -102,11 +120,7 @@ export async function fetchGuests({
     let items: Guest[] = [];
 
     // statusFilter を配列に正規化
-    const statusFilters = Array.isArray(statusFilter) 
-      ? statusFilter 
-      : statusFilter 
-        ? [statusFilter] 
-        : [];
+    const statusFilters = normalizeStatusFilter(statusFilter);
 
     // 効率的なクエリ選択ロジック
     if (roomFilter && statusFilters.length > 0) {
@@ -160,8 +174,7 @@ export async function fetchGuests({
     
   } catch (e: unknown) {
     console.error('[fetchGuests] failed:', e);
-    const message = typeof e === 'string' ? e : (e instanceof Error ? e.message : 'Failed to load');
-    setError(message);
+    setError(extractErrorMessage(e));
   } finally {
     setLoading(false);
     dbg('fetchGuests end');
