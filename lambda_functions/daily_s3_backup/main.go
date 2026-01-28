@@ -98,53 +98,10 @@ func handleRequest(ctx context.Context) (string, error) {
 	// Group records by month (based on checkInDate)
 	recordsByMonth := groupRecordsByMonth(expiredRecords)
 
-	totalProcessed := 0
-	var uploadedKeys []string
-
-	// Process each month separately
-	for yearMonth, monthRecords := range recordsByMonth {
-		log.Printf("Processing %d records for month: %s", len(monthRecords), yearMonth)
-
-		// Group by room number within the month
-		recordsByRoom := groupRecordsByRoom(monthRecords)
-
-		// Process each room separately
-		for roomNumber, records := range recordsByRoom {
-			log.Printf("Processing %d records for room %s in month %s", len(records), roomNumber, yearMonth)
-
-			// Sort records by checkInDate
-			sortRecords(records)
-
-			// Get or create room-specific CSV
-			s3Key := fmt.Sprintf("%s/%s-expired-guests.csv", yearMonth, roomNumber)
-
-			// Download existing CSV if exists
-			existingRecords, err := downloadExistingCSV(ctx, s3Key)
-			if err != nil {
-				log.Printf("No existing CSV found for room %s in %s, will create new one", roomNumber, yearMonth)
-			} else {
-				log.Printf("Found existing CSV with %d records for room %s in %s", len(existingRecords), roomNumber, yearMonth)
-			}
-
-			// Merge existing and new records
-			allRecords := append(existingRecords, records...)
-			sortRecords(allRecords)
-
-			// Generate CSV content
-			csvData, err := generateCSV(allRecords)
-			if err != nil {
-				return "", fmt.Errorf("failed to generate CSV for room %s in %s: %w", roomNumber, yearMonth, err)
-			}
-
-			// Upload to S3 (overwrite)
-			if err := uploadToS3Overwrite(ctx, s3Key, csvData); err != nil {
-				return "", fmt.Errorf("failed to upload CSV for room %s in %s: %w", roomNumber, yearMonth, err)
-			}
-
-			log.Printf("Successfully uploaded CSV to S3: %s (%d total records)", s3Key, len(allRecords))
-			uploadedKeys = append(uploadedKeys, s3Key)
-			totalProcessed += len(records)
-		}
+	// Process all months and rooms
+	totalProcessed, uploadedKeys, err := processAllRecords(ctx, recordsByMonth)
+	if err != nil {
+		return "", err
 	}
 
 	// Delete records from DynamoDB (only after all successful S3 uploads)
@@ -157,6 +114,75 @@ func handleRequest(ctx context.Context) (string, error) {
 		totalProcessed, len(uploadedKeys), deleted)
 	log.Println(result)
 	return result, nil
+}
+
+// processAllRecords processes records for all months and rooms, uploading CSVs to S3
+func processAllRecords(ctx context.Context, recordsByMonth map[string][]GuestRecord) (int, []string, error) {
+	totalProcessed := 0
+	var uploadedKeys []string
+
+	for yearMonth, monthRecords := range recordsByMonth {
+		log.Printf("Processing %d records for month: %s", len(monthRecords), yearMonth)
+
+		// Group by room number within the month
+		recordsByRoom := groupRecordsByRoom(monthRecords)
+
+		// Process each room separately
+		processed, keys, err := processRoomRecords(ctx, yearMonth, recordsByRoom)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		totalProcessed += processed
+		uploadedKeys = append(uploadedKeys, keys...)
+	}
+
+	return totalProcessed, uploadedKeys, nil
+}
+
+// processRoomRecords processes records for all rooms in a given month
+func processRoomRecords(ctx context.Context, yearMonth string, recordsByRoom map[string][]GuestRecord) (int, []string, error) {
+	totalProcessed := 0
+	var uploadedKeys []string
+
+	for roomNumber, records := range recordsByRoom {
+		log.Printf("Processing %d records for room %s in month %s", len(records), roomNumber, yearMonth)
+
+		// Sort records by checkInDate
+		sortRecords(records)
+
+		// Get or create room-specific CSV
+		s3Key := fmt.Sprintf("%s/%s-expired-guests.csv", yearMonth, roomNumber)
+
+		// Download existing CSV if exists
+		existingRecords, err := downloadExistingCSV(ctx, s3Key)
+		if err != nil {
+			log.Printf("No existing CSV found for room %s in %s, will create new one", roomNumber, yearMonth)
+		} else {
+			log.Printf("Found existing CSV with %d records for room %s in %s", len(existingRecords), roomNumber, yearMonth)
+		}
+
+		// Merge existing and new records
+		allRecords := append(existingRecords, records...)
+		sortRecords(allRecords)
+
+		// Generate CSV content
+		csvData, err := generateCSV(allRecords)
+		if err != nil {
+			return 0, nil, fmt.Errorf("failed to generate CSV for room %s in %s: %w", roomNumber, yearMonth, err)
+		}
+
+		// Upload to S3 (overwrite)
+		if err := uploadToS3Overwrite(ctx, s3Key, csvData); err != nil {
+			return 0, nil, fmt.Errorf("failed to upload CSV for room %s in %s: %w", roomNumber, yearMonth, err)
+		}
+
+		log.Printf("Successfully uploaded CSV to S3: %s (%d total records)", s3Key, len(allRecords))
+		uploadedKeys = append(uploadedKeys, s3Key)
+		totalProcessed += len(records)
+	}
+
+	return totalProcessed, uploadedKeys, nil
 }
 
 // scanExpiredRecords queries DynamoDB using GSI for approved records with expired sessionTokenExpiresAt
