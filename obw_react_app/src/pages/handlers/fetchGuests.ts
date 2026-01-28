@@ -57,6 +57,31 @@ type FetchParams = {
   statusFilter?: string | string[];  // 承認状態フィルター（単一または複数）
 };
 
+/**
+ * 複数のステータスを並列でクエリして結果をマージ
+ */
+async function fetchByStatuses(
+  client: Client,
+  statuses: string[],
+): Promise<Guest[]> {
+  const promises = statuses.map(async (status) => {
+    try {
+      const res = await client.graphql({
+        query: queryByStatus,
+        variables: { approvalStatus: status }
+      } as GraphParams);
+      const obj = res as unknown as GraphqlResponse<{ listGuestsByApprovalStatus?: unknown[] }>;
+      return (obj.data?.listGuestsByApprovalStatus ?? []) as unknown[];
+    } catch (err: unknown) {
+      dbg(`Failed to fetch ${status}:`, err);
+      return [];
+    }
+  });
+
+  const results = await Promise.all(promises);
+  return results.flat().map((i: unknown) => i as Guest);
+}
+
 export async function fetchGuests({
   client,
   setAll,
@@ -109,49 +134,14 @@ export async function fetchGuests({
     } else if (!roomFilter && statusFilters.length > 0) {
       // 状態のみ指定: 複数の状態を並列取得
       dbg('Using status query for selected statuses:', statusFilters);
-      
-      const promises: Promise<unknown[]>[] = statusFilters.map(async (status) => {
-        try {
-          const res = await client.graphql({
-            query: queryByStatus,
-            variables: { approvalStatus: status }
-          } as GraphParams);
-          const obj = res as unknown as GraphqlResponse<{ listGuestsByApprovalStatus?: unknown[] }>;
-          return (obj.data?.listGuestsByApprovalStatus ?? []) as unknown[];
-        } catch (err: unknown) {
-          dbg(`Failed to fetch ${status}:`, err);
-          return [];
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const flat: unknown[] = results.flat();
-      items = flat.map((i: unknown) => i as Guest)
+      items = await fetchByStatuses(client, statusFilters);
       
     } else {
       // 両方とも未指定: 全ステータスを並列取得
       dbg('Both filters empty - fetching all statuses');
       
       const statuses = ['pending', 'approved', 'rejected', 'waitingForBasicInfo', 'waitingForPassportImage'];
-      
-      // 並列実行で高速化 - async/await を使って client.graphql の返り値の形に依存しない
-      const promises: Promise<unknown[]>[] = statuses.map(async (status) => {
-        try {
-          const res = await client.graphql({
-            query: queryByStatus,
-            variables: { approvalStatus: status }
-          } as GraphParams);
-          const obj = res as unknown as GraphqlResponse<{ listGuestsByApprovalStatus?: unknown[] }>;
-          return (obj.data?.listGuestsByApprovalStatus ?? []) as unknown[];
-        } catch (err: unknown) {
-          dbg(`Failed to fetch ${status}:`, err);
-          return [];
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const flat: unknown[] = results.flat();
-      items = flat.map((i: unknown) => i as Guest);
+      items = await fetchByStatuses(client, statuses);
 
       // TODO: 過去30日分のデータのみに絞り込みを追加
       // 現在: 全期間のデータを取得（古いデータも含む）
