@@ -142,69 +142,93 @@ func collectRejectedKeys(rejectedItems []GuestItem) map[GuestKey]bool {
 	return keys
 }
 
-// collectKeysToDelete collects keys to delete and expands bookingId groups
-func collectKeysToDelete(ctx context.Context, expiredItems []GuestItem) (map[GuestKey]bool, int, error) {
+// isValidGuestItem checks if an item has valid room number and guest ID
+func isValidGuestItem(item GuestItem) bool {
+	return item.RoomNumber != "" && item.GuestID != ""
+}
+
+// shouldSkipItem returns true if the item should be skipped (approved guests)
+func shouldSkipItem(item GuestItem) bool {
+	return item.ApprovalStatus == "approved"
+}
+
+// addGuestKey adds a guest key to the map if valid and not approved
+func addGuestKey(keys map[GuestKey]bool, item GuestItem) {
+	if shouldSkipItem(item) {
+		return
+	}
+	if isValidGuestItem(item) {
+		keys[GuestKey{RoomNumber: item.RoomNumber, GuestID: item.GuestID}] = true
+	}
+}
+
+// collectInitialKeysAndBookings collects initial keys and booking IDs from expired items
+func collectInitialKeysAndBookings(expiredItems []GuestItem) (map[GuestKey]bool, map[string]bool) {
 	keys := make(map[GuestKey]bool)
 	bookingIDs := make(map[string]bool)
 
-	// Collect initial keys and bookingIds
 	for _, item := range expiredItems {
-		// Skip approved guests - they should never be deleted
-		if item.ApprovalStatus == "approved" {
-			continue
-		}
-		if item.RoomNumber != "" && item.GuestID != "" {
-			keys[GuestKey{RoomNumber: item.RoomNumber, GuestID: item.GuestID}] = true
-		}
-		if item.BookingID != "" {
+		addGuestKey(keys, item)
+		if item.BookingID != "" && !shouldSkipItem(item) {
 			bookingIDs[item.BookingID] = true
 		}
 	}
 
+	return keys, bookingIDs
+}
+
+// queryBookingGroupPage queries a single page of guests for a booking ID
+func queryBookingGroupPage(ctx context.Context, bookingID string, lastKey map[string]types.AttributeValue) (*dynamodb.QueryOutput, error) {
+	input := &dynamodb.QueryInput{
+		TableName:              &tableName,
+		IndexName:              aws.String("BookingIndex"),
+		KeyConditionExpression: aws.String("bookingId = :bid"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":bid": &types.AttributeValueMemberS{Value: bookingID},
+		},
+	}
+	if lastKey != nil {
+		input.ExclusiveStartKey = lastKey
+	}
+
+	return dynamoClient.Query(ctx, input)
+}
+
+// expandBookingGroup expands a single booking group and adds keys to the map
+func expandBookingGroup(ctx context.Context, bookingID string, keys map[GuestKey]bool) {
+	var lastKey map[string]types.AttributeValue
+
+	for {
+		resp, err := queryBookingGroupPage(ctx, bookingID, lastKey)
+		if err != nil {
+			log.Printf("Failed to query BookingIndex for bookingId=%s: %v", bookingID, err)
+			break
+		}
+
+		var relatedItems []GuestItem
+		if err := attributevalue.UnmarshalListOfMaps(resp.Items, &relatedItems); err != nil {
+			log.Printf("Failed to unmarshal related items: %v", err)
+			break
+		}
+
+		for _, related := range relatedItems {
+			addGuestKey(keys, related)
+		}
+
+		lastKey = resp.LastEvaluatedKey
+		if lastKey == nil {
+			break
+		}
+	}
+}
+
+// collectKeysToDelete collects keys to delete and expands bookingId groups
+func collectKeysToDelete(ctx context.Context, expiredItems []GuestItem) (map[GuestKey]bool, int, error) {
+	keys, bookingIDs := collectInitialKeysAndBookings(expiredItems)
+
 	// Expand bookingId groups
 	for bookingID := range bookingIDs {
-		var lastKey map[string]types.AttributeValue
-
-		for {
-			input := &dynamodb.QueryInput{
-				TableName:              &tableName,
-				IndexName:              aws.String("BookingIndex"),
-				KeyConditionExpression: aws.String("bookingId = :bid"),
-				ExpressionAttributeValues: map[string]types.AttributeValue{
-					":bid": &types.AttributeValueMemberS{Value: bookingID},
-				},
-			}
-			if lastKey != nil {
-				input.ExclusiveStartKey = lastKey
-			}
-
-			resp, err := dynamoClient.Query(ctx, input)
-			if err != nil {
-				log.Printf("Failed to query BookingIndex for bookingId=%s: %v", bookingID, err)
-				break
-			}
-
-			var relatedItems []GuestItem
-			if err := attributevalue.UnmarshalListOfMaps(resp.Items, &relatedItems); err != nil {
-				log.Printf("Failed to unmarshal related items: %v", err)
-				break
-			}
-
-			for _, related := range relatedItems {
-				if related.RoomNumber != "" && related.GuestID != "" {
-					// Skip approved guests - they should never be deleted
-					if related.ApprovalStatus == "approved" {
-						continue
-					}
-					keys[GuestKey{RoomNumber: related.RoomNumber, GuestID: related.GuestID}] = true
-				}
-			}
-
-			lastKey = resp.LastEvaluatedKey
-			if lastKey == nil {
-				break
-			}
-		}
+		expandBookingGroup(ctx, bookingID, keys)
 	}
 
 	return keys, len(bookingIDs), nil
