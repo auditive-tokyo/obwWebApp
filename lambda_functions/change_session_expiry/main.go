@@ -97,94 +97,122 @@ func updateSessionTokenExpiresAt(ctx context.Context, roomNumber, guestId string
 	return nil
 }
 
+// shouldProcessRecord checks if the record should be processed
+func shouldProcessRecord(record events.DynamoDBEventRecord) bool {
+	if record.EventName != "MODIFY" {
+		return false
+	}
+	return record.Change.NewImage != nil && record.Change.OldImage != nil
+}
+
+// extractCheckOutDateChange extracts checkout date change info from the record
+// Returns newCheckOutDate, bookingId, and whether the change should be processed
+func extractCheckOutDateChange(newImage, oldImage map[string]events.DynamoDBAttributeValue) (string, string, bool) {
+	// Check if approvalStatus is "approved"
+	approvalStatus := getStringAttr(newImage["approvalStatus"])
+	if approvalStatus != "approved" {
+		log.Printf("Skipping record: approvalStatus=%s (not approved)", approvalStatus)
+		return "", "", false
+	}
+
+	// Get checkOutDate from both images
+	oldCheckOutDate := getStringAttr(oldImage["checkOutDate"])
+	newCheckOutDate := getStringAttr(newImage["checkOutDate"])
+
+	// Skip if checkOutDate hasn't changed or is empty
+	if oldCheckOutDate == newCheckOutDate {
+		log.Printf("Skipping: checkOutDate unchanged (%s)", newCheckOutDate)
+		return "", "", false
+	}
+
+	if newCheckOutDate == "" {
+		log.Printf("Skipping: newCheckOutDate is empty")
+		return "", "", false
+	}
+
+	// Get bookingId
+	bookingId := getStringAttr(newImage["bookingId"])
+	if bookingId == "" {
+		log.Printf("Skipping: bookingId is empty")
+		return "", "", false
+	}
+
+	log.Printf("🔄 Detected checkOutDate change: %s → %s for bookingId=%s",
+		oldCheckOutDate, newCheckOutDate, bookingId)
+
+	return newCheckOutDate, bookingId, true
+}
+
+// updateGuestsExpiry updates sessionTokenExpiresAt for all guests in a booking
+func updateGuestsExpiry(ctx context.Context, guests []map[string]types.AttributeValue, expiresAt int64, bookingId string) {
+	successCount := 0
+	for _, item := range guests {
+		var guest struct {
+			RoomNumber string `dynamodbav:"roomNumber"`
+			GuestID    string `dynamodbav:"guestId"`
+		}
+
+		if err := attributevalue.UnmarshalMap(item, &guest); err != nil {
+			log.Printf("⚠️ Failed to unmarshal guest: %v", err)
+			continue
+		}
+
+		if err := updateSessionTokenExpiresAt(ctx, guest.RoomNumber, guest.GuestID, expiresAt); err != nil {
+			log.Printf("⚠️ Failed to update guest %s/%s: %v", guest.RoomNumber, guest.GuestID, err)
+			continue
+		}
+
+		log.Printf("✅ Updated sessionTokenExpiresAt for guest %s/%s", guest.RoomNumber, guest.GuestID)
+		successCount++
+	}
+
+	log.Printf("🎉 Successfully updated %d/%d guests for bookingId=%s", successCount, len(guests), bookingId)
+}
+
+// processRecord processes a single DynamoDB stream record
+func processRecord(ctx context.Context, record events.DynamoDBEventRecord) error {
+	if !shouldProcessRecord(record) {
+		return nil
+	}
+
+	newCheckOutDate, bookingId, shouldProcess := extractCheckOutDateChange(
+		record.Change.NewImage,
+		record.Change.OldImage,
+	)
+	if !shouldProcess {
+		return nil
+	}
+
+	// Calculate new sessionTokenExpiresAt (checkout date at JST noon)
+	expiresAt, err := calculateSessionExpiry(newCheckOutDate)
+	if err != nil {
+		log.Printf("❌ Error calculating expiry: %v", err)
+		return err
+	}
+
+	log.Printf("📅 New sessionTokenExpiresAt: %d (%s)", expiresAt, time.Unix(expiresAt, 0).UTC())
+
+	// Query all guests with the same bookingId
+	guests, err := queryGuestsByBookingId(ctx, bookingId)
+	if err != nil {
+		log.Printf("❌ Error querying guests by bookingId: %v", err)
+		return err
+	}
+
+	log.Printf("📋 Found %d guests with bookingId=%s", len(guests), bookingId)
+
+	// Update sessionTokenExpiresAt for all guests in the booking
+	updateGuestsExpiry(ctx, guests, expiresAt, bookingId)
+
+	return nil
+}
+
 // HandleRequest processes DynamoDB Stream events
 func HandleRequest(ctx context.Context, event events.DynamoDBEvent) error {
 	for _, record := range event.Records {
-		// Only process MODIFY events
-		if record.EventName != "MODIFY" {
-			continue
-		}
-
-		newImage := record.Change.NewImage
-		oldImage := record.Change.OldImage
-
-		if newImage == nil || oldImage == nil {
-			continue
-		}
-
-		// Check if approvalStatus is "approved"
-		approvalStatus := getStringAttr(newImage["approvalStatus"])
-		if approvalStatus != "approved" {
-			log.Printf("Skipping record: approvalStatus=%s (not approved)", approvalStatus)
-			continue
-		}
-
-		// Get checkOutDate from both images
-		oldCheckOutDate := getStringAttr(oldImage["checkOutDate"])
-		newCheckOutDate := getStringAttr(newImage["checkOutDate"])
-
-		// Skip if checkOutDate hasn't changed
-		if oldCheckOutDate == newCheckOutDate {
-			log.Printf("Skipping: checkOutDate unchanged (%s)", newCheckOutDate)
-			continue
-		}
-
-		if newCheckOutDate == "" {
-			log.Printf("Skipping: newCheckOutDate is empty")
-			continue
-		}
-
-		// Get bookingId
-		bookingId := getStringAttr(newImage["bookingId"])
-		if bookingId == "" {
-			log.Printf("Skipping: bookingId is empty")
-			continue
-		}
-
-		log.Printf("🔄 Detected checkOutDate change: %s → %s for bookingId=%s",
-			oldCheckOutDate, newCheckOutDate, bookingId)
-
-		// Calculate new sessionTokenExpiresAt (checkout date at JST noon)
-		expiresAt, err := calculateSessionExpiry(newCheckOutDate)
-		if err != nil {
-			log.Printf("❌ Error calculating expiry: %v", err)
+		if err := processRecord(ctx, record); err != nil {
 			return err
 		}
-
-		log.Printf("📅 New sessionTokenExpiresAt: %d (%s)", expiresAt, time.Unix(expiresAt, 0).UTC())
-
-		// Query all guests with the same bookingId
-		guests, err := queryGuestsByBookingId(ctx, bookingId)
-		if err != nil {
-			log.Printf("❌ Error querying guests by bookingId: %v", err)
-			return err
-		}
-
-		log.Printf("📋 Found %d guests with bookingId=%s", len(guests), bookingId)
-
-		// Update sessionTokenExpiresAt for all guests in the booking
-		successCount := 0
-		for _, item := range guests {
-			var guest struct {
-				RoomNumber string `dynamodbav:"roomNumber"`
-				GuestID    string `dynamodbav:"guestId"`
-			}
-
-			if err := attributevalue.UnmarshalMap(item, &guest); err != nil {
-				log.Printf("⚠️ Failed to unmarshal guest: %v", err)
-				continue
-			}
-
-			if err := updateSessionTokenExpiresAt(ctx, guest.RoomNumber, guest.GuestID, expiresAt); err != nil {
-				log.Printf("⚠️ Failed to update guest %s/%s: %v", guest.RoomNumber, guest.GuestID, err)
-				continue
-			}
-
-			log.Printf("✅ Updated sessionTokenExpiresAt for guest %s/%s", guest.RoomNumber, guest.GuestID)
-			successCount++
-		}
-
-		log.Printf("🎉 Successfully updated %d/%d guests for bookingId=%s", successCount, len(guests), bookingId)
 	}
 
 	return nil
