@@ -114,29 +114,66 @@ func init() {
 	log.Printf("DynamoDB client initialized. Table: %s", tableName)
 }
 
-// Lambda ハンドラー
-func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult, error) {
-	input := event.Arguments.Input
-
+// logTransferStart logs the start of the transfer operation
+func logTransferStart(input TransferRoomInput) {
 	if len(input.BookingIDs) > 0 {
 		log.Printf("🔄 部屋移動開始: %s → %s (bookingIds: %v)", input.OldRoomNumber, input.NewRoomNumber, input.BookingIDs)
 	} else {
 		log.Printf("🔄 部屋移動開始: %s → %s (全ゲスト)", input.OldRoomNumber, input.NewRoomNumber)
 	}
+}
 
-	// 入力バリデーション
+// validateTransferInput validates the transfer input and returns an error result if invalid
+func validateTransferInput(input TransferRoomInput) (*TransferRoomResult, error) {
 	if input.OldRoomNumber == "" || input.NewRoomNumber == "" {
-		return TransferRoomResult{
+		return &TransferRoomResult{
 			Success: false,
 			Message: "部屋番号が指定されていません",
 		}, fmt.Errorf("invalid input: oldRoomNumber and newRoomNumber are required")
 	}
 
 	if input.OldRoomNumber == input.NewRoomNumber {
-		return TransferRoomResult{
+		return &TransferRoomResult{
 			Success: false,
 			Message: "移動元と移動先の部屋番号が同じです",
 		}, fmt.Errorf("oldRoomNumber and newRoomNumber must be different")
+	}
+
+	return nil, nil
+}
+
+// filterGuestsByBookingIDs filters guests by booking IDs if specified
+func filterGuestsByBookingIDs(allGuests []GuestRecord, bookingIDs []string) []GuestRecord {
+	if len(bookingIDs) == 0 {
+		log.Printf("📋 全 %d 件のゲストを対象", len(allGuests))
+		return allGuests
+	}
+
+	bookingIDSet := make(map[string]bool)
+	for _, id := range bookingIDs {
+		bookingIDSet[id] = true
+	}
+
+	var guests []GuestRecord
+	for _, guest := range allGuests {
+		if guest.BookingID != nil && bookingIDSet[*guest.BookingID] {
+			guests = append(guests, guest)
+		}
+	}
+
+	log.Printf("📋 フィルタリング結果: %d/%d 件のゲストが対象", len(guests), len(allGuests))
+	return guests
+}
+
+// Lambda ハンドラー
+func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult, error) {
+	input := event.Arguments.Input
+
+	logTransferStart(input)
+
+	// 入力バリデーション
+	if errResult, err := validateTransferInput(input); errResult != nil {
+		return *errResult, err
 	}
 
 	// 旧部屋のゲストを全件取得
@@ -150,26 +187,7 @@ func HandleRequest(ctx context.Context, event AppSyncEvent) (TransferRoomResult,
 	}
 
 	// bookingIds が指定されている場合はフィルタリング
-	var guests []GuestRecord
-	if len(input.BookingIDs) > 0 {
-		bookingIDSet := make(map[string]bool)
-		for _, id := range input.BookingIDs {
-			bookingIDSet[id] = true
-		}
-
-		for _, guest := range allGuests {
-			// bookingId が指定された bookingIds のいずれかに一致する場合のみ含める
-			if guest.BookingID != nil && bookingIDSet[*guest.BookingID] {
-				guests = append(guests, guest)
-			}
-		}
-
-		log.Printf("📋 フィルタリング結果: %d/%d 件のゲストが対象", len(guests), len(allGuests))
-	} else {
-		// bookingIds 指定なしの場合は全ゲストを対象
-		guests = allGuests
-		log.Printf("📋 全 %d 件のゲストを対象", len(guests))
-	}
+	guests := filterGuestsByBookingIDs(allGuests, input.BookingIDs)
 
 	if len(guests) == 0 {
 		log.Printf("ℹ️ 移動対象のゲストが見つかりませんでした")
