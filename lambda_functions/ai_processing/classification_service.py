@@ -1,5 +1,9 @@
 import openai
 import json
+from typing import Optional
+
+# 有効な緊急度の値
+VALID_URGENCY_VALUES = frozenset(["urgent", "general", "operator_request", "unknown"])
 
 # JSON Schema for Structured Outputs
 urgency_classification_schema = {
@@ -18,6 +22,70 @@ urgency_classification_schema = {
     "required": ["urgency", "reasoning"],
     "additionalProperties": False
 }
+
+
+def _extract_text_from_content(content_item) -> Optional[str]:
+    """コンテンツアイテムからoutput_textのテキストを抽出"""
+    if hasattr(content_item, 'type') and content_item.type == 'output_text':
+        return content_item.text
+    return None
+
+
+def _extract_text_from_message(item) -> Optional[str]:
+    """messageタイプのアイテムからテキストを抽出"""
+    if not (hasattr(item, 'type') and item.type == 'message'):
+        return None
+    if not (hasattr(item, 'content') and item.content):
+        return None
+    
+    for content_item in item.content:
+        text = _extract_text_from_content(content_item)
+        if text:
+            return text
+    return None
+
+
+def _extract_text_from_response(response) -> Optional[str]:
+    """OpenAIレスポンスからテキストを抽出"""
+    if not response.output:
+        return None
+    
+    for item in response.output:
+        text = _extract_text_from_message(item)
+        if text:
+            return text
+    return None
+
+
+def _parse_urgency_result(text: str) -> dict:
+    """JSON文字列から緊急度結果をパース"""
+    result = json.loads(text)
+    urgency = result.get("urgency")
+    reasoning = result.get("reasoning", "N/A")
+    
+    print(f"分類結果: urgency='{urgency}', reasoning='{reasoning}'")
+    
+    if urgency in VALID_URGENCY_VALUES:
+        return {"urgency": urgency}
+    
+    print(f"予期しない緊急度の値: {urgency}")
+    return {"urgency": "unknown"}
+
+
+def _handle_api_status_error(e: openai.APIStatusError) -> dict:
+    """APIStatusErrorの詳細をログ出力してエラー結果を返す"""
+    error_details = "N/A"
+    try:
+        error_details_json = e.response.json()
+        error_details = json.dumps(error_details_json, indent=2, ensure_ascii=False)
+    except json.JSONDecodeError:
+        error_details = e.response.text
+    except Exception as ex_detail:
+        error_details = f"エラー詳細の取得中に別のエラーが発生: {ex_detail}"
+        
+    print(f"OpenAI APIがエラーを返しました (ステータスコード: {e.status_code}): {e.response}")
+    print(f"エラー詳細:\n{error_details}")
+    return {"urgency": "error"}
 
 
 async def classify_message_urgency(
@@ -96,27 +164,10 @@ async def classify_message_urgency(
             }
         )
 
-        # レスポンスから message を探す（JSON Schema で返される）
-        if response.output:
-            for item in response.output:
-                # message タイプの出力を探す
-                if hasattr(item, 'type') and item.type == 'message':
-                    # content 配列から output_text を探す
-                    if hasattr(item, 'content') and item.content:
-                        for content_item in item.content:
-                            if hasattr(content_item, 'type') and content_item.type == 'output_text':
-                                # JSON 文字列をパース
-                                result = json.loads(content_item.text)
-                                urgency = result.get("urgency")
-                                reasoning = result.get("reasoning", "N/A")
-                                
-                                print(f"分類結果: urgency='{urgency}', reasoning='{reasoning}'")
-                                
-                                if urgency in ["urgent", "general", "operator_request", "unknown"]:
-                                    return {"urgency": urgency}
-                                else:
-                                    print(f"予期しない緊急度の値: {urgency}")
-                                    return {"urgency": "unknown"}
+        # レスポンスからテキストを抽出
+        text = _extract_text_from_response(response)
+        if text:
+            return _parse_urgency_result(text)
         
         print("テキスト出力が見つかりませんでした")
         return {"urgency": "unknown"}
@@ -128,80 +179,7 @@ async def classify_message_urgency(
         print(f"OpenAI APIのレート制限に達しました: {e}")
         return {"urgency": "error"}
     except openai.APIStatusError as e:
-        error_details = "N/A"
-        try:
-            # APIからのJSONレスポンスを取得
-            error_details_json = e.response.json()
-            error_details = json.dumps(error_details_json, indent=2, ensure_ascii=False)
-        except json.JSONDecodeError:
-            # JSONでデコードできない場合はテキストとして取得
-            error_details = e.response.text
-        except Exception as ex_detail:
-            error_details = f"エラー詳細の取得中に別のエラーが発生: {ex_detail}"
-            
-        print(f"OpenAI APIがエラーを返しました (ステータスコード: {e.status_code}): {e.response}")
-        print(f"エラー詳細:\n{error_details}") # ★エラー詳細を出力
-        return {"urgency": "error"}
+        return _handle_api_status_error(e)
     except Exception as e:
         print(f"OpenAI分類中に予期せぬエラーが発生しました: {e}")
         return {"urgency": "error"}
-
-
-# # --- ここからテスト実行用のコード ---
-# if __name__ == "__main__":
-#     import asyncio
-#     import os
-
-#     async def main_test():
-#         # 環境変数からAPIキーを読み込む (テスト実行時のみ)
-#         api_key = os.environ.get("OPENAI_API_KEY")
-#         if not api_key:
-#             print("テスト実行エラー: 環境変数 OPENAI_API_KEY が設定されていません。")
-#             return
-
-#         openai_async_client = openai.AsyncOpenAI(api_key=api_key)
-
-#         print("\n--- テスト開始: 段階的な緊急度変化 ---")
-
-#         # テスト1: 不明なテキスト（意味不明な入力）
-#         print("\n=== テスト1: 不明なテキスト ===")
-#         result1 = await classify_message_urgency_with_openai_tool_calling(
-#             openai_async_client,
-#             "あのー、えっと、なんか、その。"
-#         )
-#         print(f"期待: unknown | 結果: urgency={result1['urgency']}")
-        
-#         # テスト2: 一般的な問い合わせ（緊急性なし）
-#         print("\n=== テスト2: 一般的な問い合わせ ===")
-#         result2 = await classify_message_urgency_with_openai_tool_calling(
-#             openai_async_client,
-#             "すみません、近くにコンビニはありますか？",
-#             previous_response_id=result1['response_id']
-#         )
-#         print(f"期待: general | 結果: urgency={result2['urgency']}")
-        
-#         # テスト3: 緊急性が徐々に明らかになる
-#         print("\n=== テスト3: 緊急性の兆候 ===")
-#         result3 = await classify_message_urgency_with_openai_tool_calling(
-#             openai_async_client,
-#             "あと、部屋の廊下で知らない人を見かけたんですが...",
-#             previous_response_id=result2['response_id']
-#         )
-#         print(f"期待: urgent | 結果: urgency={result3['urgency']}")
-        
-#         # テスト4: 明確な危険・緊急事態
-#         print("\n=== テスト4: 明確な緊急事態 ===")
-#         result4 = await classify_message_urgency_with_openai_tool_calling(
-#             openai_async_client,
-#             "その人が今も部屋のドアの前にいて、中に入ろうとしています！",
-#             previous_response_id=result3['response_id']
-#         )
-#         print(f"期待: urgent | 結果: urgency={result4['urgency']}")
-        
-#         print("\n--- テスト終了 ---")
-
-#         # 非同期クライアントを閉じる (推奨)
-#         await openai_async_client.close()
-
-#     # Python 3.7以降でasyncioのメイン関数を実行する標準的な方法
-#     asyncio.run(main_test())
