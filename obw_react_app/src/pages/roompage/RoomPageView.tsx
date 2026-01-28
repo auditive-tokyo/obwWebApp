@@ -80,6 +80,28 @@ function getRepresentativeInfo(
   return fallback;
 }
 
+/**
+ * ゲストセッションに特定のステータスが含まれるかチェック
+ */
+function hasGuestWithStatus(
+  guestSessions: GuestSession[] | undefined,
+  status: string
+): boolean {
+  return (
+    Array.isArray(guestSessions) &&
+    guestSessions.some(
+      (g) => (g?.approvalStatus || "").toLowerCase() === status
+    )
+  );
+}
+
+/**
+ * 日付を表示用文字列に変換
+ */
+function formatDateDisplay(date: Date | null | undefined): string {
+  return date ? date.toLocaleDateString() : "";
+}
+
 export function RoomPageView(
   props: RoomPageViewProps & {
     hasRoomCheckDates?: boolean;
@@ -138,18 +160,10 @@ export function RoomPageView(
   const selectedSession = selectedGuest;
 
   // Pending状態のゲストがいる場合の変数
-  const hasPendingGuest =
-    Array.isArray(guestSessions) &&
-    guestSessions.some(
-      (g) => (g?.approvalStatus || "").toLowerCase() === "pending"
-    );
+  const hasPendingGuest = hasGuestWithStatus(guestSessions, "pending");
 
   // 鍵の4桁コード文書へのアクセス許可: guestSessions の中に approved が1人でもいればOK
-  const hasApprovedGuest =
-    Array.isArray(guestSessions) &&
-    guestSessions.some(
-      (g) => (g?.approvalStatus || "").toLowerCase() === "approved"
-    );
+  const hasApprovedGuest = hasGuestWithStatus(guestSessions, "approved");
 
   // チェックイン日の0時以降かどうかを判定（日本時間）
   const isAfterCheckInTime = useMemo(() => {
@@ -187,9 +201,8 @@ export function RoomPageView(
 
   // 選択されている人がいる場合のみフォーム/アップロードを出す
   const showForm =
-    forceShowForm === true
-      ? true
-      : !!selectedSession && shouldShowBasicInfoForSession(selectedSession);
+    forceShowForm === true ||
+    (!!selectedSession && shouldShowBasicInfoForSession(selectedSession));
 
   const showUpload =
     !!selectedSession &&
@@ -197,10 +210,24 @@ export function RoomPageView(
     shouldShowUploadForSession(selectedSession);
 
   const showStatus =
-    selectedSession &&
+    !!selectedSession &&
     !showForm &&
     !showUpload &&
     !!getStatusMessage(selectedSession);
+
+  // 表示用の事前計算
+  const hasCurrentLocation = !!myCurrentLocation;
+  const isDateLocked = hasPendingGuest || hasApprovedGuest;
+  const checkInDateDisplay = formatDateDisplay(roomCheckInDate);
+  const checkOutDateDisplay = formatDateDisplay(roomCheckOutDate);
+  const addGuestButtonTitle = disableAddGuest
+    ? (getMessage("completeBasicInfoFirst") as string)
+    : undefined;
+  const addGuestButtonClass =
+    "text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200 " +
+    (disableAddGuest
+      ? "opacity-50 cursor-not-allowed pointer-events-none"
+      : "hover:from-blue-400 hover:to-blue-500");
 
   dbg("selectedSession:", selectedSession);
   dbg(
@@ -292,7 +319,7 @@ export function RoomPageView(
             <h1 className="text-2xl font-bold text-gray-800">ROOM {roomId}</h1>
             {/* 同期ボタン（右上）とメッセージ */}
             <div className="flex items-center gap-2">
-              {myCurrentLocation ? (
+              {hasCurrentLocation ? (
                 // 位置情報がある場合: 現在地ボタンと同期解除ボタン + クルクル
                 <>
                   <button
@@ -363,18 +390,12 @@ export function RoomPageView(
           </div>
           {hasRoomCheckDates && (
             <div className="text-sm text-gray-600 mb-2">
-              {hasPendingGuest || hasApprovedGuest ? (
+              {isDateLocked ? (
                 // Pending または 承認済み：編集不可
                 <div className="flex items-center gap-1">
                   <span>
-                    {getMessage("checkInDate")}:{" "}
-                    {roomCheckInDate
-                      ? roomCheckInDate.toLocaleDateString()
-                      : ""}{" "}
-                    〜 {getMessage("checkOutDate")}:{" "}
-                    {roomCheckOutDate
-                      ? roomCheckOutDate.toLocaleDateString()
-                      : ""}
+                    {getMessage("checkInDate")}: {checkInDateDisplay} 〜{" "}
+                    {getMessage("checkOutDate")}: {checkOutDateDisplay}
                   </span>
                   <svg
                     className="w-3 h-3 text-gray-400"
@@ -399,12 +420,8 @@ export function RoomPageView(
                   onClick={() => setShowDateEditor(true)}
                   className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                 >
-                  {getMessage("checkInDate")}:{" "}
-                  {roomCheckInDate ? roomCheckInDate.toLocaleDateString() : ""}{" "}
-                  〜 {getMessage("checkOutDate")}:{" "}
-                  {roomCheckOutDate
-                    ? roomCheckOutDate.toLocaleDateString()
-                    : ""}
+                  {getMessage("checkInDate")}: {checkInDateDisplay} 〜{" "}
+                  {getMessage("checkOutDate")}: {checkOutDateDisplay}
                   <svg
                     className="w-3 h-3"
                     fill="none"
@@ -434,17 +451,8 @@ export function RoomPageView(
                     type="button"
                     onClick={onAddGuest}
                     disabled={disableAddGuest}
-                    title={
-                      disableAddGuest
-                        ? (getMessage("completeBasicInfoFirst") as string)
-                        : undefined
-                    }
-                    className={
-                      "text-sm px-2 py-1 rounded bg-gradient-to-r from-blue-300 to-blue-400 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200 " +
-                      (disableAddGuest
-                        ? "opacity-50 cursor-not-allowed pointer-events-none"
-                        : "hover:from-blue-400 hover:to-blue-500")
-                    }
+                    title={addGuestButtonTitle}
+                    className={addGuestButtonClass}
                   >
                     {getMessage("addNewPerson")}
                   </button>
