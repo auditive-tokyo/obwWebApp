@@ -33,6 +33,60 @@ interface TransferRoomGuestsParams {
   onError?: (error: Error) => void;
 }
 
+/**
+ * GraphQLResultからエラーメッセージを抽出
+ */
+function extractGraphQLErrors(result: GraphQLResult<unknown>): string | null {
+  if (!result.errors || result.errors.length === 0) return null;
+  return result.errors.map(e => e.message || 'Unknown error').join(', ');
+}
+
+/**
+ * 不明なエラーオブジェクトからGraphQLエラーを抽出
+ */
+function extractErrorFromUnknown(error: unknown): Error {
+  // GraphQL エラーレスポンスの可能性をチェック
+  if (error && typeof error === 'object' && 'errors' in error) {
+    const graphqlError = error as { errors?: Array<{ message?: string }> };
+    if (graphqlError.errors && graphqlError.errors.length > 0) {
+      const errorMessages = graphqlError.errors
+        .map(e => e.message || 'Unknown error')
+        .join(', ');
+      return new Error(errorMessages);
+    }
+  }
+  
+  if (error instanceof Error) return error;
+  return new Error('不明なエラーが発生しました');
+}
+
+/**
+ * レスポンスデータを検証してTransferRoomResultを返す
+ */
+function validateTransferResult(
+  data: TransferRoomResult | undefined
+): TransferRoomResult {
+  if (!data) {
+    throw new Error('レスポンスデータが取得できませんでした');
+  }
+  if (!data.success) {
+    throw new Error(data.message || '部屋移動に失敗しました');
+  }
+  return data;
+}
+
+/**
+ * エラーハンドリング（onErrorがあれば呼び出し、なければthrow）
+ */
+function handleError(error: Error, onError?: (error: Error) => void): void {
+  console.error('❌ 部屋移動失敗:', error.message);
+  if (onError) {
+    onError(error);
+  } else {
+    throw error;
+  }
+}
+
 export async function transferRoomGuests({
   client,
   oldRoomNumber,
@@ -57,52 +111,19 @@ export async function transferRoomGuests({
       variables
     }) as GraphQLResult<{ transferRoomGuests: TransferRoomResult }>;
 
-    if (result.errors && result.errors.length > 0) {
-      const errorMessage = result.errors.map(e => e.message || 'Unknown error').join(', ');
-      console.error('❌ 部屋移動失敗 (GraphQL errors):', errorMessage);
-      throw new Error(errorMessage);
+    const graphqlErrorMessage = extractGraphQLErrors(result);
+    if (graphqlErrorMessage) {
+      throw new Error(graphqlErrorMessage);
     }
 
-    const data = result.data?.transferRoomGuests;
-    if (!data) {
-      throw new Error('レスポンスデータが取得できませんでした');
-    }
-
-    if (!data.success) {
-      console.error('❌ 部屋移動失敗:', data.message);
-      throw new Error(data.message || '部屋移動に失敗しました');
-    }
-
+    const data = validateTransferResult(result.data?.transferRoomGuests);
     dbg(`✅ 部屋移動成功: ${data.transferredCount}件のゲストを移動しました`);
     
     if (onSuccess) {
       onSuccess(data);
     }
   } catch (error) {
-    // GraphQL エラーレスポンスの可能性をチェック
-    if (error && typeof error === 'object' && 'errors' in error) {
-      const graphqlError = error as { errors?: Array<{ message?: string }> };
-      if (graphqlError.errors && graphqlError.errors.length > 0) {
-        const errorMessages = graphqlError.errors
-          .map(e => e.message || 'Unknown error')
-          .join(', ');
-        console.error('❌ 部屋移動失敗 (onError):', errorMessages);
-        const finalError = new Error(errorMessages);
-        if (onError) {
-          onError(finalError);
-        } else {
-          throw finalError;
-        }
-        return;
-      }
-    }
-    
-    console.error('❌ 部屋移動失敗 (catch):', error instanceof Error ? error.message : String(error));
-    
-    if (onError) {
-      onError(error instanceof Error ? error : new Error('不明なエラーが発生しました'));
-    } else {
-      throw error;
-    }
+    const finalError = extractErrorFromUnknown(error);
+    handleError(finalError, onError);
   }
 }
