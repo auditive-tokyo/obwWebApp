@@ -1,4 +1,4 @@
-import { Handler, Context } from 'aws-lambda';
+import { Handler } from 'aws-lambda';
 
 // 環境変数（既存のnotify_adminと同じ）
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -61,10 +61,8 @@ async function sendTelegram(text: string): Promise<void> {
 /**
  * Lambda handler
  */
-export const handler: Handler<TelegramNotificationEvent, { success: boolean }> = async (event: TelegramNotificationEvent, context: Context) => {
+export const handler: Handler<TelegramNotificationEvent, { success: boolean }> = async (event: TelegramNotificationEvent) => {
     const userInfo = event.userInfo || {};
-    // Reference `context` to avoid "declared but its value is never read" / eslint no-unused-vars
-    void context;
     
     console.info('🚨 Human operator notification received:', {
         roomId: event.roomId,

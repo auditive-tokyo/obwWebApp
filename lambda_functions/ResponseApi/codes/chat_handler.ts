@@ -181,7 +181,7 @@ function handleContentPartDone(
     notificationState: TelegramNotificationState
 ): void {
     const part = chunk.part as Record<string, unknown> | undefined;
-    if (!part || part.type !== 'output_text' || typeof part.text !== 'string') {
+    if (part?.type !== 'output_text' || typeof part?.text !== 'string') {
         return;
     }
 
@@ -238,7 +238,7 @@ function processStreamChunk(
     }
 
     const c = chunk as Record<string, unknown>;
-    if (!c || !c.type) {
+    if (!c?.type) {
         return;
     }
 
