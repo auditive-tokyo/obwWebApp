@@ -248,6 +248,17 @@ export default function AdminPage({
     : "";
   const affectedCount = filteredGuests ? filteredGuests.length : 0;
 
+  // 表示用の事前計算（JSX内の三項演算子を削減）
+  const displayRoomLabel = roomFilter ? `部屋${roomFilter}のみ` : "全部屋";
+  const displayStatusLabel =
+    statusFilter && statusFilter.length
+      ? statusFilter.join("")
+      : "すべての状態";
+  const debugStatusText =
+    statusFilter && statusFilter.length ? statusFilter.join("") : "empty";
+  const loadButtonText = loading ? "更新中…" : "更新";
+  const bulkButtonText = bulkProcessing ? "処理中…" : "実行";
+
   // データ読み込み関数を作成
   const loadData = useCallback(async () => {
     await fetchGuests({
@@ -339,19 +350,16 @@ export default function AdminPage({
       {/* タイトル/サマリー（中央寄せ） */}
       <div style={{ textAlign: "center", marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontWeight: 600 }}>
-          表示中: {roomFilter ? `部屋${roomFilter}のみ` : "全部屋"} /{" "}
-          {statusFilter && statusFilter.length
-            ? statusFilter.join("")
-            : "すべての状態"}
+          表示中: {displayRoomLabel} / {displayStatusLabel}
         </h3>
         <div
           style={{ fontSize: "0.85rem", color: "#666", marginTop: 6 }}
-        >{`Debug: roomFilter=${roomFilter || "empty"}, bookingFilter=${bookingFilter || "empty"}, statusFilter=${statusFilter && statusFilter.length ? statusFilter.join("") : "empty"}, NumberOfSelectedGuests=${filteredGuests ? filteredGuests.length : 0}`}</div>
+        >{`Debug: roomFilter=${roomFilter || "empty"}, bookingFilter=${bookingFilter || "empty"}, statusFilter=${debugStatusText}, NumberOfSelectedGuests=${affectedCount}`}</div>
       </div>
 
       <div style={{ marginBottom: 12 }}>
         <button onClick={loadData} disabled={loading}>
-          {loading ? "更新中…" : "更新"}
+          {loadButtonText}
         </button>
 
         <FiltersBar
@@ -470,7 +478,7 @@ export default function AdminPage({
                     borderRadius: 4,
                   }}
                 >
-                  {bulkProcessing ? "処理中…" : "実行"}
+                  {bulkButtonText}
                 </button>
               </div>
             </div>
@@ -616,7 +624,7 @@ export default function AdminPage({
                         : "not-allowed",
                   }}
                 >
-                  {bulkProcessing ? "処理中…" : "実行"}
+                  {bulkButtonText}
                 </button>
               </div>
             </div>
