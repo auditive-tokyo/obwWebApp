@@ -16,6 +16,70 @@ import {
 } from "./services/apiCalls";
 import type { GuestSession, RoomPageViewProps } from "./types";
 
+/**
+ * ステータスラベルのマッピング
+ */
+const STATUS_LABEL_MAP: Record<string, () => string> = {
+  waitingForBasicInfo: () => getMessage("enterBasicInfo") as string,
+  waitingForPassportImage: () => getMessage("enterPassportImage") as string,
+  pending: () => getMessage("statusPending") as string,
+  approved: () => getMessage("statusApproved") as string,
+  rejected: () => getMessage("statusRejected") as string,
+};
+
+/**
+ * ステータスラベルを取得
+ */
+function getStatusLabel(status?: string): string {
+  if (!status) return "";
+  const labelFn = STATUS_LABEL_MAP[status];
+  return labelFn ? labelFn() : status;
+}
+
+/**
+ * ステータスメッセージを取得（pending/approved/rejected のみ）
+ */
+function getStatusMessage(g: GuestSession | null | undefined): string | null {
+  const status = g?.approvalStatus;
+  if (status === "pending") return getMessage("statusPending") as string;
+  if (status === "approved") return getMessage("statusApproved") as string;
+  if (status === "rejected") return getMessage("statusRejected") as string;
+  return null;
+}
+
+/**
+ * ステータスに応じたバッジのクラス名を取得
+ */
+function getStatusBadgeClass(status?: string): string {
+  const classMap: Record<string, string> = {
+    approved: "bg-green-100 text-green-700",
+    rejected: "bg-red-100 text-red-700",
+    pending: "bg-yellow-100 text-yellow-700",
+    waitingForBasicInfo: "bg-indigo-100 text-indigo-700",
+  };
+  return classMap[status || ""] || "bg-blue-100 text-blue-700";
+}
+
+/**
+ * guestSessionsから代表者情報を取得するヘルパー
+ */
+function getRepresentativeInfo(
+  guestSessions: GuestSession[] | undefined,
+  fallback: string,
+  field: keyof GuestSession
+): string {
+  try {
+    const gid = localStorage.getItem("guestId");
+    if (gid && Array.isArray(guestSessions)) {
+      const rep = guestSessions.find((g) => g.guestId === gid);
+      return (rep?.[field] as string) || fallback;
+    }
+  } catch {
+    void 0;
+  }
+  return fallback;
+}
+
 export function RoomPageView(
   props: RoomPageViewProps & {
     hasRoomCheckDates?: boolean;
@@ -113,33 +177,6 @@ export function RoomPageView(
 
   const shouldShowUploadForSession = (g: GuestSession | null | undefined) =>
     g?.approvalStatus === "waitingForPassportImage";
-
-  const getStatusMessage = (
-    g: GuestSession | null | undefined
-  ): string | null => {
-    const status = g?.approvalStatus;
-    if (status === "pending") return getMessage("statusPending") as string;
-    if (status === "approved") return getMessage("statusApproved") as string;
-    if (status === "rejected") return getMessage("statusRejected") as string;
-    return null;
-  };
-
-  const getStatusLabel = (status?: string): string => {
-    switch (status) {
-      case "waitingForBasicInfo":
-        return getMessage("enterBasicInfo") as string;
-      case "waitingForPassportImage":
-        return getMessage("enterPassportImage") as string;
-      case "pending":
-        return getMessage("statusPending") as string;
-      case "approved":
-        return getMessage("statusApproved") as string;
-      case "rejected":
-        return getMessage("statusRejected") as string;
-      default:
-        return status ?? "";
-    }
-  };
 
   // 「Add Guest」ボタンを無効化する条件:
   // どれかのセッションが waitingForBasicInfo かつ guestId を持っている場合は無効化
@@ -446,15 +483,7 @@ export function RoomPageView(
                       <span
                         className={
                           "text-xs px-2 py-0.5 rounded-full " +
-                          (g.approvalStatus === "approved"
-                            ? "bg-green-100 text-green-700"
-                            : g.approvalStatus === "rejected"
-                            ? "bg-red-100 text-red-700"
-                            : g.approvalStatus === "pending"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : g.approvalStatus === "waitingForBasicInfo"
-                            ? "bg-indigo-100 text-indigo-700"
-                            : "bg-blue-100 text-blue-700")
+                          getStatusBadgeClass(g.approvalStatus)
                         }
                       >
                         {getStatusLabel(g.approvalStatus)}
@@ -627,42 +656,9 @@ export function RoomPageView(
             checkOutDate={roomCheckOutDate}
             open={chatOpen}
             setOpen={setChatOpen}
-            representativeName={(() => {
-              try {
-                const gid = localStorage.getItem("guestId");
-                if (gid && Array.isArray(guestSessions)) {
-                  const rep = guestSessions.find((g) => g.guestId === gid);
-                  return rep?.guestName || name;
-                }
-              } catch {
-                void 0;
-              }
-              return name;
-            })()}
-            representativeEmail={(() => {
-              try {
-                const gid = localStorage.getItem("guestId");
-                if (gid && Array.isArray(guestSessions)) {
-                  const rep = guestSessions.find((g) => g.guestId === gid);
-                  return rep?.email || email;
-                }
-              } catch {
-                void 0;
-              }
-              return email;
-            })()}
-            representativePhone={(() => {
-              try {
-                const gid = localStorage.getItem("guestId");
-                if (gid && Array.isArray(guestSessions)) {
-                  const rep = guestSessions.find((g) => g.guestId === gid);
-                  return rep?.phone || phone;
-                }
-              } catch {
-                void 0;
-              }
-              return phone;
-            })()}
+            representativeName={getRepresentativeInfo(guestSessions, name, "guestName")}
+            representativeEmail={getRepresentativeInfo(guestSessions, email, "email")}
+            representativePhone={getRepresentativeInfo(guestSessions, phone, "phone")}
           />
         </div>
       </div>
