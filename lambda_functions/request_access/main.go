@@ -226,37 +226,102 @@ func buildSMS(lang, link string) string {
 		link)
 }
 
+// errorResponse creates an error response with the given message
+func errorResponse(msg string) Response {
+	return Response{Success: false, Error: msg}
+}
+
+// validateInput validates the request input fields
+func validateInput(input RequestAccessInput) *Response {
+	if input.RoomNumber == "" || input.GuestName == "" || input.Email == "" || input.Phone == "" {
+		resp := errorResponse("Missing required fields")
+		return &resp
+	}
+	if input.ContactChannel == "email" && input.Email == "" {
+		resp := errorResponse("Email required for contactChannel=email")
+		return &resp
+	}
+	if input.ContactChannel == "sms" && input.Phone == "" {
+		resp := errorResponse("Phone required for contactChannel=sms")
+		return &resp
+	}
+	return nil
+}
+
+// saveGuestToDynamoDB saves the guest record to DynamoDB
+func saveGuestToDynamoDB(ctx context.Context, input RequestAccessInput, guestID, tokenHash, bookingID string, pendingVerificationTTL int64) error {
+	_, err := dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: &tableName,
+		Item: map[string]types.AttributeValue{
+			"roomNumber":             &types.AttributeValueMemberS{Value: input.RoomNumber},
+			"guestId":                &types.AttributeValueMemberS{Value: guestID},
+			"guestName":              &types.AttributeValueMemberS{Value: input.GuestName},
+			"email":                  &types.AttributeValueMemberS{Value: input.Email},
+			"phone":                  &types.AttributeValueMemberS{Value: input.Phone},
+			"sessionTokenHash":       &types.AttributeValueMemberS{Value: tokenHash},
+			"approvalStatus":         &types.AttributeValueMemberS{Value: "pendingVerification"},
+			"pendingVerificationTtl": &types.AttributeValueMemberN{Value: strconv.FormatInt(pendingVerificationTTL, 10)},
+			"createdAt":              &types.AttributeValueMemberS{Value: nowISOmsZ()},
+			"contactChannel":         &types.AttributeValueMemberS{Value: input.ContactChannel},
+			"bookingId":              &types.AttributeValueMemberS{Value: bookingID},
+		},
+	})
+	return err
+}
+
+// sendViaSMS sends the access link via SMS using SNS
+func sendViaSMS(ctx context.Context, phone, lang, link string) error {
+	smsBody := buildSMS(lang, link)
+	_, err := snsClient.Publish(ctx, &sns.PublishInput{
+		PhoneNumber: &phone,
+		Message:     &smsBody,
+	})
+	return err
+}
+
+// sendViaEmail sends the access link via email using Zoho SMTP
+func sendViaEmail(email, lang, link string) error {
+	subject := "Osaka Bay Wheel Guest Access"
+	if lang == "ja" {
+		subject = "Osaka Bay Wheel ゲストアクセス"
+	}
+	textBody := buildEmailBody(lang, link)
+	return sendViaZoho(email, subject, textBody)
+}
+
+// sendNotification sends the access link via the specified contact channel
+func sendNotification(ctx context.Context, input RequestAccessInput, guestID, token, lang string) error {
+	if input.ContactChannel == "sms" {
+		link := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s&source=sms", appBaseURL, input.RoomNumber, guestID, token)
+		return sendViaSMS(ctx, input.Phone, lang, link)
+	}
+	// Default to email
+	link := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s", appBaseURL, input.RoomNumber, guestID, token)
+	if input.ContactChannel == "email" {
+		return sendViaEmail(input.Email, lang, link)
+	}
+	return nil
+}
+
 func HandleRequest(ctx context.Context, event Event) (Response, error) {
 	input := event.Arguments.Input
-	roomNumber := input.RoomNumber
-	guestName := input.GuestName
-	email := input.Email
-	phone := input.Phone
-	contactChannel := input.ContactChannel
-	lang := input.Lang
 
 	// Default language
+	lang := input.Lang
 	if lang == "" {
 		lang = "en"
 	}
 
 	// Validate required fields
-	if roomNumber == "" || guestName == "" || email == "" || phone == "" {
-		return Response{Success: false, Error: "Missing required fields"}, nil
-	}
-
-	if contactChannel == "email" && email == "" {
-		return Response{Success: false, Error: "Email required for contactChannel=email"}, nil
-	}
-	if contactChannel == "sms" && phone == "" {
-		return Response{Success: false, Error: "Phone required for contactChannel=sms"}, nil
+	if validationErr := validateInput(input); validationErr != nil {
+		return *validationErr, nil
 	}
 
 	// Generate guest ID and token
 	guestID := uuid.New().String()
 	token, err := generateToken()
 	if err != nil {
-		return Response{Success: false, Error: fmt.Sprintf("Token generation failed: %v", err)}, nil
+		return errorResponse(fmt.Sprintf("Token generation failed: %v", err)), nil
 	}
 	tokenHash := hashToken(token)
 
@@ -265,53 +330,17 @@ func HandleRequest(ctx context.Context, event Event) (Response, error) {
 	pendingVerificationTTL := now + 86400 // 24h
 	bookingID, err := generateBookingID(11)
 	if err != nil {
-		return Response{Success: false, Error: fmt.Sprintf("BookingID generation failed: %v", err)}, nil
+		return errorResponse(fmt.Sprintf("BookingID generation failed: %v", err)), nil
 	}
 
 	// DynamoDB put item
-	_, err = dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: &tableName,
-		Item: map[string]types.AttributeValue{
-			"roomNumber":             &types.AttributeValueMemberS{Value: roomNumber},
-			"guestId":                &types.AttributeValueMemberS{Value: guestID},
-			"guestName":              &types.AttributeValueMemberS{Value: guestName},
-			"email":                  &types.AttributeValueMemberS{Value: email},
-			"phone":                  &types.AttributeValueMemberS{Value: phone},
-			"sessionTokenHash":       &types.AttributeValueMemberS{Value: tokenHash},
-			"approvalStatus":         &types.AttributeValueMemberS{Value: "pendingVerification"},
-			"pendingVerificationTtl": &types.AttributeValueMemberN{Value: strconv.FormatInt(pendingVerificationTTL, 10)},
-			"createdAt":              &types.AttributeValueMemberS{Value: nowISOmsZ()},
-			"contactChannel":         &types.AttributeValueMemberS{Value: contactChannel},
-			"bookingId":              &types.AttributeValueMemberS{Value: bookingID},
-		},
-	})
-	if err != nil {
-		return Response{Success: false, Error: fmt.Sprintf("DynamoDB put failed: %v", err)}, nil
+	if err := saveGuestToDynamoDB(ctx, input, guestID, tokenHash, bookingID, pendingVerificationTTL); err != nil {
+		return errorResponse(fmt.Sprintf("DynamoDB put failed: %v", err)), nil
 	}
 
 	// Send link via SMS or Email
-	if contactChannel == "sms" {
-		link := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s&source=sms", appBaseURL, roomNumber, guestID, token)
-		smsBody := buildSMS(lang, link)
-		_, err = snsClient.Publish(ctx, &sns.PublishInput{
-			PhoneNumber: &phone,
-			Message:     &smsBody,
-		})
-		if err != nil {
-			return Response{Success: false, Error: fmt.Sprintf("SMS send failed: %v", err)}, nil
-		}
-	} else {
-		link := fmt.Sprintf("%s/room/%s?guestId=%s&token=%s", appBaseURL, roomNumber, guestID, token)
-		if contactChannel == "email" {
-			subject := "Osaka Bay Wheel Guest Access"
-			if lang == "ja" {
-				subject = "Osaka Bay Wheel ゲストアクセス"
-			}
-			textBody := buildEmailBody(lang, link)
-			if err := sendViaZoho(email, subject, textBody); err != nil {
-				return Response{Success: false, Error: fmt.Sprintf("Email send failed: %v", err)}, nil
-			}
-		}
+	if err := sendNotification(ctx, input, guestID, token, lang); err != nil {
+		return errorResponse(fmt.Sprintf("Notification send failed: %v", err)), nil
 	}
 
 	return Response{Success: true, GuestID: guestID}, nil
