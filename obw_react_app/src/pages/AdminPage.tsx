@@ -92,12 +92,11 @@ async function executeBulkDateChange(
   newCheckIn: string,
   newCheckOut: string,
   updateFn: (params: {
-    client: ReturnType<typeof generateClient>;
+    client: typeof client;
     guest: Guest;
     onSuccess: () => void;
     onError: (err: Error) => void;
   }) => Promise<void>,
-  clientInstance: ReturnType<typeof generateClient>,
   setAll: React.Dispatch<React.SetStateAction<Guest[]>>,
   detail: Guest | null,
   setDetail: React.Dispatch<React.SetStateAction<Guest | null>>,
@@ -115,7 +114,7 @@ async function executeBulkDateChange(
     };
     try {
       await updateFn({
-        client: clientInstance,
+        client,
         guest: updatedGuest,
         onSuccess: () => {
           setAll((prev) =>
@@ -434,7 +433,6 @@ export default function AdminPage({
                       newCheckIn,
                       newCheckOut,
                       updateGuest,
-                      client,
                       setAll,
                       detail,
                       setDetail,
