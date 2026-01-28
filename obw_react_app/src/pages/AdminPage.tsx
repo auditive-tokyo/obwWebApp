@@ -176,6 +176,13 @@ function updateGuestInState(
   }
 }
 
+/**
+ * 部屋移動エラーメッセージを取得
+ */
+function getTransferErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "不明なエラー";
+}
+
 export default function AdminPage({
   roomId,
   bookingFilter: initialBookingFilter,
@@ -587,7 +594,7 @@ export default function AdminPage({
                     } catch (error) {
                       console.error("部屋移動エラー:", error);
                       alert(
-                        `❌ 部屋移動に失敗しました\n\n${error instanceof Error ? error.message : "不明なエラー"}`,
+                        `❌ 部屋移動に失敗しました\n\n${getTransferErrorMessage(error)}`,
                       );
                     } finally {
                       setBulkProcessing(false);
