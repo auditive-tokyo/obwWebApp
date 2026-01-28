@@ -17,6 +17,35 @@ function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
+/**
+ * エラーオブジェクトからメッセージを取得
+ */
+function getErrorMessage(err: unknown): string {
+  if (typeof err === 'string') return err
+  if (err instanceof Error) return err.message
+  if (typeof err === 'object' && err !== null) {
+    const obj = err as Record<string, unknown>
+    const maybeErrors = obj.errors
+    if (Array.isArray(maybeErrors) && maybeErrors.length > 0) {
+      const first = maybeErrors[0]
+      if (typeof first === 'object' && first !== null && 'message' in first) {
+        const m = (first as Record<string, unknown>).message
+        if (typeof m === 'string') return m
+      }
+    }
+    const maybeMessage = obj.message
+    if (typeof maybeMessage === 'string') return maybeMessage
+  }
+  try { return JSON.stringify(err) } catch { return String(err) }
+}
+
+/**
+ * エラー文字列を正規化（配列の場合はjoin）
+ */
+function normalizeErrorString(error: string | string[]): string {
+  return Array.isArray(error) ? error.join(', ') : error
+}
+
 export default function AccessForm({ roomNumber }: Props) {
   const client = generateClient()
   const [guestName, setGuestName] = useState('')
@@ -39,18 +68,20 @@ export default function AccessForm({ roomNumber }: Props) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    
     if (!guestName || !email || !phone) {
       setError(getMessage("allFieldsRequired") as string)
       return
     }
     if (emailError) {
-      setError(Array.isArray(emailError) ? emailError.join(', ') : emailError)
+      setError(normalizeErrorString(emailError))
       return
     }
     if (phoneError) {
-      setError(Array.isArray(phoneError) ? phoneError.join(', ') : phoneError)
+      setError(normalizeErrorString(phoneError))
       return
     }
+    
     setLoading(true)
     try {
       const mutation = /* GraphQL */ `
@@ -62,6 +93,7 @@ export default function AccessForm({ roomNumber }: Props) {
         }
       `
       type Payload = { requestAccess: { success: boolean; guestId: string } }
+      const lang = localStorage.getItem('lang')
       const res = await client.graphql<Payload>({
         query: mutation,
         variables: {
@@ -71,42 +103,23 @@ export default function AccessForm({ roomNumber }: Props) {
             email,
             phone,
             contactChannel: delivery,
-            ...(localStorage.getItem('lang') ? { lang: localStorage.getItem('lang') } : {})
+            ...(lang ? { lang } : {})
           },
         },
         authMode: 'iam',
       })
-      if ('data' in res && res.data?.requestAccess?.success) {
-        setMessage(
-          delivery === 'email'
-            ? getMessage("emailLinkSent") as string
-            : getMessage("smsLinkSent") as string
-        )
-      } else {
-        const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
-        setError(`${getMessage("sendFailed")}${firstErr}`)
+      
+      const isSuccess = 'data' in res && res.data?.requestAccess?.success
+      if (isSuccess) {
+        const successMsg = delivery === 'email' ? getMessage("emailLinkSent") : getMessage("smsLinkSent")
+        setMessage(successMsg as string)
+        return
       }
+      
+      const firstErr = ('errors' in res && res.errors?.[0]?.message) ? `: ${res.errors[0].message}` : ''
+      setError(`${getMessage("sendFailed")}${firstErr}`)
     } catch (e: unknown) {
-      const getErrorMessage = (err: unknown): string => {
-        if (typeof err === 'string') return err
-        if (err instanceof Error) return err.message
-        if (typeof err === 'object' && err !== null) {
-          const obj = err as Record<string, unknown>
-          const maybeErrors = obj.errors
-          if (Array.isArray(maybeErrors) && maybeErrors.length > 0) {
-            const first = maybeErrors[0]
-            if (typeof first === 'object' && first !== null && 'message' in first) {
-              const m = (first as Record<string, unknown>).message
-              if (typeof m === 'string') return m
-            }
-          }
-          const maybeMessage = obj.message
-          if (typeof maybeMessage === 'string') return maybeMessage
-        }
-        try { return JSON.stringify(err) } catch { return String(err) }
-      }
-      const msg = getErrorMessage(e)
-      setError(`${getMessage('sendFailed')}: ${msg}`)
+      setError(`${getMessage('sendFailed')}: ${getErrorMessage(e)}`)
     } finally {
       setLoading(false)
     }

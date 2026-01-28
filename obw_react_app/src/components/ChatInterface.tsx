@@ -6,6 +6,32 @@ import { fetchAIResponseStream } from './chatInterface/fetchAIResponse';
 import { Message, RoomProps } from './chatInterface/typeClass'
 import './chatInterface/style.scss'
 
+type StreamPayload = string | { assistant_response_text: string; reference_sources?: string[]; images?: string[] };
+
+/**
+ * AIメッセージを更新するための純粋関数
+ */
+function updateAiMessage(message: Message, targetId: number, payload: StreamPayload, isDone: boolean): Message {
+  if (message.id !== targetId) return message;
+  
+  if (typeof payload === 'string') {
+    return { ...message, text: payload };
+  }
+  
+  const updated: Message = {
+    ...message,
+    text: payload,
+    loading: isDone ? false : message.loading,
+    timestamp: isDone ? getTimestamp() : message.timestamp,
+  };
+  
+  if (isDone && Array.isArray(payload.images)) {
+    updated.images = payload.images;
+  }
+  
+  return updated;
+}
+
 interface ChatInterfaceProps extends RoomProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -60,28 +86,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     inputRef.current?.blur();
 
     // AIストリーム受信時の更新（final時に images をトップレベルへ正規化）
-    const handleStreamDelta = (
-      payload: string | { assistant_response_text: string; reference_sources?: string[]; images?: string[] },
-      isDone: boolean = false
-    ) => {
-      setMessages(curr =>
-        curr.map(m => {
-          if (m.id !== aiMessageId) return m;
-          if (typeof payload === 'string') {
-            return { ...m, text: payload };
-          }
-          const next = {
-            ...m,
-            text: payload,
-            loading: isDone ? false : m.loading,
-            timestamp: isDone ? getTimestamp() : m.timestamp,
-          };
-          if (isDone && Array.isArray(payload.images)) {
-            next.images = payload.images; // 画像URLを格納
-          }
-          return next;
-        })
-      );
+    const handleStreamDelta = (payload: StreamPayload, isDone: boolean = false) => {
+      setMessages(curr => curr.map(m => updateAiMessage(m, aiMessageId, payload, isDone)));
     };
 
     // roomIdを使ってAIにリクエスト
