@@ -74,13 +74,96 @@ func nowISOmsZ() string {
 	return time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 }
 
+// failedResponse returns a failed response with nil guest
+func failedResponse() Response {
+	return Response{Success: false, Guest: nil}
+}
+
+// successResponse returns a success response with guest info
+func successResponse(guestID string, bookingID *string) Response {
+	return Response{
+		Success: true,
+		Guest: &GuestInfo{
+			GuestID:   guestID,
+			BookingID: bookingID,
+		},
+	}
+}
+
+// extractStringAttr extracts a string attribute from DynamoDB item
+func extractStringAttr(item map[string]types.AttributeValue, key string) string {
+	if attr, ok := item[key].(*types.AttributeValueMemberS); ok {
+		return attr.Value
+	}
+	return ""
+}
+
+// extractBookingID extracts bookingId pointer from DynamoDB item
+func extractBookingID(item map[string]types.AttributeValue) *string {
+	if bid, ok := item["bookingId"].(*types.AttributeValueMemberS); ok && bid.Value != "" {
+		return &bid.Value
+	}
+	return nil
+}
+
+// verifyTokenHash checks if the provided token hash matches the stored hash
+func verifyTokenHash(item map[string]types.AttributeValue, tokenHash string) bool {
+	expectedHash := extractStringAttr(item, "sessionTokenHash")
+	return expectedHash != "" && expectedHash == tokenHash
+}
+
+// calculateNewExpiration calculates the new session expiration time
+func calculateNewExpiration(checkOutDate string, now int64) int64 {
+	if checkOutDate == "" {
+		return now + int64(provisionalSessionHours*3600)
+	}
+
+	newExpires, err := checkoutNoonEpoch(checkOutDate, propertyTZOffsetHours, 12)
+	if err != nil {
+		// Fallback to provisional session
+		return now + int64(provisionalSessionHours*3600)
+	}
+	return newExpires
+}
+
+// handlePendingVerification handles the initial authentication for pendingVerification status
+func handlePendingVerification(ctx context.Context, roomNumber, guestID string, newExpires int64, bookingID *string) (Response, error) {
+	_, err := dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: &tableName,
+		Key: map[string]types.AttributeValue{
+			"roomNumber": &types.AttributeValueMemberS{Value: roomNumber},
+			"guestId":    &types.AttributeValueMemberS{Value: guestID},
+		},
+		UpdateExpression: aws.String("SET approvalStatus = :w, sessionTokenExpiresAt = :exp, updatedAt = :u REMOVE pendingVerificationTtl"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":w":   &types.AttributeValueMemberS{Value: "waitingForBasicInfo"},
+			":exp": &types.AttributeValueMemberN{Value: strconv.FormatInt(newExpires, 10)},
+			":u":   &types.AttributeValueMemberS{Value: nowISOmsZ()},
+		},
+	})
+	if err != nil {
+		return failedResponse(), fmt.Errorf("failed to update item: %w", err)
+	}
+
+	return successResponse(guestID, bookingID), nil
+}
+
+// isSessionExpired checks if the session has expired
+func isSessionExpired(item map[string]types.AttributeValue, now int64) bool {
+	if expiresAttr, ok := item["sessionTokenExpiresAt"].(*types.AttributeValueMemberN); ok {
+		expiresVal, _ := strconv.ParseInt(expiresAttr.Value, 10, 64)
+		return expiresVal > 0 && now > expiresVal
+	}
+	return false
+}
+
 func HandleRequest(ctx context.Context, event Event) (Response, error) {
 	roomNumber := event.Arguments.RoomNumber
 	guestID := event.Arguments.GuestID
 	token := event.Arguments.Token
 
 	if roomNumber == "" || guestID == "" || token == "" {
-		return Response{Success: false, Guest: nil}, nil
+		return failedResponse(), nil
 	}
 
 	tokenHash := hashToken(token)
@@ -94,101 +177,39 @@ func HandleRequest(ctx context.Context, event Event) (Response, error) {
 		},
 	})
 	if err != nil {
-		return Response{Success: false, Guest: nil}, fmt.Errorf("failed to get item: %w", err)
+		return failedResponse(), fmt.Errorf("failed to get item: %w", err)
 	}
 
 	if getResp.Item == nil {
-		return Response{Success: false, Guest: nil}, nil
+		return failedResponse(), nil
 	}
 
 	item := getResp.Item
-
-	// Extract bookingId
-	var bookingID *string
-	if bid, ok := item["bookingId"].(*types.AttributeValueMemberS); ok && bid.Value != "" {
-		bookingID = &bid.Value
-	}
+	bookingID := extractBookingID(item)
 
 	// Verify token hash
-	expectedHash := ""
-	if hashAttr, ok := item["sessionTokenHash"].(*types.AttributeValueMemberS); ok {
-		expectedHash = hashAttr.Value
-	}
-	if expectedHash == "" || expectedHash != tokenHash {
-		return Response{Success: false, Guest: nil}, nil
+	if !verifyTokenHash(item, tokenHash) {
+		return failedResponse(), nil
 	}
 
-	// Get approval status
-	status := ""
-	if statusAttr, ok := item["approvalStatus"].(*types.AttributeValueMemberS); ok {
-		status = statusAttr.Value
-	}
+	// Get approval status and checkOutDate
+	status := extractStringAttr(item, "approvalStatus")
+	checkOutDate := extractStringAttr(item, "checkOutDate")
 
 	now := time.Now().Unix()
-
-	// Determine new expiration time
-	var newExpires int64
-	checkOutDate := ""
-	if checkOutAttr, ok := item["checkOutDate"].(*types.AttributeValueMemberS); ok {
-		checkOutDate = checkOutAttr.Value
-	}
-
-	if checkOutDate != "" {
-		var err error
-		newExpires, err = checkoutNoonEpoch(checkOutDate, propertyTZOffsetHours, 12)
-		if err != nil {
-			// Fallback to provisional session
-			newExpires = now + int64(provisionalSessionHours*3600)
-		}
-	} else {
-		newExpires = now + int64(provisionalSessionHours*3600)
-	}
+	newExpires := calculateNewExpiration(checkOutDate, now)
 
 	// Handle pendingVerification status (initial authentication)
 	if status == "pendingVerification" {
-		// First-time authentication: Remove TTL + transition status + set expiration
-		_, err = dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-			TableName: &tableName,
-			Key: map[string]types.AttributeValue{
-				"roomNumber": &types.AttributeValueMemberS{Value: roomNumber},
-				"guestId":    &types.AttributeValueMemberS{Value: guestID},
-			},
-			UpdateExpression: aws.String("SET approvalStatus = :w, sessionTokenExpiresAt = :exp, updatedAt = :u REMOVE pendingVerificationTtl"),
-			ExpressionAttributeValues: map[string]types.AttributeValue{
-				":w":   &types.AttributeValueMemberS{Value: "waitingForBasicInfo"},
-				":exp": &types.AttributeValueMemberN{Value: strconv.FormatInt(newExpires, 10)},
-				":u":   &types.AttributeValueMemberS{Value: nowISOmsZ()},
-			},
-		})
-		if err != nil {
-			return Response{Success: false, Guest: nil}, fmt.Errorf("failed to update item: %w", err)
-		}
-
-		return Response{
-			Success: true,
-			Guest: &GuestInfo{
-				GuestID:   guestID,
-				BookingID: bookingID,
-			},
-		}, nil
+		return handlePendingVerification(ctx, roomNumber, guestID, newExpires, bookingID)
 	}
 
 	// Already authenticated (waitingForBasicInfo, etc.) - check expiration
-	expiresVal := int64(0)
-	if expiresAttr, ok := item["sessionTokenExpiresAt"].(*types.AttributeValueMemberN); ok {
-		expiresVal, _ = strconv.ParseInt(expiresAttr.Value, 10, 64)
-	}
-	if expiresVal > 0 && now > expiresVal {
-		return Response{Success: false, Guest: nil}, nil
+	if isSessionExpired(item, now) {
+		return failedResponse(), nil
 	}
 
-	return Response{
-		Success: true,
-		Guest: &GuestInfo{
-			GuestID:   guestID,
-			BookingID: bookingID,
-		},
-	}, nil
+	return successResponse(guestID, bookingID), nil
 }
 
 func main() {
