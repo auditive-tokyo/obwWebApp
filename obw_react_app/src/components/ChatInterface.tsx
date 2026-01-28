@@ -32,6 +32,13 @@ function updateAiMessage(message: Message, targetId: number, payload: StreamPayl
   return updated;
 }
 
+/**
+ * メッセージ配列を更新する関数を生成
+ */
+function createMessageUpdater(aiMessageId: number, payload: StreamPayload, isDone: boolean) {
+  return (messages: Message[]) => messages.map(m => updateAiMessage(m, aiMessageId, payload, isDone));
+}
+
 interface ChatInterfaceProps extends RoomProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -87,7 +94,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     // AIストリーム受信時の更新（final時に images をトップレベルへ正規化）
     const handleStreamDelta = (payload: StreamPayload, isDone: boolean = false) => {
-      setMessages(curr => curr.map(m => updateAiMessage(m, aiMessageId, payload, isDone)));
+      setMessages(createMessageUpdater(aiMessageId, payload, isDone));
     };
 
     // roomIdを使ってAIにリクエスト

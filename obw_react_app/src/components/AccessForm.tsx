@@ -18,24 +18,35 @@ function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
 }
 
 /**
+ * GraphQLエラー配列から最初のメッセージを取得
+ */
+function extractFirstErrorMessage(errors: unknown): string | null {
+  if (!Array.isArray(errors) || errors.length === 0) return null
+  
+  const first = errors[0]
+  if (typeof first !== 'object' || first === null) return null
+  if (!('message' in first)) return null
+  
+  const m = (first as Record<string, unknown>).message
+  return typeof m === 'string' ? m : null
+}
+
+/**
  * エラーオブジェクトからメッセージを取得
  */
 function getErrorMessage(err: unknown): string {
   if (typeof err === 'string') return err
   if (err instanceof Error) return err.message
+  
   if (typeof err === 'object' && err !== null) {
     const obj = err as Record<string, unknown>
-    const maybeErrors = obj.errors
-    if (Array.isArray(maybeErrors) && maybeErrors.length > 0) {
-      const first = maybeErrors[0]
-      if (typeof first === 'object' && first !== null && 'message' in first) {
-        const m = (first as Record<string, unknown>).message
-        if (typeof m === 'string') return m
-      }
-    }
-    const maybeMessage = obj.message
-    if (typeof maybeMessage === 'string') return maybeMessage
+    
+    const errorsMsg = extractFirstErrorMessage(obj.errors)
+    if (errorsMsg) return errorsMsg
+    
+    if (typeof obj.message === 'string') return obj.message
   }
+  
   try { return JSON.stringify(err) } catch { return String(err) }
 }
 
