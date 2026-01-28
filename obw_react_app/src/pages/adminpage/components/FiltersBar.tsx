@@ -43,7 +43,7 @@ export default function FiltersBar({
     all.forEach(g => {
       if (g.roomNumber === roomFilter && g.checkInDate) s.add(g.checkInDate);
     });
-    return Array.from(s).sort();
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
   }, [all, roomFilter]);
 
   // bookingId options for the selected room (and optional check-in filter)
@@ -53,7 +53,7 @@ export default function FiltersBar({
     all.forEach(g => {
       if (g.roomNumber === roomFilter && (!checkInFilter || g.checkInDate === checkInFilter) && g.bookingId) s.add(g.bookingId);
     });
-    return Array.from(s).sort();
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
   }, [all, roomFilter, checkInFilter]);
 
   // 前回のroomFilterの値を保持して、本当に変更されたかを比較する
