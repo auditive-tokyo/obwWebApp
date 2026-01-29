@@ -106,11 +106,11 @@ const ReferenceLinks: React.FC<{ sources: string[] }> = ({ sources }) => (
 // AI画像コンポーネント
 const AiImages: React.FC<{ images: string[] }> = ({ images }) => (
   <div className="ai-images">
-    {images.map((url, i) => (
+    {images.map((url) => (
       <img
-        key={i}
+        key={url}
         src={url}
-        alt={`ai-${i}`}
+        alt="ai-image"
         className="ai-inline-image"
         loading="lazy"
       />

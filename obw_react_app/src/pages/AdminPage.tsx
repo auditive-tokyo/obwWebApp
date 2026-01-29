@@ -225,7 +225,7 @@ export default function AdminPage({
         set.add(roomNumber);
       }
     }
-    return Array.from(set).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+    return Array.from(set).sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10));
   }, [all]);
 
   // フィルタリングロジック
