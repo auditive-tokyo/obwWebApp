@@ -296,7 +296,12 @@ Resources:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource: "*"
+                Resource:
+                  - !Ref RequestAccessFunctionArn
+                  - !Ref VerifyAccessTokenFunctionArn
+                  - !Ref GetPresignedUrlFunctionArn
+                  - !Ref AdminApproveGuestFunctionArn
+                  - !Ref TransferRoomGuestsFunctionArn
 
   RequestAccessLambdaDataSource:
     Condition: DoLambdaIntegration

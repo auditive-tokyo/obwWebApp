@@ -258,8 +258,12 @@ export default function RoomPage() {
   const handleCreateNewGuest = useCallback(
     (isFamily: boolean) => {
       const newId =
-        (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
-        Math.random().toString(36).slice(0) + Date.now().toString(36);
+        window.crypto?.randomUUID?.() ||
+        (() => {
+          const array = new Uint32Array(2);
+          window.crypto.getRandomValues(array);
+          return array[0].toString(36) + array[1].toString(36);
+        })();
 
       setIsRepresentativeFamily(isFamily);
       setSelectedGuestId(newId);
