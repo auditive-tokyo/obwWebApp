@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   EnableLambdaIntegration:
     Type: String
@@ -38,7 +38,7 @@ Parameters:
     Default: ""
 
 Conditions:
-  DoLambdaIntegration: !Equals [ !Ref EnableLambdaIntegration, "true" ]
+  DoLambdaIntegration: !Equals [!Ref EnableLambdaIntegration, "true"]
 
 Resources:
   AppSyncApi:
@@ -66,15 +66,15 @@ Resources:
           AttributeType: S
         - AttributeName: guestId
           AttributeType: S
-        - AttributeName: sessionTokenHash      # GSI用
+        - AttributeName: sessionTokenHash # GSI用
           AttributeType: S
-        - AttributeName: bookingId             # GSI用
+        - AttributeName: bookingId # GSI用
           AttributeType: S
-        - AttributeName: checkInDate           # GSI用
+        - AttributeName: checkInDate # GSI用
           AttributeType: S
-        - AttributeName: checkOutDate          # GSI用
+        - AttributeName: checkOutDate # GSI用
           AttributeType: S
-        - AttributeName: approvalStatus        # GSI用
+        - AttributeName: approvalStatus # GSI用
           AttributeType: S
         - AttributeName: sessionTokenExpiresAt # GSI用
           AttributeType: N
@@ -282,7 +282,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -291,17 +291,12 @@ Resources:
       Policies:
         - PolicyName: InvokeLambdaForAppSync
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource:
-                  - !Ref RequestAccessFunctionArn
-                  - !Ref VerifyAccessTokenFunctionArn
-                  - !Ref GetPresignedUrlFunctionArn
-                  - !Ref AdminApproveGuestFunctionArn
-                  - !Ref TransferRoomGuestsFunctionArn
+                Resource: "*"
 
   RequestAccessLambdaDataSource:
     Condition: DoLambdaIntegration
@@ -351,7 +346,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -642,7 +637,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -656,7 +651,7 @@ Resources:
       Policies:
         - PolicyName: AppSyncPublicAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -674,7 +669,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -700,7 +695,7 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: obw-admin-userpool
-      MfaConfiguration: 'OFF'
+      MfaConfiguration: "OFF"
       DeletionProtection: INACTIVE
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
