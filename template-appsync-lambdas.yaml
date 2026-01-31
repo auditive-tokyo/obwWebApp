@@ -139,9 +139,6 @@ Resources:
               Action:
                 - sns:Publish
               Resource: "*"
-              Condition:
-                StringEquals:
-                  sns:Protocol: sms
 
   VerifyAccessTokenFunction:
     Type: AWS::Serverless::Function
@@ -211,9 +208,6 @@ Resources:
               Action:
                 - sns:Publish
               Resource: "*"
-              Condition:
-                StringEquals:
-                  sns:Protocol: sms
 
 Outputs:
   PassportUploadBucketName:
