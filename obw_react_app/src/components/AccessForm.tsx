@@ -72,7 +72,7 @@ export default function AccessForm({ roomNumber }: Props) {
     phone && !isValidPhoneNumber(phone)
       ? getMessage("phoneValidation")
       : ""
-  const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const emailError = email && !/^[^\s@]{1,255}@[^\s@]{1,255}\.[^\s@]{1,255}$/.test(email)
     ? getMessage("emailValidation")
     : ""
 

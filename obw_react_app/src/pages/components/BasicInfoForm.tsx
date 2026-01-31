@@ -185,7 +185,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
   const phoneError =
     phone && !isValidPhoneNumber(phone) ? getMessage("phoneValidation") : "";
   const emailError =
-    email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    email && !/^[^\s@]{1,255}@[^\s@]{1,255}\.[^\s@]{1,255}$/.test(email)
       ? getMessage("emailValidation")
       : "";
 
