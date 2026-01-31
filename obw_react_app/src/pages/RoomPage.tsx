@@ -82,7 +82,7 @@ export default function RoomPage() {
     if (!d) return null;
     if (d instanceof Date) return d;
     const dt = new Date(d);
-    return isNaN(dt.getTime()) ? null : dt;
+    return Number.isNaN(dt.getTime()) ? null : dt;
   };
 
   const roomCheckInDate = useMemo(() => {

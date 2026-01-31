@@ -33,7 +33,7 @@ export default function FiltersBar({
         set.add(roomNumber);
       }
     }
-    return Array.from(set).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+    return Array.from(set).sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10));
   }, [all]);
 
   // check-in date options for the selected room
@@ -185,8 +185,15 @@ export default function FiltersBar({
               <div
                 key={status}
                 role="button"
+                tabIndex={0}
                 aria-pressed={statusFilter.includes(status)}
                 onClick={() => toggleStatus(status)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleStatus(status);
+                  }
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

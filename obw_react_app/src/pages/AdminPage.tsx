@@ -503,18 +503,19 @@ export default function AdminPage({
                   style={{ display: "block", marginBottom: 4, fontWeight: 500 }}
                 >
                   移動先の部屋番号:
-                </label>
-                <select
-                  value={transferTargetRoom}
-                  onChange={(e) => setTransferTargetRoom(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    border: "1px solid #ccc",
-                    borderRadius: 4,
-                    fontSize: "14px",
-                  }}
-                >
+                  <select
+                    value={transferTargetRoom}
+                    onChange={(e) => setTransferTargetRoom(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: 4,
+                      fontSize: "14px",
+                      display: "block",
+                      marginTop: 4,
+                    }}
+                  >
                   <option value="">選択してください</option>
                   {roomOptions
                     .filter((r) => r !== roomFilter) // 現在の部屋を除外
@@ -523,7 +524,8 @@ export default function AdminPage({
                         {r}
                       </option>
                     ))}
-                </select>
+                  </select>
+                </label>
               </div>
               {transferTargetRoom && (
                 <div
