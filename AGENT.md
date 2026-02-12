@@ -84,6 +84,16 @@ obwWebApp/
 - **AppSync GraphQL** へのクエリ実行
 - **多言語対応** (i18n)
 
+> **開発コマンド**
+> 
+> | コマンド | 用途 | 詳細 |
+> |---------|------|------|
+> | `npm run dev` | 開発サーバー起動 | ホットリロード対応、デバッグモード |
+> | `npm run build` | 本番ビルド | TypeScript チェック → Vite ビルド |
+> | `npm run typecheck` | 型チェックのみ | ファイル生成せず、型エラー検出 |
+> | `npm run lint` | コード品質チェック | ESLint による静的解析 |
+> | `npm run preview` | 本番環境シミュレーション | dist/ ディレクトリをサーブ |
+
 ### インフラ (CloudFormation)
 
 - **AppSync GraphQL API** で全リソース統合

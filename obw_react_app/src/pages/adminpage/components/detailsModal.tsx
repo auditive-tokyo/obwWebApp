@@ -118,6 +118,7 @@ export function DetailsModal({
       onClick={onClose}
     >
       <div
+        role="presentation"
         style={{
           background: '#fff',
           padding: 16,

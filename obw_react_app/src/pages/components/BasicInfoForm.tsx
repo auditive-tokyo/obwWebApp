@@ -294,7 +294,10 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
                   (promoConsent ? "bg-green-50" : "bg-gray-50")
                 }
               >
-                <label className="flex items-start gap-3 cursor-pointer select-none">
+                <label 
+                  className="flex items-start gap-3 cursor-pointer select-none"
+                  aria-label={getMessage("emailConsent") as string}
+                >
                   <input
                     type="checkbox"
                     checked={promoConsent}
