@@ -119,21 +119,20 @@ export function DetailsModal({
         border: 'none', cursor: 'pointer', padding: 0
       }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        style={{
-          background: '#fff',
-          padding: 16,
-          borderRadius: 8,
-          width: 'min(720px, 90vw)',
-          maxHeight: '90vh',
-          overflow: 'auto'
-        }}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={() => {}}
-      >
+      <div role="presentation" onClick={(e) => e.stopPropagation()}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          style={{
+            background: '#fff',
+            padding: 16,
+            borderRadius: 8,
+            width: 'min(720px, 90vw)',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}
+        >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ margin: 0 }}>ゲスト詳細 {isEditing && '（編集中）'}</h2>
           <button onClick={onClose}>閉じる</button>
@@ -286,6 +285,7 @@ export function DetailsModal({
             </>
           )}
         </div>
+      </div>
       </div>
     </button>
   );
