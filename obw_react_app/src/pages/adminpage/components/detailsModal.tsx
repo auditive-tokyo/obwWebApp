@@ -127,6 +127,9 @@ export function DetailsModal({
           overflow: 'auto'
         }}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose()
+        }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ margin: 0 }}>ゲスト詳細 {isEditing && '（編集中）'}</h2>
