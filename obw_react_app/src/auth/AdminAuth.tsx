@@ -13,6 +13,21 @@ function buildAdminPath(roomId?: string, bookingId?: string): string {
   return '/admin'
 }
 
+// Cognito トークン確立待ちリトライ関数
+async function waitForCurrentUser(deadline: number) {
+  let lastErr: unknown
+  while (Date.now() < deadline) {
+    try {
+      const user = await getCurrentUser()
+      return user
+    } catch (e: unknown) {
+      lastErr = e
+      await new Promise(r => setTimeout(r, 250))
+    }
+  }
+  throw lastErr || new Error('No current user after callback')
+}
+
 export default function AdminAuth() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -52,23 +67,12 @@ export default function AdminAuth() {
 
         // Hosted UI 戻り直後はトークン確立待ち（短時間リトライ）
         const deadline = Date.now() + 8000
-        let ok = false
-        let lastErr: unknown
-        while (Date.now() < deadline) {
-          try {
-            const u = await getCurrentUser()
-            dbg('getCurrentUser OK on callback:', u)
-            ok = true
-            break
-          } catch (e: unknown) {
-            lastErr = e
-            await new Promise(r => setTimeout(r, 250))
-          }
-        }
-
-        if (!ok) {
-          console.error('[AdminAuth] getCurrentUser still failing after callback:', lastErr)
-          throw lastErr || new Error('No current user after callback')
+        try {
+          const u = await waitForCurrentUser(deadline)
+          dbg('getCurrentUser OK on callback:', u)
+        } catch (err: unknown) {
+          console.error('[AdminAuth] getCurrentUser still failing after callback:', err)
+          throw err
         }
 
         // サインイン確立後にもう一度掃除（冪等）

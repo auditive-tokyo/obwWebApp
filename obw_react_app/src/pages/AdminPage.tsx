@@ -502,7 +502,7 @@ export default function AdminPage({
                 <label
                   style={{ display: "block", marginBottom: 4, fontWeight: 500 }}
                 >
-                  移動先の部屋番号:
+                  <div style={{ marginBottom: 4 }}>移動先の部屋番号:</div>
                   <select
                     value={transferTargetRoom}
                     onChange={(e) => setTransferTargetRoom(e.target.value)}
@@ -513,7 +513,6 @@ export default function AdminPage({
                       borderRadius: 4,
                       fontSize: "14px",
                       display: "block",
-                      marginTop: 4,
                     }}
                   >
                   <option value="">選択してください</option>
