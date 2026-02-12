@@ -108,12 +108,13 @@ export function DetailsModal({
   };
 
   return (
-    <div
+    <button
+      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        border: 'none', cursor: 'pointer', padding: 0
       }}
-      onClick={onClose}
     >
       <div
         role="dialog"
@@ -284,6 +285,6 @@ export function DetailsModal({
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
