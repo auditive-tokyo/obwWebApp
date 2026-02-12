@@ -13,8 +13,16 @@ export function SecurityInfoCards() {
   // カード内容
   const lawCard = (
     <div
+      role="button"
+      tabIndex={0}
       className="bg-blue-50 border border-blue-200 rounded-lg p-4 m-2 cursor-pointer transition-all duration-200 basis-1/2 text-sm hover:shadow-lg"
       onClick={() => setExpanded("law")}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setExpanded("law");
+        }
+      }}
     >
       <div className="flex items-start space-x-2">
         <svg
@@ -44,8 +52,16 @@ export function SecurityInfoCards() {
 
   const securityCard = (
     <div
+      role="button"
+      tabIndex={0}
       className="bg-green-50 border border-green-200 rounded-lg p-4 m-2 cursor-pointer transition-all duration-200 basis-1/2 text-sm hover:shadow-lg"
       onClick={() => setExpanded("security")}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setExpanded("security");
+        }
+      }}
     >
       <div className="flex items-start space-x-2">
         <svg
@@ -79,10 +95,13 @@ export function SecurityInfoCards() {
   // 拡大表示
   const expandedCard = expanded && (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
       onClick={() => setExpanded(null)}
     >
       <div
+        role="presentation"
         className={`${
           expanded === "law"
             ? "bg-blue-50 border-blue-200"

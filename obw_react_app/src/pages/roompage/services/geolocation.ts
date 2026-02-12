@@ -16,7 +16,7 @@ function getCurrentPositionOnce(opts?: PositionOptions): Promise<GeoFix> {
           accuracy: pos.coords.accuracy,
           ts: Date.now(),
         }),
-      (err) => reject(err),
+      (err) => reject(new Error(`Geolocation error: ${err.message}`)),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0, ...opts }
     )
   })
