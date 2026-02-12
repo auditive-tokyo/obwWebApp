@@ -5,6 +5,14 @@ import { dbg } from '@/utils/debugLogger'
 import { getCurrentUser, signInWithRedirect } from 'aws-amplify/auth'
 import AdminPage from '../pages/AdminPage'
 
+// パス構築ヘルパー関数
+function buildAdminPath(roomId?: string, bookingId?: string): string {
+  if (roomId && bookingId) return `/admin/${roomId}/${bookingId}`
+  if (roomId) return `/admin/${roomId}`
+  if (bookingId) return `/admin/${bookingId}`
+  return '/admin'
+}
+
 export default function AdminAuth() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -31,47 +39,52 @@ export default function AdminAuth() {
   useEffect(() => {
     async function ensureAuthenticated() {
       dbg('path:', location.pathname, 'search:', location.search)
-      dbg('roomId from URL params:', roomId)  // デバッグ用
+      dbg('roomId from URL params:', roomId)
 
       // /admin配下に来たら先にゲスト情報を掃除
       clearGuestStorage()
 
+      // コールバック処理を別関数に抽出
+      async function handleAuthCallback() {
+        setMessage('Completing sign-in...')
+        const qs = new URLSearchParams(location.search)
+        dbg('callback detected. code:', qs.get('code'), 'state:', qs.get('state'))
+
+        // Hosted UI 戻り直後はトークン確立待ち（短時間リトライ）
+        const deadline = Date.now() + 8000
+        let ok = false
+        let lastErr: unknown
+        while (Date.now() < deadline) {
+          try {
+            const u = await getCurrentUser()
+            dbg('getCurrentUser OK on callback:', u)
+            ok = true
+            break
+          } catch (e: unknown) {
+            lastErr = e
+            await new Promise(r => setTimeout(r, 250))
+          }
+        }
+
+        if (!ok) {
+          console.error('[AdminAuth] getCurrentUser still failing after callback:', lastErr)
+          throw lastErr || new Error('No current user after callback')
+        }
+
+        // サインイン確立後にもう一度掃除（冪等）
+        clearGuestStorage()
+        setReady(true)
+        setMessage('')
+
+        // コールバック後は元のURL構造を保持してリダイレクト
+        const targetPath = buildAdminPath(roomId, bookingId)
+        dbg('navigate -> ', targetPath)
+        navigate(targetPath, { replace: true })
+      }
+
       try {
         if (location.pathname.startsWith('/admin/callback')) {
-          setMessage('Completing sign-in...')
-          const qs = new URLSearchParams(location.search)
-          dbg('callback detected. code:', qs.get('code'), 'state:', qs.get('state'))
-
-          // Hosted UI 戻り直後はトークン確立待ち（短時間リトライ）
-          const deadline = Date.now() + 8000
-          let ok = false
-          let lastErr: unknown
-          while (Date.now() < deadline) {
-            try {
-              const u = await getCurrentUser()
-              dbg('getCurrentUser OK on callback:', u)
-              ok = true
-              break
-            } catch (e: unknown) {
-              lastErr = e
-              await new Promise(r => setTimeout(r, 250))
-            }
-          }
-          if (!ok) {
-            console.error('[AdminAuth] getCurrentUser still failing after callback:', lastErr)
-            throw lastErr || new Error('No current user after callback')
-          }
-
-          // サインイン確立後にもう一度掃除（冪等）
-          clearGuestStorage()
-
-          setReady(true)
-          setMessage('')
-
-          // コールバック後は元のURL構造を保持してリダイレクト
-          const targetPath = roomId ? (bookingId ? `/admin/${roomId}/${bookingId}` : `/admin/${roomId}`) : (bookingId ? `/admin/${bookingId}` : '/admin')
-          dbg('navigate -> ', targetPath)
-          navigate(targetPath, { replace: true })  // 修正: roomId/bookingIdを保持
+          await handleAuthCallback()
           return
         }
 
@@ -92,7 +105,7 @@ export default function AdminAuth() {
     }
 
     ensureAuthenticated()
-  }, [location.pathname, location.search, navigate, roomId])  // roomId を依存配列に追加
+  }, [location.pathname, location.search, navigate, roomId, bookingId])  // bookingId も依存配列に追加
 
   if (!ready) return <p>{message}</p>
   return <AdminPage roomId={roomId} bookingFilter={bookingId} />
