@@ -109,8 +109,6 @@ export function DetailsModal({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
@@ -118,7 +116,8 @@ export function DetailsModal({
       onClick={onClose}
     >
       <div
-        role="presentation"
+        role="dialog"
+        aria-modal="true"
         style={{
           background: '#fff',
           padding: 16,
