@@ -62,18 +62,9 @@ obwWebApp/
 
 ### Lambda 関数 (lambda_functions/)
 
-| 関数                 | 言語       | 役割                                                       |
-| -------------------- | ---------- | ---------------------------------------------------------- |
-| request_access       | Go         | ゲストアクセスリクエスト受付・SMS/Email送信                |
-| verify_access_token  | Go         | アクセストークン検証                                       |
-| admin_approve_guest  | Go         | 管理者によるゲスト承認                                     |
-| transfer_room_guests | Go         | ゲストの部屋移動処理                                       |
-| get_presigned_url    | Go         | S3 署名付きURL 生成                                        |
-| ai_processing        | Python     | Twilio（電話用）のAI 処理・分類                            |
-| immediate-response   | Python     | Twilio（電話用）即座応答・音声処理                         |
-| ResponseApi          | TypeScript | ストリーミング応答処理（chatbot回答をchunk表示）           |
-| SummarizeInquiry     | TypeScript | 問い合わせ内容の要約                                       |
-| 日次タスク           | Go         | record cleanup, s3_backup, session expiry, token sync など |
+- **lambda_functions/**配下に集約
+- **言語ごとにセット**になっている
+  - Streaming処理が必要な場合はTypeScript、Twilioの電話Lambda二つはPython、その他はGoで書く（よほどの理由が無い限りはGoを基本言語とする）
 
 ### フロントエンド (obw_react_app/)
 
@@ -85,14 +76,14 @@ obwWebApp/
 - **多言語対応** (i18n)
 
 > **開発コマンド**
-> 
-> | コマンド | 用途 | 詳細 |
-> |---------|------|------|
-> | `npm run dev` | 開発サーバー起動 | ホットリロード対応、デバッグモード |
-> | `npm run build` | 本番ビルド | TypeScript チェック → Vite ビルド |
-> | `npm run typecheck` | 型チェックのみ | ファイル生成せず、型エラー検出 |
-> | `npm run lint` | コード品質チェック | ESLint による静的解析 |
-> | `npm run preview` | 本番環境シミュレーション | dist/ ディレクトリをサーブ |
+>
+> | コマンド            | 用途                     | 詳細                               |
+> | ------------------- | ------------------------ | ---------------------------------- |
+> | `npm run dev`       | 開発サーバー起動         | ホットリロード対応、デバッグモード |
+> | `npm run build`     | 本番ビルド               | TypeScript チェック → Vite ビルド  |
+> | `npm run typecheck` | 型チェックのみ           | ファイル生成せず、型エラー検出     |
+> | `npm run lint`      | コード品質チェック       | ESLint による静的解析              |
+> | `npm run preview`   | 本番環境シミュレーション | dist/ ディレクトリをサーブ         |
 
 ### インフラ (CloudFormation)
 
@@ -142,6 +133,7 @@ DynamoDB / SNS / S3
 - ✅ **実装と文書の内容が異なる場合**（重要）
 
 **更新時の手順：**
+
 1. プロジェクト構造を `tree -I 'node_modules|.venv|venv|docs' -L 3` で確認
 2. 対応する表やセクションを更新
 3. フォーマットの一貫性を保つ
