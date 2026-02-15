@@ -7,7 +7,7 @@ import { SecurityInfoCards } from '@/pages/roompage/components/SecurityInfoCards
 
 type Props = { roomNumber: string }
 
-function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
+function CustomPhoneInput(props: Readonly<InputHTMLAttributes<HTMLInputElement>>) {
   return (
     <input
       {...props}
@@ -57,7 +57,7 @@ function normalizeErrorString(error: string | string[]): string {
   return Array.isArray(error) ? error.join(', ') : error
 }
 
-export default function AccessForm({ roomNumber }: Props) {
+export default function AccessForm({ roomNumber }: Readonly<Props>) {
   const client = generateClient()
   const [guestName, setGuestName] = useState('')
   const [email, setEmail] = useState('')

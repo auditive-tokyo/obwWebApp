@@ -35,7 +35,9 @@ type BasicInfoFormProps = {
   statusMessage?: string; // ステータスメッセージ（readOnly時に表示）
 };
 
-function CustomPhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
+function CustomPhoneInput(
+  props: Readonly<InputHTMLAttributes<HTMLInputElement>>,
+) {
   return (
     <input
       {...props}
@@ -153,7 +155,7 @@ function RequiredMark({ show }: { show: boolean }) {
   return <span className="text-red-500">*</span>;
 }
 
-export default function BasicInfoForm(props: BasicInfoFormProps) {
+export default function BasicInfoForm(props: Readonly<BasicInfoFormProps>) {
   const {
     name,
     setName,
@@ -294,7 +296,7 @@ export default function BasicInfoForm(props: BasicInfoFormProps) {
                   (promoConsent ? "bg-green-50" : "bg-gray-50")
                 }
               >
-                <label 
+                <label
                   className="flex items-start gap-3 cursor-pointer select-none"
                   aria-label={getMessage("emailConsent") as string}
                 >
