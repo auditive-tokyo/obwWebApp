@@ -17,7 +17,7 @@ const AVATAR_URL = "https://osakabaywheel.com/img/logo_color.svg";
 // URLを自動的にリンクに変換する関数
 const convertUrlsToLinks = (text: string): string => {
   const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]()（）]+)/g;
-  return text.replace(
+  return text.replaceAll(
     urlRegex,
     '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
   );
@@ -25,7 +25,7 @@ const convertUrlsToLinks = (text: string): string => {
 
 // テキスト処理関数（改行 + URLリンク化）
 const processText = (text: string): string => {
-  return convertUrlsToLinks(text).replace(/\n/g, "<br />");
+  return convertUrlsToLinks(text).replaceAll("\n", "<br />");
 };
 
 // 安全に msg.text から images を取り出すユーティリティ
@@ -61,7 +61,7 @@ function getMessageImages(msg: Message): string[] {
 const LoadingMessage: React.FC<{ msg: Message }> = ({ msg }) => (
   <div
     key={msg.id}
-    className={`message new ${!msg.text ? "loading" : ""} ${msg.personal ? "message-personal" : "message-ai"}`}
+    className={`message new ${msg.text ? "" : "loading"} ${msg.personal ? "message-personal" : "message-ai"}`}
     data-testid={msg.personal ? "user-msg-loading" : "ai-msg-loading"}
   >
     <figure className="avatar">
@@ -80,10 +80,10 @@ const ReferenceLinks: React.FC<{ sources: string[] }> = ({ sources }) => (
   <div className="reference-files">
     <strong>Reference(s):</strong>
     <ul>
-      {sources.map((file, idx) => {
+      {sources.map((file) => {
         const isUrl = file.startsWith("https://") || file.startsWith("http://");
         return (
-          <li key={idx}>
+          <li key={file}>
             {isUrl ? (
               <a
                 href={file}
