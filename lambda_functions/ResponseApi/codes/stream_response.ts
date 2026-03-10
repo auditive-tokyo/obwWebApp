@@ -36,14 +36,16 @@ export async function* generateStreamResponse({
     try {
         // システムプロンプトを動的生成
         const systemPrompt = getSystemPrompt(
-            roomId || '', 
-            approved || false, 
-            representativeName ?? null,
-            representativeEmail ?? null,
-            representativePhone ?? null,
-            currentLocation ? currentLocation : undefined,
-            checkInDate,
-            checkOutDate
+            roomId || '',
+            approved || false,
+            {
+                representativeName: representativeName ?? null,
+                representativeEmail: representativeEmail ?? null,
+                representativePhone: representativePhone ?? null,
+                currentLocation: currentLocation ?? undefined,
+                checkInDate,
+                checkOutDate,
+            }
         );
         console.info("Generated system prompt for:", { roomId, approved, representativeName, representativeEmail, representativePhone, currentLocation, checkInDate, checkOutDate });
 
@@ -124,7 +126,7 @@ export async function* generateStreamResponse({
         const response = await openai.responses.create(requestPayload as unknown as Record<string, unknown>);
 
         for await (const chunk of response as unknown as AsyncIterable<unknown>) {
-            yield chunk as unknown;
+            yield chunk;
         }
 
         yield `data: ${JSON.stringify({ completed: true })}\n\n`;

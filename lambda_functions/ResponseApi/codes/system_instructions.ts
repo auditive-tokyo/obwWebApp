@@ -134,22 +134,37 @@ ${POLICY_INSTRUCTION}`;
 }
 
 /**
+ * ゲスト情報をまとめたオプションオブジェクト
+ */
+export type GuestInfo = {
+  representativeName?: string | null;
+  representativeEmail?: string | null;
+  representativePhone?: string | null;
+  currentLocation?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+};
+
+/**
  * 承認状態、位置情報の有無、roomIdに基づいて適切なシステムプロンプトを生成
  * @param roomId - 部屋番号（例: "101", "203"）
  * @param approved - 承認済みかどうか
- * @param currentLocation - お客様の現在位置（オプション）
+ * @param guestInfo - ゲスト情報（オプション）
  * @returns システムプロンプト文字列
  */
 export function getSystemPrompt(
   roomId: string,
   approved: boolean,
-  representativeName?: string | null,
-  representativeEmail?: string | null,
-  representativePhone?: string | null,
-  currentLocation?: string | undefined,
-  checkInDate?: string,
-  checkOutDate?: string
+  guestInfo: GuestInfo = {}
 ): string {
+  const {
+    representativeName,
+    representativeEmail,
+    representativePhone,
+    currentLocation,
+    checkInDate,
+    checkOutDate,
+  } = guestInfo;
   if (!roomId) {
     // roomIdがない場合（グローバルチャット）
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
