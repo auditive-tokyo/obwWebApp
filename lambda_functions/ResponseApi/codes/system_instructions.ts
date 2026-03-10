@@ -45,6 +45,52 @@ const POLICY_INSTRUCTION = `
 - hallucination（事実に反する内容の生成）厳禁。
 `;
 
+const OPERATIONAL_HOURS = { start: 9, end: 21 };
+
+/**
+ * 現在のJST時刻を基に対応時間コンテキストを生成
+ * 対応時間内（9:00〜21:00）と時間外で異なる案内ルールをプロンプトに埋め込む
+ */
+function getOperationalTimeContext(): string {
+  const now = new Date();
+  const jstFormatter = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const jstString = jstFormatter.format(now);
+
+  // JST時刻の「時」を取得
+  const hourPart = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo",
+    hour: "numeric",
+    hour12: false,
+  }).format(now);
+  const jstHour = Number.parseInt(hourPart, 10);
+
+  const isWithinHours =
+    jstHour >= OPERATIONAL_HOURS.start && jstHour < OPERATIONAL_HOURS.end;
+
+  if (isWithinHours) {
+    return `
+**現在時刻**: ${jstString} JST（対応時間内 ${OPERATIONAL_HOURS.start}:00〜${OPERATIONAL_HOURS.end}:00）
+- 現在はスタッフ対応可能な時間帯です。リクエスト（シーツ交換、清掃、備品補充など）に対して当日中の対応が可能である旨を案内してください。
+- 緊急トラブル（鍵・設備故障等）はオペレーター転送を案内できます。
+`;
+  } else {
+    return `
+**現在時刻**: ${jstString} JST（対応時間外）
+- スタッフの対応時間は ${OPERATIONAL_HOURS.start}:00〜${OPERATIONAL_HOURS.end}:00 です。
+- 現在は対応時間外のため、リクエスト（シーツ交換、清掃、備品補充など）は「翌朝${OPERATIONAL_HOURS.start}時以降に対応いたします」と案内してください。「今すぐ対応します」等の即時対応を示唆する表現は使用しないでください。
+- **例外**: 緊急トラブル（鍵が開かない、水漏れ、設備故障など安全に関わる問題）のみ、オペレーター転送を案内してください。
+`;
+  }
+}
+
 /**
  * 部屋番号からキーボックスのダイヤル4桁コードを計算
  * ルール: 部屋番号の真ん中の0を67に置き換える
@@ -103,10 +149,12 @@ ${customerLines.join("\n")}
  */
 function getUnapprovedSystemPrompt(
   roomId: string,
-  customerInfo: string
+  customerInfo: string,
+  operationalContext: string
 ): string {
   return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
+${operationalContext}
 ${customerInfo}
 ${TOOL_USAGE_INSTRUCTION}
 ${OPERATOR_CALL_INSTRUCTION}
@@ -119,13 +167,18 @@ ${POLICY_INSTRUCTION}`;
  * - 部屋固有の機密情報（キーコードなど）にアクセス可能
  * - 全ての質問に対応
  */
-function getApprovedSystemPrompt(roomId: string, customerInfo: string): string {
+function getApprovedSystemPrompt(
+  roomId: string,
+  customerInfo: string,
+  operationalContext: string
+): string {
   const keyCode = calculateKeyCode(roomId);
 
   return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
 
 ${roomId}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : ${keyCode}
+${operationalContext}
 ${customerInfo}
 ${TOOL_USAGE_INSTRUCTION}
 ${OPERATOR_CALL_INSTRUCTION}
@@ -165,10 +218,13 @@ export function getSystemPrompt(
     checkInDate,
     checkOutDate,
   } = guestInfo;
+  // 対応時間コンテキストを生成（JSTの現在時刻に基づく）
+  const operationalContext = getOperationalTimeContext();
+
   if (!roomId) {
     // roomIdがない場合（グローバルチャット）
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
-
+${operationalContext}
 ${TOOL_USAGE_INSTRUCTION}
 ${JSON_OUTPUT_INSTRUCTION}
 ${POLICY_INSTRUCTION}`;
@@ -186,8 +242,8 @@ ${POLICY_INSTRUCTION}`;
 
   // 承認状態のみで分岐（お客様情報は両方に含まれる）
   if (approved) {
-    return getApprovedSystemPrompt(roomId, customerInfo);
+    return getApprovedSystemPrompt(roomId, customerInfo, operationalContext);
   } else {
-    return getUnapprovedSystemPrompt(roomId, customerInfo);
+    return getUnapprovedSystemPrompt(roomId, customerInfo, operationalContext);
   }
 }
