@@ -38,7 +38,7 @@ export function BasicCheckInOutDate({
   checkOutDate,
   setCheckOutDate,
   readOnly = false,
-}: Props) {
+}: Readonly<Props>) {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const handleDateChange = (dates: [Date | null, Date | null]) => {
