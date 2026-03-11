@@ -55,11 +55,13 @@ function getAddressMissingFields(address: string): string[] {
   const parsedAddress = parseAddressFields(address);
 
   if (!parsedAddress) {
-    fields.push(getMessage("addressLine1") as string);
-    fields.push(getMessage("city") as string);
-    fields.push(getMessage("state") as string);
-    fields.push(getMessage("country") as string);
-    fields.push(getMessage("zipcode") as string);
+    fields.push(
+      getMessage("addressLine1") as string,
+      getMessage("city") as string,
+      getMessage("state") as string,
+      getMessage("country") as string,
+      getMessage("zipcode") as string,
+    );
     return fields;
   }
 
@@ -83,74 +85,55 @@ function getAddressMissingFields(address: string): string[] {
 }
 
 /**
- * 代表者家族以外の不足フィールドを計算
+ * 不足フィールドを計算
  */
-function getNonFamilyMissingFields(
-  name: string,
-  email: string,
-  address: string,
-  phone: string,
-  occupation: string,
-  nationality: string,
-  checkInDate: Date | null,
-  checkOutDate: Date | null,
-  hasRoomCheckDates: boolean,
-): string[] {
-  const fields: string[] = [];
+type ComputeMissingFieldsParams = {
+  isRepresentativeFamily: boolean;
+  name: string;
+  email: string;
+  address: string;
+  phone: string;
+  occupation: string;
+  nationality: string;
+  checkInDate: Date | null;
+  checkOutDate: Date | null;
+  hasRoomCheckDates: boolean;
+};
 
+function computeMissingFields({
+  isRepresentativeFamily,
+  name,
+  email,
+  address,
+  phone,
+  occupation,
+  nationality,
+  checkInDate,
+  checkOutDate,
+  hasRoomCheckDates,
+}: ComputeMissingFieldsParams): string[] {
+  if (isRepresentativeFamily) {
+    return name.trim() ? [] : [getMessage("name") as string];
+  }
+
+  const fields: string[] = [];
   if (!name.trim()) fields.push(getMessage("name") as string);
   if (!email.trim()) fields.push(getMessage("email") as string);
-
   fields.push(...getAddressMissingFields(address));
-
   if (!phone.trim()) fields.push(getMessage("phone") as string);
   if (!occupation.trim()) fields.push(getMessage("occupation") as string);
   if (!nationality.trim()) fields.push(getMessage("nationality") as string);
-
   if (!hasRoomCheckDates) {
     if (!checkInDate) fields.push(getMessage("checkInDate") as string);
     if (!checkOutDate) fields.push(getMessage("checkOutDate") as string);
   }
-
   return fields;
-}
-
-/**
- * 不足フィールドを計算
- */
-function computeMissingFields(
-  isRepresentativeFamily: boolean,
-  name: string,
-  email: string,
-  address: string,
-  phone: string,
-  occupation: string,
-  nationality: string,
-  checkInDate: Date | null,
-  checkOutDate: Date | null,
-  hasRoomCheckDates: boolean,
-): string[] {
-  if (isRepresentativeFamily) {
-    return !name.trim() ? [getMessage("name") as string] : [];
-  }
-
-  return getNonFamilyMissingFields(
-    name,
-    email,
-    address,
-    phone,
-    occupation,
-    nationality,
-    checkInDate,
-    checkOutDate,
-    hasRoomCheckDates,
-  );
 }
 
 /**
  * 必須マーク表示用コンポーネント
  */
-function RequiredMark({ show }: { show: boolean }) {
+function RequiredMark({ show }: Readonly<{ show: boolean }>) {
   if (!show) return null;
   return <span className="text-red-500">*</span>;
 }
@@ -192,7 +175,7 @@ export default function BasicInfoForm(props: Readonly<BasicInfoFormProps>) {
       : "";
 
   // 不足している項目のリスト
-  const missingFields = computeMissingFields(
+  const missingFields = computeMissingFields({
     isRepresentativeFamily,
     name,
     email,
@@ -203,7 +186,7 @@ export default function BasicInfoForm(props: Readonly<BasicInfoFormProps>) {
     checkInDate,
     checkOutDate,
     hasRoomCheckDates,
-  );
+  });
 
   // 条件の事前計算
   const isEditable = !isAdmin && !readOnly;
@@ -320,8 +303,8 @@ export default function BasicInfoForm(props: Readonly<BasicInfoFormProps>) {
                     >
                       {(getMessage("promoConsent") as string)
                         .split("\n")
-                        .map((line, i) => (
-                          <span key={i}>
+                        .map((line) => (
+                          <span key={line}>
                             {line}
                             <br />
                           </span>
@@ -433,8 +416,8 @@ export default function BasicInfoForm(props: Readonly<BasicInfoFormProps>) {
                   {getMessage("missingFieldsPrompt")}
                 </p>
                 <ul className="list-disc list-inside space-y-1">
-                  {missingFields.map((field, index) => (
-                    <li key={index} className="text-sm text-red-600">
+                  {missingFields.map((field) => (
+                    <li key={field} className="text-sm text-red-600">
                       {field}
                     </li>
                   ))}
