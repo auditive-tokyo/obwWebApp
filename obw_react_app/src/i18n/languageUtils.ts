@@ -30,7 +30,7 @@ export const loadLang = (): "ja" | "en" => {
     const lang = localStorage.getItem("lang");
     if (lang === "ja" || lang === "en") return lang;
   } catch {
-    const match = document.cookie.match(/(?:^|; )lang=(ja|en)/);
+    const match = /(?:^|; )lang=(ja|en)/.exec(document.cookie);
     if (match) return match[1] as "ja" | "en";
   }
   return "en"; // ← デフォルトを英語に

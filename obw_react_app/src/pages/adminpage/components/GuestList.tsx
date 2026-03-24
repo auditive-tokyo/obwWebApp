@@ -1,14 +1,21 @@
 import type { Guest } from '../types/types';
 
+const STATUS_CLASS: Record<string, string> = {
+  approved: 'bg-green-100',
+  rejected: 'bg-red-100',
+  pending: 'bg-yellow-100',
+  waitingForBasicInfo: 'bg-indigo-100',
+};
+
 type Props = {
-  guests: Guest[];
-  loading: boolean;
-  error: string | null;
-  setDetail: (g: Guest) => void;
-  approvingId: string | null;
-  rejectingId: string | null;
-  confirmApprove: (g: Guest) => Promise<void> | void;
-  confirmReject: (g: Guest) => Promise<void> | void;
+  readonly guests: Guest[];
+  readonly loading: boolean;
+  readonly error: string | null;
+  readonly setDetail: (g: Guest) => void;
+  readonly approvingId: string | null;
+  readonly rejectingId: string | null;
+  readonly confirmApprove: (g: Guest) => Promise<void> | void;
+  readonly confirmReject: (g: Guest) => Promise<void> | void;
 };
 
 export function GuestList({
@@ -30,17 +37,7 @@ export function GuestList({
         {guests.map(g => (
           <li
             key={`${g.roomNumber}:${g.guestId}`}
-            className={
-              g.approvalStatus === 'approved'
-                ? 'bg-green-100'
-                : g.approvalStatus === 'rejected'
-                ? 'bg-red-100'
-                : g.approvalStatus === 'pending'
-                ? 'bg-yellow-100'
-                : g.approvalStatus === 'waitingForBasicInfo'
-                ? 'bg-indigo-100'
-                : 'bg-blue-100'
-            }
+            className={STATUS_CLASS[g.approvalStatus] ?? 'bg-blue-100'}
             style={{ 
               marginBottom: 8, 
               display: 'flex', 

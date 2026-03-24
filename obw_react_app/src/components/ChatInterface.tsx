@@ -70,13 +70,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (!input.trim()) return;
 
     const newUserMessage: Message = {
-      id: nextId.current!.current++,
+      id: nextId.current.current++,
       text: input,
       personal: true,
       timestamp: getTimestamp(),
     };
 
-    const aiMessageId = nextId.current!.current++;
+    const aiMessageId = nextId.current.current++;
     const newAiMessage: Message = {
       id: aiMessageId,
       text: '',

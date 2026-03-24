@@ -54,7 +54,7 @@ export const loadResponseId = (): string | null => {
     if (id) return id;
   } catch {
     // localStorageが使えない場合はcookieから取得
-    const match = document.cookie.match(/(?:^|; )responseId=([^;]*)/);
+    const match = /(?:^|; )responseId=([^;]*)/.exec(document.cookie);
     if (match) return match[1];
   }
   return null;

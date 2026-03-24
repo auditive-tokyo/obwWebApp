@@ -1,4 +1,4 @@
-import type { Guest } from '../types/types';
+import type { Guest } from "../types/types";
 
 /**
  * Show a confirmation dialog for approve action and run the provided async handler if confirmed.
@@ -6,10 +6,12 @@ import type { Guest } from '../types/types';
  */
 export async function confirmApproveDialog(
   g: Guest | null | undefined,
-  handler: () => Promise<void>
+  handler: () => Promise<void>,
 ): Promise<void> {
   if (!g) return;
-  const ok = window.confirm(`${g.guestName} を承認します。よろしいですか？`);
+  const ok = globalThis.confirm(
+    `${g.guestName} を承認します。よろしいですか？`,
+  );
   if (!ok) return;
   await handler();
 }
@@ -19,15 +21,17 @@ export async function confirmApproveDialog(
  */
 export async function confirmRejectDialog(
   g: Guest | null | undefined,
-  handler: () => Promise<void>
+  handler: () => Promise<void>,
 ): Promise<void> {
   if (!g) return;
-  const ok = window.confirm(`${g.guestName} を拒否します。よろしいですか？`);
+  const ok = globalThis.confirm(
+    `${g.guestName} を拒否します。よろしいですか？`,
+  );
   if (!ok) return;
   await handler();
 }
 
 export default {
   confirmApproveDialog,
-  confirmRejectDialog
+  confirmRejectDialog,
 };

@@ -1,8 +1,8 @@
 interface Props {
-  canBulk: boolean;
-  bulkProcessing: boolean;
-  onClick: (e?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void | Promise<void>;
-  title?: string;
+  readonly canBulk: boolean;
+  readonly bulkProcessing: boolean;
+  readonly onClick: (e?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void | Promise<void>;
+  readonly title?: string;
 }
 
 export default function RoomTransferButton({ canBulk, bulkProcessing, onClick, title }: Props) {
@@ -10,7 +10,7 @@ export default function RoomTransferButton({ canBulk, bulkProcessing, onClick, t
     <button
       onClick={onClick}
       disabled={!canBulk || bulkProcessing}
-      title={!canBulk ? title ?? '部屋を選択し、チェックイン日または予約IDを選択してください' : ''}
+      title={canBulk ? '' : title ?? '部屋を選択し、チェックイン日または予約IDを選択してください'}
       style={{
         marginLeft: 12,
         backgroundColor: '#ff6f00',

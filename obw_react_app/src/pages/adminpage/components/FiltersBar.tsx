@@ -2,15 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ApprovalStatus, Guest } from '../types/types';
 
 interface Props {
-  all: Guest[];
-  roomFilter: string;
-  setRoomFilter: (v: string) => void;
-  statusFilter: string[];
-  setStatusFilter: (v: string[]) => void;
-  bookingFilter: string;
-  setBookingFilter: (v: string) => void;
-  checkInFilter: string;
-  setCheckInFilter: (v: string) => void;
+  readonly all: Guest[];
+  readonly roomFilter: string;
+  readonly setRoomFilter: (v: string) => void;
+  readonly statusFilter: string[];
+  readonly setStatusFilter: (v: string[]) => void;
+  readonly bookingFilter: string;
+  readonly setBookingFilter: (v: string) => void;
+  readonly checkInFilter: string;
+  readonly setCheckInFilter: (v: string) => void;
 }
 
 export default function FiltersBar({
@@ -182,18 +182,11 @@ export default function FiltersBar({
             }}
           >
             {statusOptions.map(status => (
-              <div
+              <button
                 key={status}
-                role="button"
-                tabIndex={0}
+                type="button"
                 aria-pressed={statusFilter.includes(status)}
                 onClick={() => toggleStatus(status)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleStatus(status);
-                  }
-                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -202,7 +195,11 @@ export default function FiltersBar({
                   cursor: 'pointer',
                   userSelect: 'none',
                   fontSize: '14px',
-                  transition: 'background-color 0.15s'
+                  transition: 'background-color 0.15s',
+                  background: 'none',
+                  border: 'none',
+                  width: '100%',
+                  textAlign: 'left'
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -219,7 +216,7 @@ export default function FiltersBar({
                   )}
                 </span>
                 <span>{status}</span>
-              </div>
+              </button>
             ))}
           </div>
         )}

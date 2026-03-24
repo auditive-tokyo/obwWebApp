@@ -3,7 +3,7 @@ import { setLanguage, saveLang, loadLang } from "@/i18n/languageUtils";
 import { SupportedLang } from "@/i18n/messages";
 
 function Header() {
-  const [lang, setLang] = useState<SupportedLang>('en');
+  const [lang, setLang] = useState<SupportedLang>("en");
   const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -14,7 +14,10 @@ function Header() {
 
   useEffect(() => {
     if (headerRef.current) {
-      document.documentElement.style.setProperty('--header-height', `${headerRef.current.offsetHeight}px`);
+      document.documentElement.style.setProperty(
+        "--header-height",
+        `${headerRef.current.offsetHeight}px`,
+      );
     }
   }, []);
 
@@ -23,11 +26,14 @@ function Header() {
     setLang(newLang);
     setLanguage(newLang);
     saveLang(newLang);
-    window.location.reload();
+    globalThis.location.reload();
   };
 
   return (
-    <header ref={headerRef} className="w-full bg-white shadow p-4 mb-4 flex justify-center items-center">
+    <header
+      ref={headerRef}
+      className="w-full bg-white shadow p-4 mb-4 flex justify-center items-center"
+    >
       <h1 className="text-3xl font-bold text-center">Osaka Bay Wheel WebApp</h1>
       <div className="ml-4 relative">
         <select
@@ -39,7 +45,9 @@ function Header() {
           <option value="ja">🇯🇵 JA</option>
         </select>
         {/* カスタム矢印 */}
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">▾</span>
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+          ▾
+        </span>
       </div>
     </header>
   );

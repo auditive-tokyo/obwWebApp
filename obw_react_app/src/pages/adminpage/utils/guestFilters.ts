@@ -9,11 +9,14 @@ export type GuestFilters = {
 
 export function computeFilteredGuests(all: Guest[], f: GuestFilters): Guest[] {
   // statusFilter が配列の場合と文字列の場合に対応
-  const statusFilters = Array.isArray(f.statusFilter) 
-    ? f.statusFilter.map(s => s.toLowerCase())
-    : f.statusFilter 
-      ? [f.statusFilter.toLowerCase()]
-      : [];
+  let statusFilters: string[];
+  if (Array.isArray(f.statusFilter)) {
+    statusFilters = f.statusFilter.map(s => s.toLowerCase());
+  } else if (f.statusFilter) {
+    statusFilters = [f.statusFilter.toLowerCase()];
+  } else {
+    statusFilters = [];
+  }
   
   const base = all.filter(g => {
     const st = (g.approvalStatus || '').trim().toLowerCase();

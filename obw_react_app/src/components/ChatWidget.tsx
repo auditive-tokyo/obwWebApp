@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import ChatInterface from "./ChatInterface";
-import { RoomProps } from "./chatInterface/typeClass";
-import { Message } from "./chatInterface/typeClass";
+import { RoomProps, Message } from "./chatInterface/typeClass";
 import { getTimestamp } from "./chatInterface/utils";
 
 const WELCOME_MESSAGES = {
@@ -61,10 +60,10 @@ const ChatWidget = ({
       }
       return prevMessages;
     });
-  }, []);  // マウント時に一度だけ実行
+  }, []); // マウント時に一度だけ実行
 
   // 外部からopenが渡された場合はそれを使用、なければ内部state
-  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const open = externalOpen ?? internalOpen;
   const setOpen = externalSetOpen || setInternalOpen;
 
   return (
