@@ -119,9 +119,9 @@ DynamoDB / SNS / S3
 
 ## デプロイ方式
 
-- **Frontend**: Vite ビルド → S3 へデプロイ
-- **Lambda**: SAM/CloudFormation で管理
-- **IaC**: CloudFormation テンプレート
+- **Frontend**: Vite ビルド → GH Pages
+- **Lambda**: SAM で管理
+- **IaC**: SAM/CloudFormation テンプレート
 - **リージョン**: ap-northeast-1 (東京)
 
 ---
@@ -145,4 +145,70 @@ DynamoDB / SNS / S3
 3. フォーマットの一貫性を保つ
 4. 実装と文書のズレを解消
 
-**最終更新**: 2026-02-12 (SMS 正常送信確認後)
+---
+
+## 🗂️ TODO — AI チャットボット アーキテクチャ刷新
+
+> 壁打ちで固めた設計方針に基づくタスクリスト。  
+> 完了したものから `- [x]` に変える。
+
+### Step 1: OpenAI Vector Store の再編成
+
+- [ ] 施設案内用 Vector Store を作成し、`vector_db_files/FacilityGuide.md` と `vector_db_files/FrequentlyAskedQuestions.md` をアップロードする
+- [ ] 交通・周辺・観光案内用 Vector Store を作成し、`vector_db_files/AccessMap.md` をアップロードする
+- [ ] 各 Store ID を SAM テンプレートに環境変数として追加する
+  - `OPENAI_VECTOR_STORE_ID_FACILITY`
+  - `OPENAI_VECTOR_STORE_ID_TRANSPORT`
+
+### Step 2: Intent Classifier の新規実装
+
+- [ ] `lambda_functions/ResponseApi/codes/intent_classifier.ts` を新規作成する
+  - モデル: `gpt-5.4-nano`（非ストリーミング）reasoning effort: low or medium（速度を見て決定）
+  - 分類カテゴリ: `facility` / `transport_tourism` / `emergency` / `conversation` / `unknown`
+  - `previous_response_id` を常に渡してコンテキストを維持する
+  - 返り値は Intent 文字列のみ（シンプルに保つ）ただしjson schemaで回答を指定した方が余計な文章を含みづらい
+
+### Step 3: Intent → Tools マッピング定義
+
+- [ ] Intent ごとの tools 設定を定数として定義する（`chat_handler.ts` または専用ファイル）
+
+  | Intent              | file_search | web_search | vector_store               |
+  | ------------------- | ----------- | ---------- | -------------------------- |
+  | `facility`          | ✅          | ❌         | store_facility             |
+  | `transport_tourism` | ✅          | ✅         | store_transport            |
+  | `unknown`           | ✅          | ✅         | 両方                       |
+  | `emergency`         | ❌          | ❌         | なし（system prompt のみ） |
+  | `conversation`      | ❌          | ❌         | なし                       |
+
+### Step 4: stream_response.ts の改修
+
+- [ ] `GenerateStreamResponseParams` に `intent` フィールドを追加する
+- [ ] Intent に応じて `tools` と `vector_store_ids` を動的に切り替えるロジックを実装する
+- [ ] Emergency 用 system prompt（緊急連絡先・初動対応手順）をファイル検索なしで直書きする
+
+### Step 5: chat_handler.ts のフロー実装
+
+- [ ] Step 1（Intent 分類）→ Step 2（ストリーミング応答）の 2 ステップフローを実装する
+- [ ] `intent_classifier.ts` の呼び出しを `chat_handler.ts` に組み込む
+- [ ] エラー時のフォールバック intent を `unknown` とする
+
+### Step 6: System Prompt の整理
+
+- [ ] `system_instructions.ts`（または相当ファイル）の system prompt を Intent 別に分割・整理する
+  - 施設案内用（詳細情報は vector store 参照）
+  - 交通・周辺観光用（web 検索結果を要約）
+  - 緊急対応用（連絡先・初動手順を直書き、LLM 創作禁止）
+  - 雑談用（ホスピタリティ重視の短い応答）
+
+### Step 7: SAM テンプレートの更新
+
+- [ ] `template-responseapi-function.yaml` に以下の環境変数を追加する
+  - `OPENAI_VECTOR_STORE_ID_FACILITY`
+  - `OPENAI_VECTOR_STORE_ID_TRANSPORT`
+- [ ] 必要であれば IAM ポリシーを確認・更新する
+
+### Step 8: テスト・検証
+
+- [ ] 各 Intent カテゴリのサンプル入力でローカル動作を確認する
+- [ ] Emergency フローで余計な LLM 創作が入らないことを検証する
+- [ ] `previous_response_id` が正しく引き継がれ、会話コンテキストが維持されることを確認する

@@ -70,6 +70,7 @@ Resources:
           OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
           CLOUDFRONT_SECRET: !Ref CloudFrontSecret
+          DEBUG: 'false'
       Policies:
         - Version: "2012-10-17"
           Statement:
