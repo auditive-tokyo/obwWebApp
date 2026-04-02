@@ -48,12 +48,11 @@ export default function RoomPage() {
     boolean | null
   >(null);
   const [myCurrentLocation, setMyCurrentLocation] = useState<string | null>(
-    null
+    null,
   );
   const selectedGuest =
     guestSessions.find((g) => g.guestId === selectedGuestId) || null;
-  const bookingId =
-    typeof window !== "undefined" ? localStorage.getItem("bookingId") : null;
+  const bookingId = localStorage.getItem("bookingId");
 
   const client = useMemo(() => generateClient(), []);
 
@@ -98,7 +97,7 @@ export default function RoomPage() {
 
   const hasRoomCheckDates = useMemo(
     () => !!(roomCheckInDate && roomCheckOutDate),
-    [roomCheckInDate, roomCheckOutDate]
+    [roomCheckInDate, roomCheckOutDate],
   );
 
   // サービス関数のラッパー（引数を束ねる）
@@ -134,7 +133,7 @@ export default function RoomPage() {
       guestSessions.length,
       isRepresentativeFamily,
       hasRoomCheckDates,
-    ]
+    ],
   );
 
   // 戻る（ID→基本情報フォームへ。家族は名前のみ）
@@ -189,10 +188,12 @@ export default function RoomPage() {
       setOccupation(selectedGuest.occupation || "");
       setNationality(selectedGuest.nationality || "");
       setCheckInDate(
-        selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null
+        selectedGuest.checkInDate ? new Date(selectedGuest.checkInDate) : null,
       );
       setCheckOutDate(
-        selectedGuest.checkOutDate ? new Date(selectedGuest.checkOutDate) : null
+        selectedGuest.checkOutDate
+          ? new Date(selectedGuest.checkOutDate)
+          : null,
       );
       setPromoConsent(!!selectedGuest.promoConsent);
       // 家族フラグはサーバ値をそのまま採用
@@ -258,10 +259,10 @@ export default function RoomPage() {
   const handleCreateNewGuest = useCallback(
     (isFamily: boolean) => {
       const newId =
-        window.crypto?.randomUUID?.() ||
+        globalThis.crypto?.randomUUID?.() ||
         (() => {
           const array = new Uint32Array(2);
-          window.crypto.getRandomValues(array);
+          globalThis.crypto.getRandomValues(array);
           return array[0].toString(36) + array[1].toString(36);
         })();
 
@@ -294,7 +295,7 @@ export default function RoomPage() {
       setCheckOutDate(null);
       setPromoConsent(false);
     },
-    [roomId]
+    [roomId],
   );
 
   // 新規ゲスト追加のクリック処理（家族質問を表示）
@@ -315,7 +316,7 @@ export default function RoomPage() {
       setShowFamilyQuestion(false);
       handleCreateNewGuest(isFamily);
     },
-    [handleCreateNewGuest]
+    [handleCreateNewGuest],
   );
 
   // 検証OKのときだけ自分の情報を取得
@@ -373,7 +374,7 @@ export default function RoomPage() {
           hasAlerted = true;
           alert(getMessage("roomTransferAlert"));
           // ページをリロード
-          window.location.reload();
+          globalThis.location.reload();
           return;
         }
       } catch (error) {
@@ -418,7 +419,7 @@ export default function RoomPage() {
     } catch (e) {
       console.warn("syncGeo failed", e);
       alert(
-        `${getMessage("locationSyncError")}${getMessage("pleaseRetryLater")}`
+        `${getMessage("locationSyncError")}${getMessage("pleaseRetryLater")}`,
       );
     }
   }, [client, roomId, loadMyGuest]);
@@ -435,7 +436,7 @@ export default function RoomPage() {
     } catch (e) {
       console.warn("deleteGuestLocation failed", e);
       alert(
-        `${getMessage("locationDeleteError")}${getMessage("pleaseRetryLater")}`
+        `${getMessage("locationDeleteError")}${getMessage("pleaseRetryLater")}`,
       );
     }
   }, [client, roomId, loadMyGuest]);
@@ -447,10 +448,8 @@ export default function RoomPage() {
     return <div style={{ padding: 16 }}>Loading...</div>;
   }
 
-  const gid =
-    typeof window !== "undefined" ? localStorage.getItem("guestId") : null;
-  const tok =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const gid = localStorage.getItem("guestId");
+  const tok = localStorage.getItem("token");
 
   if (!gid || !tok) {
     return (
@@ -500,7 +499,7 @@ export default function RoomPage() {
         selectedGuest={selectedGuest}
         // 文字列(gid)でも、オブジェクト(GuestSession)でも受けられるようにする
         onSelectGuest={(g) => {
-          const id = typeof g === "string" ? g : g?.guestId ?? null;
+          const id = typeof g === "string" ? g : (g?.guestId ?? null);
           if (id) {
             // ゲスト切替時は強制表示フラグをリセット
             setForceShowForm(null);
@@ -519,7 +518,7 @@ export default function RoomPage() {
       {showSmsWelcome && (
         <SmsWelcomeModal
           onClose={() => setShowSmsWelcome(false)}
-          originalUrl={location.state?.originalUrl || window.location.href}
+          originalUrl={location.state?.originalUrl || globalThis.location.href}
         />
       )}
     </>

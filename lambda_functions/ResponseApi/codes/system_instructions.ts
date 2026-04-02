@@ -72,20 +72,25 @@ function getOperationalTimeContext(operationalHours: OperationalHours): string {
   }).format(now);
   const jstHour = Number.parseInt(hourPart, 10);
 
-  const isWithinHours =
-    jstHour >= operationalHours.start && jstHour < operationalHours.end;
+  const startTotalMinutes = operationalHours.start * 60 + operationalHours.startMinute;
+  const endTotalMinutes = operationalHours.end * 60 + operationalHours.endMinute;
+  const currentTotalMinutes = jstHour * 60 + now.getMinutes();
+  const isWithinHours = currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes;
+
+  const startLabel = `${operationalHours.start}:${String(operationalHours.startMinute).padStart(2, "0")}`;
+  const endLabel = `${operationalHours.end}:${String(operationalHours.endMinute).padStart(2, "0")}`;
 
   if (isWithinHours) {
     return `
-**現在時刻**: ${jstString} JST（対応時間内 ${operationalHours.start}:00〜${operationalHours.end}:00）
+**現在時刻**: ${jstString} JST（対応時間内 ${startLabel}〜${endLabel}）
 - 現在はスタッフ対応可能な時間帯です。リクエスト（シーツ交換、清掃、備品補充など）に対して当日中の対応が可能である旨を案内してください。
 - 緊急トラブル（鍵・設備故障等）はオペレーター転送を案内できます。
 `;
   } else {
     return `
 **現在時刻**: ${jstString} JST（対応時間外）
-- スタッフの対応時間は ${operationalHours.start}:00〜${operationalHours.end}:00 です。
-- 現在は対応時間外のため、リクエスト（シーツ交換、清掃、備品補充など）は「翌朝${operationalHours.start}時以降に対応いたします」と案内してください。「今すぐ対応します」等の即時対応を示唆する表現は使用しないでください。
+- スタッフの対応時間は ${startLabel}〜${endLabel} です。
+- 現在は対応時間外のため、リクエスト（シーツ交換、清掃、備品補充など）は「翌朝${startLabel}以降に対応いたします」と案内してください。「今すぐ対応します」等の即時対応を示唆する表現は使用しないでください。
 - **例外**: 緊急トラブル（鍵が開かない、水漏れ、設備故障など安全に関わる問題）のみ、オペレーター転送を案内してください。
 `;
   }

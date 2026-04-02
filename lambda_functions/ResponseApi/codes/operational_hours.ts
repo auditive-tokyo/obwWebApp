@@ -5,10 +5,12 @@ const SETTINGS_TABLE = process.env.SETTINGS_TABLE_NAME ?? "obw-settings";
 
 export interface OperationalHours {
   start: number;
+  startMinute: number;
   end: number;
+  endMinute: number;
 }
 
-const DEFAULT_HOURS: OperationalHours = { start: 9, end: 21 };
+const DEFAULT_HOURS: OperationalHours = { start: 9, startMinute: 0, end: 21, endMinute: 0 };
 
 let cachedHours: OperationalHours | null = null;
 let cacheExpiresAt = 0;
@@ -34,7 +36,9 @@ export async function getOperationalHours(): Promise<OperationalHours> {
     if (result.Item?.startHour?.N && result.Item?.endHour?.N) {
       cachedHours = {
         start: Number.parseInt(result.Item.startHour.N, 10),
+        startMinute: Number.parseInt(result.Item.startMinute?.N ?? "0", 10),
         end: Number.parseInt(result.Item.endHour.N, 10),
+        endMinute: Number.parseInt(result.Item.endMinute?.N ?? "0", 10),
       };
     } else {
       cachedHours = DEFAULT_HOURS;

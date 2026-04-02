@@ -250,7 +250,9 @@ Resources:
 
         type OperationalHours @aws_cognito_user_pools {
           startHour: Int!
+          startMinute: Int!
           endHour: Int!
+          endMinute: Int!
         }
 
         type Mutation {
@@ -261,7 +263,7 @@ Resources:
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
           adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
           transferRoomGuests(input: TransferRoomInput!): TransferRoomResult @aws_cognito_user_pools
-          updateOperationalHours(startHour: Int!, endHour: Int!): OperationalHours @aws_cognito_user_pools
+          updateOperationalHours(startHour: Int!, startMinute: Int!, endHour: Int!, endMinute: Int!): OperationalHours @aws_cognito_user_pools
         }
 
         type Query {
@@ -890,7 +892,7 @@ Resources:
         #if($ctx.result)
           $util.toJson($ctx.result)
         #else
-          $util.toJson({"settingKey": "OPERATIONAL_HOURS", "startHour": 9, "endHour": 21})
+          $util.toJson({"settingKey": "OPERATIONAL_HOURS", "startHour": 9, "startMinute": 0, "endHour": 21, "endMinute": 0})
         #end
 
   UpdateOperationalHoursResolver:
@@ -912,7 +914,9 @@ Resources:
           },
           "attributeValues": {
             "startHour": $util.dynamodb.toDynamoDBJson($ctx.args.startHour),
+            "startMinute": $util.dynamodb.toDynamoDBJson($ctx.args.startMinute),
             "endHour": $util.dynamodb.toDynamoDBJson($ctx.args.endHour),
+            "endMinute": $util.dynamodb.toDynamoDBJson($ctx.args.endMinute),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
           }
         }
