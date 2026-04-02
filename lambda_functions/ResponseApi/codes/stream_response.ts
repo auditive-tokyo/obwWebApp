@@ -35,7 +35,7 @@ export async function* generateStreamResponse({
 }: GenerateStreamResponseParams): AsyncGenerator<unknown, void, unknown> {
   try {
     // システムプロンプトを動的生成
-    const systemPrompt = getSystemPrompt(roomId || "", approved || false, {
+    const systemPrompt = await getSystemPrompt(roomId || "", approved || false, {
       representativeName: representativeName ?? null,
       representativeEmail: representativeEmail ?? null,
       representativePhone: representativePhone ?? null,

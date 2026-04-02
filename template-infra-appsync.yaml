@@ -248,6 +248,11 @@ Resources:
           baseUrl: String!
         }
 
+        type OperationalHours @aws_cognito_user_pools {
+          startHour: Int!
+          endHour: Int!
+        }
+
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
           updateGuest(input: UpdateGuestInput!): Guest @aws_cognito_user_pools @aws_iam
@@ -256,6 +261,7 @@ Resources:
           getPresignedUrl(input: GetPresignedUrlInput!): PresignedUrlResult @aws_cognito_user_pools @aws_iam
           adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
           transferRoomGuests(input: TransferRoomInput!): TransferRoomResult @aws_cognito_user_pools
+          updateOperationalHours(startHour: Int!, endHour: Int!): OperationalHours @aws_cognito_user_pools
         }
 
         type Query {
@@ -263,6 +269,7 @@ Resources:
           listGuestsByRoom(roomNumber: String!): [Guest] @aws_cognito_user_pools @aws_iam
           listGuestsByBooking(bookingId: String!): [Guest]
           listGuestsByApprovalStatus(approvalStatus: String!): [Guest] @aws_cognito_user_pools
+          getOperationalHours: OperationalHours @aws_cognito_user_pools
         }
 
   GuestTableDataSource:
@@ -835,6 +842,82 @@ Resources:
         }
       ResponseMappingTemplate: |
         $util.toJson($context.result)
+
+  SettingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: obw-settings
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: settingKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: settingKey
+          KeyType: HASH
+
+  SettingsTableDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      Name: obw_settings_table
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: !GetAtt AppSyncDynamoDBRole.Arn
+      DynamoDBConfig:
+        TableName: !Ref SettingsTable
+        AwsRegion: !Ref AWS::Region
+
+  GetOperationalHoursResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - SettingsTableDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Query
+      FieldName: getOperationalHours
+      DataSourceName: obw_settings_table
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "GetItem",
+          "key": {
+            "settingKey": $util.dynamodb.toDynamoDBJson("OPERATIONAL_HOURS")
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.result)
+          $util.toJson($ctx.result)
+        #else
+          $util.toJson({"settingKey": "OPERATIONAL_HOURS", "startHour": 9, "endHour": 21})
+        #end
+
+  UpdateOperationalHoursResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn:
+      - AppSyncSchema
+      - SettingsTableDataSource
+    Properties:
+      ApiId: !GetAtt AppSyncApi.ApiId
+      TypeName: Mutation
+      FieldName: updateOperationalHours
+      DataSourceName: obw_settings_table
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "PutItem",
+          "key": {
+            "settingKey": $util.dynamodb.toDynamoDBJson("OPERATIONAL_HOURS")
+          },
+          "attributeValues": {
+            "startHour": $util.dynamodb.toDynamoDBJson($ctx.args.startHour),
+            "endHour": $util.dynamodb.toDynamoDBJson($ctx.args.endHour),
+            "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
 
 Outputs:
   ApiEndpoint:

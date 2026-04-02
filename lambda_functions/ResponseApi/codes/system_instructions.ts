@@ -1,3 +1,5 @@
+import { getOperationalHours, type OperationalHours } from "./operational_hours";
+
 const operatorPhoneNumber = "+81-50-1726-4224";
 
 const TOOL_USAGE_INSTRUCTION = `
@@ -45,13 +47,11 @@ const POLICY_INSTRUCTION = `
 - hallucination（事実に反する内容の生成）厳禁。
 `;
 
-const OPERATIONAL_HOURS = { start: 9, end: 21 };
-
 /**
  * 現在のJST時刻を基に対応時間コンテキストを生成
- * 対応時間内（9:00〜21:00）と時間外で異なる案内ルールをプロンプトに埋め込む
+ * 稼働時間は DynamoDB から取得した値（60秒 TTL キャッシュ）を使用する
  */
-function getOperationalTimeContext(): string {
+function getOperationalTimeContext(operationalHours: OperationalHours): string {
   const now = new Date();
   const jstFormatter = new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
@@ -73,19 +73,19 @@ function getOperationalTimeContext(): string {
   const jstHour = Number.parseInt(hourPart, 10);
 
   const isWithinHours =
-    jstHour >= OPERATIONAL_HOURS.start && jstHour < OPERATIONAL_HOURS.end;
+    jstHour >= operationalHours.start && jstHour < operationalHours.end;
 
   if (isWithinHours) {
     return `
-**現在時刻**: ${jstString} JST（対応時間内 ${OPERATIONAL_HOURS.start}:00〜${OPERATIONAL_HOURS.end}:00）
+**現在時刻**: ${jstString} JST（対応時間内 ${operationalHours.start}:00〜${operationalHours.end}:00）
 - 現在はスタッフ対応可能な時間帯です。リクエスト（シーツ交換、清掃、備品補充など）に対して当日中の対応が可能である旨を案内してください。
 - 緊急トラブル（鍵・設備故障等）はオペレーター転送を案内できます。
 `;
   } else {
     return `
 **現在時刻**: ${jstString} JST（対応時間外）
-- スタッフの対応時間は ${OPERATIONAL_HOURS.start}:00〜${OPERATIONAL_HOURS.end}:00 です。
-- 現在は対応時間外のため、リクエスト（シーツ交換、清掃、備品補充など）は「翌朝${OPERATIONAL_HOURS.start}時以降に対応いたします」と案内してください。「今すぐ対応します」等の即時対応を示唆する表現は使用しないでください。
+- スタッフの対応時間は ${operationalHours.start}:00〜${operationalHours.end}:00 です。
+- 現在は対応時間外のため、リクエスト（シーツ交換、清掃、備品補充など）は「翌朝${operationalHours.start}時以降に対応いたします」と案内してください。「今すぐ対応します」等の即時対応を示唆する表現は使用しないでください。
 - **例外**: 緊急トラブル（鍵が開かない、水漏れ、設備故障など安全に関わる問題）のみ、オペレーター転送を案内してください。
 `;
   }
@@ -205,11 +205,11 @@ export type GuestInfo = {
  * @param guestInfo - ゲスト情報（オプション）
  * @returns システムプロンプト文字列
  */
-export function getSystemPrompt(
+export async function getSystemPrompt(
   roomId: string,
   approved: boolean,
   guestInfo: GuestInfo = {}
-): string {
+): Promise<string> {
   const {
     representativeName,
     representativeEmail,
@@ -218,8 +218,9 @@ export function getSystemPrompt(
     checkInDate,
     checkOutDate,
   } = guestInfo;
-  // 対応時間コンテキストを生成（JSTの現在時刻に基づく）
-  const operationalContext = getOperationalTimeContext();
+  // 対応時間コンテキストを生成（DynamoDB からの値を使用、60秒 TTL キャッシュ）
+  const operationalHours = await getOperationalHours();
+  const operationalContext = getOperationalTimeContext(operationalHours);
 
   if (!roomId) {
     // roomIdがない場合（グローバルチャット）
