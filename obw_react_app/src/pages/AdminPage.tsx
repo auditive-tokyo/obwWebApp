@@ -42,7 +42,7 @@ interface AdminPageProps {
  * URL pathからパーツを取得するヘルパー
  */
 function getAdminPathParts(): string[] {
-  const path = window.location.pathname;
+  const path = globalThis.location.pathname;
   const parts = path.split("/").filter(Boolean);
   if (parts[0] !== "admin") return [];
   return parts;
@@ -126,9 +126,8 @@ async function executeBulkDateChange(
             ),
           );
           if (
-            detail &&
-            detail.roomNumber === updatedGuest.roomNumber &&
-            detail.guestId === updatedGuest.guestId
+            detail?.roomNumber === updatedGuest.roomNumber &&
+            detail?.guestId === updatedGuest.guestId
           ) {
             setDetail(updatedGuest);
           }
@@ -167,9 +166,8 @@ function updateGuestInState(
   );
 
   const shouldUpdateDetail =
-    detail &&
-    detail.roomNumber === updatedGuest.roomNumber &&
-    detail.guestId === updatedGuest.guestId;
+    detail?.roomNumber === updatedGuest.roomNumber &&
+    detail?.guestId === updatedGuest.guestId;
 
   if (shouldUpdateDetail) {
     setDetail(updatedGuest);
@@ -186,7 +184,7 @@ function getTransferErrorMessage(error: unknown): string {
 export default function AdminPage({
   roomId,
   bookingFilter: initialBookingFilter,
-}: AdminPageProps) {
+}: Readonly<AdminPageProps>) {
   const [all, setAll] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -225,7 +223,9 @@ export default function AdminPage({
         set.add(roomNumber);
       }
     }
-    return Array.from(set).sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10));
+    return Array.from(set).sort(
+      (a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10),
+    );
   }, [all]);
 
   // フィルタリングロジック
@@ -251,11 +251,11 @@ export default function AdminPage({
   // 表示用の事前計算（JSX内の三項演算子を削減）
   const displayRoomLabel = roomFilter ? `部屋${roomFilter}のみ` : "全部屋";
   const displayStatusLabel =
-    statusFilter && statusFilter.length
+    statusFilter.length
       ? statusFilter.join("")
       : "すべての状態";
   const debugStatusText =
-    statusFilter && statusFilter.length ? statusFilter.join("") : "empty";
+    statusFilter.length ? statusFilter.join("") : "empty";
   const loadButtonText = loading ? "更新中…" : "更新";
   const bulkButtonText = bulkProcessing ? "処理中…" : "実行";
 
@@ -282,8 +282,8 @@ export default function AdminPage({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setDetail(null);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    globalThis.addEventListener("keydown", onKey);
+    return () => globalThis.removeEventListener("keydown", onKey);
   }, [detail]);
 
   // 詳細を開いたら署名URL取得
@@ -515,14 +515,14 @@ export default function AdminPage({
                       display: "block",
                     }}
                   >
-                  <option value="">選択してください</option>
-                  {roomOptions
-                    .filter((r) => r !== roomFilter) // 現在の部屋を除外
-                    .map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
+                    <option value="">選択してください</option>
+                    {roomOptions
+                      .filter((r) => r !== roomFilter) // 現在の部屋を除外
+                      .map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
                   </select>
                 </label>
               </div>
