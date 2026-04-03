@@ -74,6 +74,15 @@ Resources:
                         }
                       }
                     }
+                - Pattern: |
+                    {
+                      "eventName": ["MODIFY"],
+                      "dynamodb": {
+                        "OldImage": {
+                          "checkInDate": [{"exists": true}]
+                        }
+                      }
+                    }
 
   # 家族メンバーのトークン有効期限を同期するLambda (DynamoDB Streams)
   SyncFamilyTokenExpirationFunction:

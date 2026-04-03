@@ -76,69 +76,118 @@ func sendTelegram(text string) error {
 	return nil
 }
 
+// 機能A: 宿泊日変更のTelegram通知
+// 既存の日付が存在し、チェックイン/アウト日が変わった場合のみ通知する
+func notifyDateChange(record events.DynamoDBEventRecord) error {
+	if record.EventName != "MODIFY" {
+		return nil
+	}
+
+	newImage := record.Change.NewImage
+	oldImage := record.Change.OldImage
+
+	oldCheckIn := getStringAttr(oldImage, "checkInDate")
+	newCheckIn := getStringAttr(newImage, "checkInDate")
+	oldCheckOut := getStringAttr(oldImage, "checkOutDate")
+	newCheckOut := getStringAttr(newImage, "checkOutDate")
+
+	if oldCheckIn == "" || (newCheckIn == oldCheckIn && newCheckOut == oldCheckOut) {
+		return nil
+	}
+
+	roomNumber := getStringAttr(newImage, "roomNumber")
+	guestID := getStringAttr(newImage, "guestId")
+	guestName := getStringAttr(newImage, "guestName")
+	bookingID := getStringAttr(newImage, "bookingId")
+
+	if newCheckIn == "" {
+		newCheckIn = "-"
+	}
+	if newCheckOut == "" {
+		newCheckOut = "-"
+	}
+
+	message := fmt.Sprintf(
+		"📅 Room (%s) の %s さんが宿泊日の変更をリクエストしました。\n"+
+			"変更前: %s 〜 %s\n"+
+			"変更後: %s 〜 %s\n\n"+
+			"%s/%s/%s",
+		roomNumber, guestName,
+		oldCheckIn, oldCheckOut,
+		newCheckIn, newCheckOut,
+		adminBaseURL, roomNumber, bookingID,
+	)
+
+	if err := sendTelegram(message); err != nil {
+		log.Printf("❌ Error sending date change telegram for guest %s: %v", guestID, err)
+		return err
+	}
+	log.Printf("✅ Sent date change Telegram message for guest %s", guestID)
+	return nil
+}
+
+// 機能B: approvalStatus が pending に遷移した場合のTelegram通知
+// 代表者ゲストのみ通知する
+func notifyApprovalPending(record events.DynamoDBEventRecord) error {
+	newImage := record.Change.NewImage
+	oldImage := record.Change.OldImage
+
+	newStatus := getStringAttr(newImage, "approvalStatus")
+	oldStatus := getStringAttr(oldImage, "approvalStatus")
+
+	if oldStatus == "" || oldStatus == "pending" || newStatus != "pending" {
+		log.Printf("Skipping pending-check for record. new_status: %s, old_status: %s", newStatus, oldStatus)
+		return nil
+	}
+
+	// sessionの代表者のみ sessionTokenHash を持つ
+	if getStringAttr(newImage, "sessionTokenHash") == "" {
+		log.Printf("Skipping non-representative record for guest %s", getStringAttr(newImage, "guestId"))
+		return nil
+	}
+
+	roomNumber := getStringAttr(newImage, "roomNumber")
+	guestID := getStringAttr(newImage, "guestId")
+	guestName := getStringAttr(newImage, "guestName")
+	checkIn := getStringAttr(newImage, "checkInDate")
+	checkOut := getStringAttr(newImage, "checkOutDate")
+	bookingID := getStringAttr(newImage, "bookingId")
+
+	if checkIn == "" {
+		checkIn = "-"
+	}
+	if checkOut == "" {
+		checkOut = "-"
+	}
+
+	message := fmt.Sprintf(
+		"Room (%s) の %s さんが基本情報の登録と、IDの写真をアップロードしました。\n"+
+			"Admin Pageより確認してください:\n"+
+			"滞在日: %s ~ %s\n\n"+
+			"%s/%s/%s",
+		roomNumber, guestName, checkIn, checkOut, adminBaseURL, roomNumber, bookingID,
+	)
+
+	if err := sendTelegram(message); err != nil {
+		log.Printf("❌ Error sending telegram for guest %s: %v", guestID, err)
+		// バッチサイズ1前提、例外で当該レコードのみ再試行
+		return err
+	}
+	log.Printf("✅ Sent Telegram message for guest %s", guestID)
+	return nil
+}
+
 // Lambda ハンドラー
 func HandleRequest(ctx context.Context, event events.DynamoDBEvent) error {
 	log.Printf("Processing %d DynamoDB Stream records", len(event.Records))
 
 	for _, record := range event.Records {
-		// イベント名とイメージを取得
-		eventName := record.EventName
-		newImage := record.Change.NewImage
-		oldImage := record.Change.OldImage
-
-		// approvalStatus の遷移をチェック
-		newStatus := getStringAttr(newImage, "approvalStatus")
-		oldStatus := getStringAttr(oldImage, "approvalStatus")
-
-		// old_status が存在し、old_status != 'pending' かつ new_status == 'pending' の遷移のみ通知
-		if oldStatus == "" || oldStatus == "pending" || newStatus != "pending" {
-			log.Printf("Skipping record. new_status: %s, old_status: %s, eventName: %s", newStatus, oldStatus, eventName)
-			continue
-		}
-
-		// ゲスト情報を取得
-		roomNumber := getStringAttr(newImage, "roomNumber")
-		guestID := getStringAttr(newImage, "guestId")
-		guestName := getStringAttr(newImage, "guestName")
-		checkIn := getStringAttr(newImage, "checkInDate")
-		checkOut := getStringAttr(newImage, "checkOutDate")
-		bookingID := getStringAttr(newImage, "bookingId")
-
-		// sessionの代表者のみ sessionTokenHash を持つ
-		sessionTokenHash := getStringAttr(newImage, "sessionTokenHash")
-		isRepresentative := sessionTokenHash != ""
-
-		if !isRepresentative {
-			log.Printf("Skipping non-representative record for guest %s", guestID)
-			continue
-		}
-
-		// チェックイン・アウト日のデフォルト値
-		if checkIn == "" {
-			checkIn = "-"
-		}
-		if checkOut == "" {
-			checkOut = "-"
-		}
-
-		// メッセージを作成
-		message := fmt.Sprintf(
-			"Room (%s) の %s さんが基本情報の登録と、IDの写真をアップロードしました。\n"+
-				"Admin Pageより確認してください:\n"+
-				"滞在日: %s ~ %s\n\n"+
-				"%s/%s/%s",
-			roomNumber, guestName, checkIn, checkOut, adminBaseURL, roomNumber, bookingID,
-		)
-
-		// Telegram 送信
-		err := sendTelegram(message)
-		if err != nil {
-			log.Printf("❌ Error sending telegram for guest %s: %v", guestID, err)
-			// バッチサイズ1前提、例外で当該レコードのみ再試行
+		if err := notifyDateChange(record); err != nil {
 			return err
 		}
-
-		log.Printf("✅ Sent Telegram message for guest %s", guestID)
+		if err := notifyApprovalPending(record); err != nil {
+			return err
+		}
 	}
 
 	return nil
