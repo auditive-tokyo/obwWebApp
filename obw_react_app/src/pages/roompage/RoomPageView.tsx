@@ -470,33 +470,35 @@ export function RoomPageView(
                   const isSelected =
                     !!selectedSession && selectedSession.guestId === g.guestId;
                   return (
-                    <li
-                      key={g.guestId || `${g.roomNumber}_${g.guestName}`}
-                      className={
-                        "py-2 px-3 flex items-center justify-between cursor-pointer select-none " +
-                        (isSelected
-                          ? "bg-blue-50 ring-1 ring-blue-300 rounded-md"
-                          : "hover:bg-gray-50")
-                      }
-                      onClick={() => onSelectGuest(g.guestId)}
-                      aria-selected={isSelected}
-                      title={
-                        g.lastUpdated
-                          ? new Date(g.lastUpdated).toLocaleString()
-                          : ""
-                      }
-                    >
-                      <span className="text-sm text-gray-800 truncate">
-                        {g.guestName || getMessage("unfilled")}
-                      </span>
-                      <span
+                    <li key={g.guestId || `${g.roomNumber}_${g.guestName}`}>
+                      <button
+                        type="button"
                         className={
-                          "text-xs px-2 py-0.5 rounded-full " +
-                          getStatusBadgeClass(g.approvalStatus)
+                          "w-full py-2 px-3 flex items-center justify-between cursor-pointer select-none text-left " +
+                          (isSelected
+                            ? "bg-blue-50 ring-1 ring-blue-300 rounded-md"
+                            : "hover:bg-gray-50")
+                        }
+                        onClick={() => onSelectGuest(g.guestId)}
+                        aria-pressed={isSelected}
+                        title={
+                          g.lastUpdated
+                            ? new Date(g.lastUpdated).toLocaleString()
+                            : ""
                         }
                       >
-                        {getStatusLabel(g.approvalStatus)}
-                      </span>
+                        <span className="text-sm text-gray-800 truncate">
+                          {g.guestName || getMessage("unfilled")}
+                        </span>
+                        <span
+                          className={
+                            "text-xs px-2 py-0.5 rounded-full " +
+                            getStatusBadgeClass(g.approvalStatus)
+                          }
+                        >
+                          {getStatusLabel(g.approvalStatus)}
+                        </span>
+                      </button>
                     </li>
                   );
                 })}

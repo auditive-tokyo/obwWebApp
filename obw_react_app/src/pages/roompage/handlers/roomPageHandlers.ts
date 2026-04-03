@@ -168,10 +168,8 @@ export async function verifyOnLoad({
     return;
   }
 
-  const gid =
-    typeof window !== "undefined" ? localStorage.getItem("guestId") : null;
-  const tok =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const gid = localStorage.getItem("guestId");
+  const tok = localStorage.getItem("token");
   dbg("verifyOnLoad localStorage -> guestId=", gid, "token exists =", !!tok);
 
   if (!gid || !tok) {
@@ -198,14 +196,14 @@ export async function verifyOnLoad({
     const ok = "data" in res && res.data?.verifyAccessToken?.success;
     dbg("verifyOnLoad result ok =", ok);
 
-    if (!ok) {
+    if (ok) {
+      setSessionValid(true);
+    } else {
       localStorage.removeItem("guestId");
       localStorage.removeItem("token");
       localStorage.removeItem("bookingId");
       clearCognitoIdentityCache();
       setSessionValid(false);
-    } else {
-      setSessionValid(true);
     }
   } catch (e) {
     localStorage.removeItem("guestId");
