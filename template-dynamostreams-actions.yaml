@@ -82,6 +82,11 @@ Resources:
                           "checkInDate": {
                             "S": [{"exists": true}]
                           }
+                        },
+                        "NewImage": {
+                          "approvalStatus": {
+                            "S": ["waitingForBasicInfo", "waitingForPassportImage"]
+                          }
                         }
                       }
                     }
