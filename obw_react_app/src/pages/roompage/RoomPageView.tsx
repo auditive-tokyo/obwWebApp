@@ -217,7 +217,8 @@ export function RoomPageView(
 
   // 表示用の事前計算
   const hasCurrentLocation = !!myCurrentLocation;
-  const isDateLocked = hasPendingGuest || hasApprovedGuest;
+  const hasRejectedGuest = hasGuestWithStatus(guestSessions, "rejected");
+  const isDateLocked = hasPendingGuest || hasApprovedGuest || hasRejectedGuest;
   const checkInDateDisplay = formatDateDisplay(roomCheckInDate);
   const checkOutDateDisplay = formatDateDisplay(roomCheckOutDate);
   const addGuestButtonTitle = disableAddGuest
