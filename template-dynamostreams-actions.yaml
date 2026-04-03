@@ -79,7 +79,9 @@ Resources:
                       "eventName": ["MODIFY"],
                       "dynamodb": {
                         "OldImage": {
-                          "checkInDate": [{"exists": true}]
+                          "checkInDate": {
+                            "S": [{"exists": true}]
+                          }
                         }
                       }
                     }
