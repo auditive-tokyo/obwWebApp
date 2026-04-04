@@ -88,6 +88,9 @@ Resources:
                         "NewImage": {
                           "approvalStatus": {
                             "S": ["waitingForBasicInfo", "waitingForPassportImage"]
+                          },
+                          "changedBy": {
+                            "S": ["guest"]
                           }
                         }
                       }

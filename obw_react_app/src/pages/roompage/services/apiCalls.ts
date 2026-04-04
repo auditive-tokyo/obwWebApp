@@ -276,6 +276,7 @@ export async function updateRoomCheckDates({
         guestId: guest.guestId,
         checkInDate,
         checkOutDate,
+        changedBy: "guest",
       };
 
       return client.graphql({

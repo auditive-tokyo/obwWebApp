@@ -203,6 +203,7 @@ Resources:
           isFamilyMember: Boolean
           currentLocation: String
           sessionTokenExpiresAt: Int
+          changedBy: String
         }
 
         input RequestAccessInput {
