@@ -114,7 +114,7 @@ export default function AdminPage({
     () => roomId || parseRoomFromUrl(),
   );
 
-  const [statusFilter, setStatusFilter] = useState<string[]>(["pending"]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // bookingFilter は props の初期値を優先して設定。propsが無ければURLから解析。
   const [bookingFilter, setBookingFilter] = useState(
     () => initialBookingFilter || parseBookingFromUrl(),
