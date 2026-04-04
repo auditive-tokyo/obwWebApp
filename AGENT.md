@@ -226,6 +226,17 @@ DynamoDB / SNS / S3
   - 部屋ごとの最大宿泊者数に対して人数が増減した際の通知方式を決定する
   - DynamoDB には宿泊者数が直接記録されないため、実装方針から再検討が必要
 
+### 機能 A': ゲスト側通知専用 Lambda の新設（低優先・要検討）
+
+> 現状: DynamoDB Streams + `notify_admin` Lambda でフィルタ `approvalStatus IN [waitingForBasicInfo, waitingForPassportImage]` により通知。  
+> **課題**: Admin が `waitingForPassportImage` ステータスのゲストの日付を変更した場合、誤通知が発生しうる。
+
+- [ ] ゲスト側からの変更（宿泊日変更・人数追加）専用の通知 Lambda を新設することを検討する
+  - 変更元を確実に区別する唯一の方法: `updateRoomCheckDates()`（ゲスト側）完了後に AppSync mutation 経由で Lambda を呼び出す
+  - これにより DynamoDB Streams のフィルタへの依存をなくし、Admin 変更による誤通知を完全に排除できる
+  - ただし実装コスト（mutation 定義・resolver・template・IAM 変更）が高く、現状の誤通知リスクが低いため優先度は低い
+  - 同 Lambda で宿泊人数変更通知も将来的に統合できる
+
 ### 機能 C: 緊急対応履歴の CSV 出力
 
 - [ ] Telegram に届いた緊急対応内容を集計して CSV に出力する機能を実装する
@@ -235,18 +246,55 @@ DynamoDB / SNS / S3
 
 ---
 
-## 🗂️ TODO — Telegram 調査・拡張
+## 🗂️ TODO — Telegram 設定・拡張
 
-> アプリ実装ではなく Telegram 自体の機能調査・設定作業がメイン。
+> Telegram 側の設定作業 → コード実装の順で進める。
 
-### 調査 1: Telegram メニュー機能
+### Step 1: カスタム絵文字スタンプセットの作成（Telegram アプリ上）
 
-- [ ] Bot のメニュー（コマンドメニュー）が同一チャンネル内で使えるか調査する
-  - 使えるなら: 緊急用メニューと認証用メニューを同一チャンネルの別メニューとして分ける
-  - 難しければ: チャンネル（またはグループ）を緊急用と認証用に分割する
+- [ ] Telegram アプリで `@Stickers` と**個人チャット**を開く
+- [ ] `/newemojipack` を送信してカスタム絵文字パックを作成する
+  - 担当者ごとのアイコン画像（100×100px 推奨、PNG/WebP）を用意して送信
+  - 各画像に対して絵文字（例: 👤）を関連づける
+  - `/publish` で公開して絵文字パック ID を控える
 
-### 調査 2: 対処者のカスタム絵文字リアクション
+### Step 2: 既存グループをスーパーグループ（フォーラムモード）に変換（Telegram アプリ上）
 
-- [ ] Telegram で「誰が対処したか」を示すカスタム絵文字リアクションが使えるか調査する
-  - Telegram Premium でのみ使えるカスタム絵文字と、Bot API からのリアクション設定の可否を確認する
-  - 代替案として通常の絵文字リアクション（👍✅など）+ Bot による自動記録も検討する
+- [x] Admin Telegram グループを開く → 「グループ設定を編集」
+- [x] 「トピック」をオンにする（自動的にスーパーグループに昇格）
+  - ⚠️ 既存メッセージはそのまま残る。chat_id は変わらない場合が多いが念のため確認する
+
+### Step 3: トピックを 3 つ作成して ID を控える（Telegram アプリ上）
+
+- [x] 以下の 3 トピックを手動で作成する
+
+  | トピック名 | 用途 | 環境変数名 | message_thread_id |
+  |-----------|------|-----------|-------------------|
+  | `Approval` | `approvalStatus → pending` 遷移時の通知 | `TELEGRAM_TOPIC_ID_APPROVAL` | `3` |
+  | `Emergency` | Twilio 経由の緊急電話通知 | `TELEGRAM_TOPIC_ID_EMERGENCY` | `5` |
+  | `Change Requests` | ゲストによる宿泊日変更通知 | `TELEGRAM_TOPIC_ID_DATE_CHANGE` | `8` |
+  | （共通） | chat_id | `TELEGRAM_CHAT_ID` | `-1003740916969` |
+
+- [x] 各トピックの `message_thread_id` を確認する（Telegram Web URL の `_` 以降の数字で確認済み）
+
+### Step 4: カスタム絵文字をグループのリアクション許可リストに追加（Telegram アプリ上）
+
+- [ ] グループ設定 → 「リアクション」→ 「カスタム絵文字」から Step 1 で作成したパックを追加する
+  - これにより **非 Premium メンバー全員**がそのカスタム絵文字でリアクション可能になる
+  - 緊急メッセージへの対処完了時に、担当者が自分の絵文字でリアクションする運用で「誰が対処したか」を記録できる
+
+### Step 5: SAM テンプレートに環境変数を追加（コード）
+
+- [x] `template-dynamostreams-actions.yaml` の `NotifyAdminOnPendingFunction` に以下を追加した
+  ```yaml
+  TELEGRAM_TOPIC_ID_APPROVAL: "3"
+  TELEGRAM_TOPIC_ID_EMERGENCY: "5"
+  TELEGRAM_TOPIC_ID_DATE_CHANGE: "8"
+  ```
+
+### Step 6: notify_admin/main.go のトピック別送信対応（コード）
+
+- [x] `sendTelegram()` 関数に `topicID string` 引数を追加した
+- [x] `topicID != ""` の場合のみ `message_thread_id` を HTTP リクエストボディに含めるようにした
+- [x] `notifyApprovalPending()` → `telegramTopicApproval`（トピックID: 3）トピックへ送信
+- [x] `notifyDateChange()` → `telegramTopicDateChange`（トピックID: 8）トピックへ送信
