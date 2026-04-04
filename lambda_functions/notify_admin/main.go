@@ -15,9 +15,11 @@ import (
 )
 
 var (
-	adminBaseURL     string
-	telegramBotToken string
-	telegramChatID   string
+	adminBaseURL             string
+	telegramBotToken        string
+	telegramChatID          string
+	telegramTopicApproval   string
+	telegramTopicDateChange string
 )
 
 func init() {
@@ -28,6 +30,8 @@ func init() {
 
 	telegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	telegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
+	telegramTopicApproval = os.Getenv("TELEGRAM_TOPIC_ID_APPROVAL")
+	telegramTopicDateChange = os.Getenv("TELEGRAM_TOPIC_ID_DATE_CHANGE")
 
 	log.Printf("Initialized with ADMIN_BASE_URL: %s", adminBaseURL)
 }
@@ -40,8 +44,8 @@ func getStringAttr(attrs map[string]events.DynamoDBAttributeValue, key string) s
 	return ""
 }
 
-// Telegram にメッセージを送信
-func sendTelegram(text string) error {
+// Telegram にメッセージを送信。topicID が空文字でない場合はそのトピックへ送信する
+func sendTelegram(text string, topicID string) error {
 	if telegramBotToken == "" || telegramChatID == "" {
 		return fmt.Errorf("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID is not set")
 	}
@@ -52,6 +56,9 @@ func sendTelegram(text string) error {
 	data.Set("chat_id", telegramChatID)
 	data.Set("text", text)
 	data.Set("disable_web_page_preview", "true")
+	if topicID != "" {
+		data.Set("message_thread_id", topicID)
+	}
 
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBufferString(data.Encode()))
 	if err != nil {
@@ -118,7 +125,7 @@ func notifyDateChange(record events.DynamoDBEventRecord) error {
 		adminBaseURL, roomNumber, bookingID,
 	)
 
-	if err := sendTelegram(message); err != nil {
+	if err := sendTelegram(message, telegramTopicDateChange); err != nil {
 		log.Printf("❌ Error sending date change telegram for guest %s: %v", guestID, err)
 		return err
 	}
@@ -168,7 +175,7 @@ func notifyApprovalPending(record events.DynamoDBEventRecord) error {
 		roomNumber, guestName, checkIn, checkOut, adminBaseURL, roomNumber, bookingID,
 	)
 
-	if err := sendTelegram(message); err != nil {
+	if err := sendTelegram(message, telegramTopicApproval); err != nil {
 		log.Printf("❌ Error sending telegram for guest %s: %v", guestID, err)
 		// バッチサイズ1前提、例外で当該レコードのみ再試行
 		return err

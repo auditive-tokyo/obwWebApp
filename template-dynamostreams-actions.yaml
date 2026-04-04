@@ -49,6 +49,8 @@ Resources:
           ADMIN_BASE_URL: "https://app.osakabaywheel.com/admin"
           TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
           TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
+          TELEGRAM_TOPIC_ID_APPROVAL: "3"
+          TELEGRAM_TOPIC_ID_DATE_CHANGE: "8"
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaDynamoDBExecutionRole

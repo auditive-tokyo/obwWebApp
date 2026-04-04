@@ -3,6 +3,7 @@ import { Handler } from 'aws-lambda';
 // 環境変数（既存のnotify_adminと同じ）
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
+const TELEGRAM_TOPIC_ID_EMERGENCY = process.env.TELEGRAM_TOPIC_ID_EMERGENCY || '';
 
 // ユーザー情報の型定義
 interface UserInfo {
@@ -23,19 +24,23 @@ interface TelegramNotificationEvent {
 /**
  * Telegram APIにメッセージを送信
  */
-async function sendTelegram(text: string): Promise<void> {
+async function sendTelegram(text: string, topicID?: string): Promise<void> {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
         throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set');
     }
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
-    const body = new URLSearchParams({
+    const params: Record<string, string> = {
         chat_id: TELEGRAM_CHAT_ID,
         text: text,
         disable_web_page_preview: 'true',
         parse_mode: 'Markdown'  // Markdownフォーマット有効化
-    });
+    };
+    if (topicID) {
+        params.message_thread_id = topicID;
+    }
+    const body = new URLSearchParams(params);
 
     try {
         const response = await fetch(url, {
@@ -94,8 +99,8 @@ export const handler: Handler<TelegramNotificationEvent, { success: boolean }> =
 
         const messageText = lines.join('\n');
 
-        // Telegram送信
-        await sendTelegram(messageText);
+        // Telegram送信（Emergencyトピックへ）
+        await sendTelegram(messageText, TELEGRAM_TOPIC_ID_EMERGENCY);
 
         console.info('✅ Notification processed successfully');
         return { success: true };
