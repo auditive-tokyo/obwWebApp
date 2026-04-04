@@ -528,6 +528,13 @@ Resources:
           $util.qr($values.put(":isFamilyMember", { "BOOL": $ctx.args.input.isFamilyMember }))
         #end
 
+        ## changedBy (変更元の識別用)
+        #if(!$util.isNullOrEmpty($ctx.args.input.changedBy))
+          #set($setExp = $setExp + ", #changedBy = :changedBy")
+          $util.qr($names.put("#changedBy","changedBy"))
+          $util.qr($values.put(":changedBy", { "S": "$ctx.args.input.changedBy" }))
+        #end
+
         ## currentLocation の処理
         #if($ctx.args.input.containsKey("currentLocation"))
           #if($util.isNull($ctx.args.input.currentLocation) || $ctx.args.input.currentLocation == "")
