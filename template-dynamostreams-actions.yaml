@@ -32,6 +32,13 @@ Resources:
       LogGroupName: /aws/lambda/obw-change-session-expiry
       RetentionInDays: 365
 
+  # CloudWatch Logs - CloseIncidentNotifyFunction
+  CloseIncidentNotifyFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/obw-close-incident-notify
+      RetentionInDays: 365
+
   # 管理者への通知Lambda (DynamoDB Streams)
   NotifyAdminOnPendingFunction:
     Type: AWS::Serverless::Function
@@ -185,6 +192,69 @@ Resources:
                         "OldImage": {
                           "checkOutDate": {
                             "S": [{"exists": true}]
+                          }
+                        }
+                      }
+                    }
+
+  # インシデントがclosedになったときにTelegramメッセージへ👍リアクションを付与するLambda
+  CloseIncidentNotifyFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: CloseIncidentNotifyFunctionLogGroup
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: obw-close-incident-notify
+      CodeUri: lambda_functions/close_incident_notify/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 256
+      Environment:
+        Variables:
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotTokenParam
+          TELEGRAM_CHAT_ID: !Ref TelegramChatIdParam
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaDynamoDBExecutionRole
+      Events:
+        FromIncidentsTableStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !ImportValue Obw-IncidentsTableStreamArn
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 0
+            StartingPosition: LATEST
+            MaximumRetryAttempts: 2
+            FilterCriteria:
+              Filters:
+                - Pattern: |
+                    {
+                      "eventName": ["MODIFY"],
+                      "dynamodb": {
+                        "NewImage": {
+                          "progress": {
+                            "S": ["closed"]
+                          }
+                        },
+                        "OldImage": {
+                          "progress": {
+                            "S": [{"anything-but": "closed"}]
+                          }
+                        }
+                      }
+                    }
+                - Pattern: |
+                    {
+                      "eventName": ["MODIFY"],
+                      "dynamodb": {
+                        "OldImage": {
+                          "progress": {
+                            "S": ["closed"]
+                          }
+                        },
+                        "NewImage": {
+                          "progress": {
+                            "S": [{"anything-but": "closed"}]
                           }
                         }
                       }

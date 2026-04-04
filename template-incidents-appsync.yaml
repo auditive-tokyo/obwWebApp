@@ -13,6 +13,8 @@ Resources:
       SSESpecification:
         SSEEnabled: true
         SSEType: KMS
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
       AttributeDefinitions:
         - AttributeName: entityType
           AttributeType: S
@@ -175,3 +177,9 @@ Outputs:
   IncidentsTableName:
     Description: "DynamoDB incidents table name"
     Value: !Ref IncidentsTable
+
+  IncidentsTableStreamArn:
+    Description: "DynamoDB incidents table stream ARN"
+    Value: !GetAtt IncidentsTable.StreamArn
+    Export:
+      Name: Obw-IncidentsTableStreamArn
