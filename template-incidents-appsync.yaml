@@ -130,8 +130,7 @@ Resources:
             "expression": "$setExp",
             "expressionNames": $util.toJson($names),
             "expressionValues": $util.toJson($values)
-          },
-          "returnValues": "ALL_NEW"
+          }
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)
