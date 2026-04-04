@@ -270,15 +270,19 @@ export async function updateRoomCheckDates({
       }
     `;
 
+    // 3. 全て並行実行
+    const myGuestId = localStorage.getItem("guestId");
     const updatePromises = guests.map(async (guest: GuestSession) => {
-      const input = {
+      const input: Record<string, unknown> = {
         roomNumber: guest.roomNumber,
         guestId: guest.guestId,
         checkInDate,
         checkOutDate,
-        changedBy: "guest",
       };
-
+      // 代表者のレコードにのみ changedBy を付与（Stream 通知が1回になるよう制御）
+      if (guest.guestId === myGuestId) {
+        input.changedBy = "guest";
+      }
       return client.graphql({
         query: updateMutation,
         variables: { input },
@@ -286,7 +290,6 @@ export async function updateRoomCheckDates({
       } as GraphParams);
     });
 
-    // 3. 全て並行実行
     const results = await Promise.all(updatePromises);
 
     dbg("[updateRoomCheckDates] 更新完了:", results.length);
