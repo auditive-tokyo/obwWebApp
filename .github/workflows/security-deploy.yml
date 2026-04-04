@@ -20,13 +20,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
         with:
           role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
           aws-region: us-east-1 # CloudFrontはus-east-1必須
 
       - name: Set up AWS SAM CLI
-        uses: aws-actions/setup-sam@v2
+        uses: aws-actions/setup-sam@d78e1a4a9656d3b223e59b80676a797f20093133 # v2
 
       # CloudFront SecretはGitHub Secretsから取得（毎回生成するとSnapStartと不整合が起きる）
       # 新しいシークレットを設定する場合は、GitHub SecretsのCLOUDFRONT_SECRETを更新し、
@@ -70,6 +70,8 @@ jobs:
           echo "ImmediateResponse URL: ${URL}"
 
       - name: Deploy Security Stack
+        env:
+          CLOUDFRONT_SECRET: ${{ secrets.CLOUDFRONT_SECRET }}
         run: |
           sam deploy \
             --template-file template-security.yaml \
@@ -81,7 +83,7 @@ jobs:
             --parameter-overrides \
               ResponseApiFunctionUrl="${{ steps.get_responseapi.outputs.url }}" \
               ImmediateResponseFunctionUrl="${{ steps.get_immediate.outputs.url }}" \
-              OriginCustomHeaderSecret="${{ secrets.CLOUDFRONT_SECRET }}" \
+              OriginCustomHeaderSecret="$CLOUDFRONT_SECRET" \
             --no-fail-on-empty-changeset
 
       - name: Output Summary

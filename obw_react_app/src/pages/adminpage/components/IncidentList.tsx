@@ -217,54 +217,116 @@ export default function IncidentList() {
   );
 }
 
+type TooltipState = { content: string; x: number; y: number } | null;
+
 type IncidentTableProps = { incidents: Incident[]; onEdit: (i: Incident) => void };
 function IncidentTable({ incidents, onEdit }: Readonly<IncidentTableProps>) {
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+
+  const openTooltip = (e: React.MouseEvent, content: string | undefined) => {
+    if (!content) return;
+    e.stopPropagation();
+    setTooltip({ content, x: e.clientX, y: e.clientY });
+  };
+
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-        <thead>
-          <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-            <th style={th}>日付</th>
-            <th style={th}>部屋</th>
-            <th style={th}>氏名</th>
-            <th style={th}>問い合わせ内容</th>
-            <th style={th}>対応者</th>
-            <th style={th}>ステータス</th>
-            <th style={th}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {incidents.map((inc) => (
-            <tr key={inc.dateIncidentId} style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <td style={td}>{inc.date}</td>
-              <td style={td}>{inc.roomId ?? '—'}</td>
-              <td style={td}>{inc.guestName ?? '—'}</td>
-              <td style={{ ...td, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {inc.issue ?? '—'}
-              </td>
-              <td style={td}>{inc.staff ?? '—'}</td>
-              <td style={td}>
-                <span style={{
-                  color: PROGRESS_COLOR[inc.progress] ?? '#374151',
-                  fontWeight: 600,
-                  fontSize: '0.8rem',
-                }}>
-                  {PROGRESS_LABEL[inc.progress] ?? inc.progress}
-                </span>
-              </td>
-              <td style={td}>
-                <button
-                  onClick={() => onEdit(inc)}
-                  style={{ padding: '2px 10px', cursor: 'pointer', fontSize: '0.8rem' }}
-                >
-                  編集
-                </button>
-              </td>
+    <>
+      {tooltip && (
+        <>
+          {/* クリックで閉じるための透明オーバーレイ */}
+          <button
+            aria-label="ツールチップを閉じる"
+            onClick={() => setTooltip(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'transparent', border: 'none', cursor: 'default', padding: 0 }}
+          />
+          <div style={{
+            position: 'fixed',
+            left: tooltip.x + 10,
+            top: tooltip.y + 10,
+            zIndex: 101,
+            background: '#1f2937',
+            color: '#fff',
+            borderRadius: 6,
+            padding: '10px 14px',
+            maxWidth: 380,
+            fontSize: '0.85rem',
+            lineHeight: 1.7,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          }}>
+            {tooltip.content}
+          </div>
+        </>
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+              <th style={th}>日付</th>
+              <th style={th}>部屋</th>
+              <th style={th}>氏名</th>
+              <th style={th}>問い合わせ内容</th>
+              <th style={th}>対応者</th>
+              <th style={th}>ステータス</th>
+              <th style={th}>対応時間</th>
+              <th style={th}>解決日</th>
+              <th style={{ ...th, minWidth: 160 }}>対応内容・解決策</th>
+              <th style={th}></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {incidents.map((inc) => (
+              <tr key={inc.dateIncidentId} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <td style={td}>{inc.date}</td>
+                <td style={td}>{inc.roomId ?? '—'}</td>
+                <td style={td}>{inc.guestName ?? '—'}</td>
+                <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {inc.issue ? (
+                    <button
+                      onClick={(e) => openTooltip(e, inc.issue)}
+                      style={tooltipTrigger}
+                    >
+                      {inc.issue}
+                    </button>
+                  ) : '—'}
+                </td>
+                <td style={td}>{inc.staff ?? '—'}</td>
+                <td style={td}>
+                  <span style={{
+                    color: PROGRESS_COLOR[inc.progress] ?? '#374151',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                  }}>
+                    {PROGRESS_LABEL[inc.progress] ?? inc.progress}
+                  </span>
+                </td>
+                <td style={td}>{inc.timeSpent ?? '—'}</td>
+                <td style={{ ...td, whiteSpace: 'nowrap' }}>{inc.resolutionDate ?? '—'}</td>
+                <td style={{ ...td, minWidth: 160, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {inc.solution ? (
+                    <button
+                      onClick={(e) => openTooltip(e, inc.solution)}
+                      style={tooltipTrigger}
+                    >
+                      {inc.solution}
+                    </button>
+                  ) : '—'}
+                </td>
+                <td style={td}>
+                  <button
+                    onClick={() => onEdit(inc)}
+                    style={{ padding: '2px 10px', cursor: 'pointer', fontSize: '0.8rem' }}
+                  >
+                    編集
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -277,4 +339,19 @@ const th: React.CSSProperties = {
 const td: React.CSSProperties = {
   padding: '8px 12px',
   verticalAlign: 'top',
+};
+
+const tooltipTrigger: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  font: 'inherit',
+  color: 'inherit',
+  textAlign: 'left',
+  width: '100%',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  display: 'block',
 };

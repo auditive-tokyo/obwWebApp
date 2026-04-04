@@ -4,8 +4,8 @@ on:
   push:
     branches: [main, feature/*] # 本番では workflow_run を使うからpush:はコメントアウト
     paths:
-      - 'obw_react_app/**'
-      - '.github/workflows/react-app-deploy.yml'
+      - "obw_react_app/**"
+      - ".github/workflows/react-app-deploy.yml"
   workflow_dispatch:
 
 jobs:
@@ -24,13 +24,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
         with:
           role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
           aws-region: ap-northeast-1
@@ -85,7 +85,7 @@ jobs:
         run: npm run build
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: obw_react_app/dist
