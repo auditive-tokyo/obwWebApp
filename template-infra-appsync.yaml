@@ -301,6 +301,7 @@ Resources:
           listGuestsByApprovalStatus(approvalStatus: String!): [Guest] @aws_cognito_user_pools
           getOperationalHours: OperationalHours @aws_cognito_user_pools
           listIncidents(dateFrom: String!, dateTo: String!): [Incident] @aws_cognito_user_pools
+          listIncidentsByProgress(progress: String!): [Incident] @aws_cognito_user_pools
         }
 
   GuestTableDataSource:

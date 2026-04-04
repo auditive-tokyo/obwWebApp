@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import BulkChangeButton from "./adminpage/components/BulkChangeButton";
 import { BulkChangeDateModal } from "./adminpage/components/BulkChangeDateModal";
 import { DetailsModal } from "./adminpage/components/detailsModal";
+import IncidentList from "./adminpage/components/IncidentList";
 import {
   confirmApproveDialog,
   confirmRejectDialog,
@@ -123,6 +124,7 @@ export default function AdminPage({
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"guests" | "incidents">("guests");
 
   // 部屋番号のオプション（FiltersBarと同じロジック）
   const roomOptions = useMemo(() => {
@@ -248,114 +250,156 @@ export default function AdminPage({
 
   return (
     <div style={{ padding: "2rem" }}>
-      {/* タイトル/サマリー（中央寄せ） */}
-      <div style={{ textAlign: "center", marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontWeight: 600 }}>
-          表示中: {displayRoomLabel} / {displayStatusLabel}
-        </h3>
-        <div
-          style={{ fontSize: "0.85rem", color: "#666", marginTop: 6 }}
-        >{`Debug: roomFilter=${roomFilter || "empty"}, bookingFilter=${bookingFilter || "empty"}, statusFilter=${debugStatusText}, NumberOfSelectedGuests=${affectedCount}`}</div>
+      {/* タブ切り替え */}
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          marginBottom: 20,
+          borderBottom: "2px solid #e5e7eb",
+        }}
+      >
+        {(["guests", "incidents"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "8px 20px",
+              cursor: "pointer",
+              border: "none",
+              borderBottom:
+                activeTab === tab
+                  ? "2px solid #2563eb"
+                  : "2px solid transparent",
+              background: "none",
+              fontWeight: activeTab === tab ? 700 : 400,
+              color: activeTab === tab ? "#2563eb" : "#374151",
+              marginBottom: -2,
+              fontSize: "0.95rem",
+            }}
+          >
+            {tab === "guests" ? "ゲスト管理" : "緊急対応履歴"}
+          </button>
+        ))}
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={loadData} disabled={loading}>
-          {loadButtonText}
-        </button>
+      {activeTab === "incidents" && <IncidentList />}
 
-        <FiltersBar
-          all={all}
-          roomFilter={roomFilter}
-          setRoomFilter={setRoomFilter}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          bookingFilter={bookingFilter}
-          setBookingFilter={setBookingFilter}
-          checkInFilter={checkInFilter}
-          setCheckInFilter={setCheckInFilter}
-        />
+      {activeTab === "guests" && (
+        <>
+          <div style={{ textAlign: "center", marginBottom: 12 }}>
+            <h3 style={{ margin: 0, fontWeight: 600 }}>
+              表示中: {displayRoomLabel} / {displayStatusLabel}
+            </h3>
+            <div
+              style={{ fontSize: "0.85rem", color: "#666", marginTop: 6 }}
+            >{`Debug: roomFilter=${roomFilter || "empty"}, bookingFilter=${bookingFilter || "empty"}, statusFilter=${debugStatusText}, NumberOfSelectedGuests=${affectedCount}`}</div>
+          </div>
 
-        {/* 宿泊日変更ボタン：UI を分離したコンポーネントに置換 */}
-        <BulkChangeButton
-          canBulk={canBulk}
-          bulkProcessing={bulkProcessing}
-          title={"部屋を選択し、チェックイン日または予約IDを選択してください"}
-          onClick={() => {
-            if (!canBulk) return;
-            // open modal to pick dates
-            setBulkModalOpen(true);
-          }}
-        />
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={loadData} disabled={loading}>
+              {loadButtonText}
+            </button>
 
-        {/* 部屋移動ボタン */}
-        <RoomTransferButton
-          canBulk={canBulk}
-          bulkProcessing={bulkProcessing}
-          title={"部屋を選択し、チェックイン日または予約IDを選択してください"}
-          onClick={() => {
-            if (!canBulk || !roomFilter) return;
-            setTransferModalOpen(true);
-          }}
-        />
+            <FiltersBar
+              all={all}
+              roomFilter={roomFilter}
+              setRoomFilter={setRoomFilter}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              bookingFilter={bookingFilter}
+              setBookingFilter={setBookingFilter}
+              checkInFilter={checkInFilter}
+              setCheckInFilter={setCheckInFilter}
+            />
 
-        {/* 有人稼働時間設定 */}
-        <OperationalHoursSettings />
+            {/* 宿泊日変更ボタン：UI を分離したコンポーネントに置換 */}
+            <BulkChangeButton
+              canBulk={canBulk}
+              bulkProcessing={bulkProcessing}
+              title={
+                "部屋を選択し、チェックイン日または予約IDを選択してください"
+              }
+              onClick={() => {
+                if (!canBulk) return;
+                // open modal to pick dates
+                setBulkModalOpen(true);
+              }}
+            />
 
-        {/* Bulk change modal */}
-        {bulkModalOpen && (
-          <BulkChangeDateModal
-            filteredGuests={filteredGuests}
-            affectedCount={affectedCount}
-            bulkProcessing={bulkProcessing}
-            setBulkProcessing={setBulkProcessing}
-            detail={detail}
+            {/* 部屋移動ボタン */}
+            <RoomTransferButton
+              canBulk={canBulk}
+              bulkProcessing={bulkProcessing}
+              title={
+                "部屋を選択し、チェックイン日または予約IDを選択してください"
+              }
+              onClick={() => {
+                if (!canBulk || !roomFilter) return;
+                setTransferModalOpen(true);
+              }}
+            />
+
+            {/* 有人稼働時間設定 */}
+            <OperationalHoursSettings />
+
+            {/* Bulk change modal */}
+            {bulkModalOpen && (
+              <BulkChangeDateModal
+                filteredGuests={filteredGuests}
+                affectedCount={affectedCount}
+                bulkProcessing={bulkProcessing}
+                setBulkProcessing={setBulkProcessing}
+                detail={detail}
+                setDetail={setDetail}
+                setAll={setAll}
+                onClose={() => setBulkModalOpen(false)}
+              />
+            )}
+
+            {/* 部屋移動モーダル */}
+            {transferModalOpen && (
+              <RoomTransferModal
+                roomFilter={roomFilter}
+                affectedCount={affectedCount}
+                roomOptions={roomOptions}
+                bulkProcessing={bulkProcessing}
+                setBulkProcessing={setBulkProcessing}
+                bookingFilter={bookingFilter}
+                onClose={() => setTransferModalOpen(false)}
+                onSuccess={loadData}
+              />
+            )}
+          </div>
+
+          {/* status display moved above (in centered header) */}
+
+          <GuestList
+            guests={filteredGuests}
+            loading={loading}
+            error={error}
             setDetail={setDetail}
-            setAll={setAll}
-            onClose={() => setBulkModalOpen(false)}
+            approvingId={approvingId}
+            rejectingId={rejectingId}
+            confirmApprove={confirmApprove}
+            confirmReject={confirmReject}
           />
-        )}
 
-        {/* 部屋移動モーダル */}
-        {transferModalOpen && (
-          <RoomTransferModal
-            roomFilter={roomFilter}
-            affectedCount={affectedCount}
-            roomOptions={roomOptions}
-            bulkProcessing={bulkProcessing}
-            setBulkProcessing={setBulkProcessing}
-            bookingFilter={bookingFilter}
-            onClose={() => setTransferModalOpen(false)}
-            onSuccess={loadData}
-          />
-        )}
-      </div>
-
-      {/* status display moved above (in centered header) */}
-
-      <GuestList
-        guests={filteredGuests}
-        loading={loading}
-        error={error}
-        setDetail={setDetail}
-        approvingId={approvingId}
-        rejectingId={rejectingId}
-        confirmApprove={confirmApprove}
-        confirmReject={confirmReject}
-      />
-
-      {/* 詳細モーダル */}
-      {detail && (
-        <DetailsModal
-          detail={detail}
-          onClose={() => setDetail(null)}
-          signing={signing}
-          signedPassportUrl={signedPassportUrl}
-          approvingId={approvingId}
-          rejectingId={rejectingId}
-          confirmApprove={confirmApprove}
-          confirmReject={confirmReject}
-          onUpdate={handleUpdateGuest}
-        />
+          {/* 詳細モーダル */}
+          {detail && (
+            <DetailsModal
+              detail={detail}
+              onClose={() => setDetail(null)}
+              signing={signing}
+              signedPassportUrl={signedPassportUrl}
+              approvingId={approvingId}
+              rejectingId={rejectingId}
+              confirmApprove={confirmApprove}
+              confirmReject={confirmReject}
+              onUpdate={handleUpdateGuest}
+            />
+          )}
+        </>
       )}
     </div>
   );

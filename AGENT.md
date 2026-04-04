@@ -243,14 +243,16 @@ DynamoDB / SNS / S3
 
 **DynamoDB テーブル設計 (`obw-incidents`)**
 
-| 項目 | 内容 |
-| --- | --- |
-| PK | `entityType` = `"INCIDENT"`（固定） |
-| SK | `dateIncidentId` = `"YYYY-MM-DD#<uuid>"` |
+| 項目            | 内容                                                                              |
+| --------------- | --------------------------------------------------------------------------------- |
+| PK              | `entityType` = `"INCIDENT"`（固定）                                               |
+| SK              | `dateIncidentId` = `"YYYY-MM-DD#ISO-timestamp#telegram-message-id"`               |
+| GSI             | `ProgressIndex` — PK=`progress`, SK=`dateIncidentId`（未解決一覧の効率的取得用）   |
 | Lambda 自動入力 | `roomId`, `guestName`, `issue`, `currentLocation`, `progress="open"`, `createdAt` |
-| Admin 更新可能 | `staff`, `timeSpent`, `resolutionDate`, `solution`, `progress` |
+| Admin 更新可能  | `staff`, `timeSpent`, `resolutionDate`, `solution`, `progress`                    |
 
-SK を `date#uuid` 形式にすることで、`BETWEEN "2026-04-01#" AND "2026-04-30~"` の1クエリで日付範囲取得が可能。
+SK を `date#timestamp#id` 形式にすることで、`BETWEEN "2026-04-01#" AND "2026-04-30~"` の1クエリで日付範囲取得が可能。
+`ProgressIndex` GSI により `progress="open"` のみを効率的にクエリでき、全レコードスキャン不要。
 
 **実装方針**
 
@@ -275,6 +277,7 @@ Admin フロントエンド
 - [x] **C-1**: `template-infra-appsync.yaml` に `Incident` 型・`listIncidents`・`updateIncident` をスキーマ追加、`AppSyncApiId` を Export
 - [x] **C-2**: `template-incidents-appsync.yaml` を新規作成（`obw-incidents` テーブル・DataSource・Resolver）
 - [x] **C-3**: `SummarizeInquiry/src/handler.ts` に DynamoDB PutItem 追加、`template-responseapi-function.yaml` に権限追加
-- [ ] **C-4**: Admin フロントエンド（一覧表示・UpdateItem フォーム）
+- [x] **C-4**: Admin フロントエンド（一覧表示・UpdateItem フォーム）
+- [x] **C-5**: `ProgressIndex` GSI 追加、`listIncidentsByProgress` クエリ・Resolver 追加、フロント未解決セクション表示
 
 ---

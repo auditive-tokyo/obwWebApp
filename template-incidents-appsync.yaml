@@ -18,11 +18,22 @@ Resources:
           AttributeType: S
         - AttributeName: dateIncidentId
           AttributeType: S
+        - AttributeName: progress
+          AttributeType: S
       KeySchema:
         - AttributeName: entityType
           KeyType: HASH
         - AttributeName: dateIncidentId
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: ProgressIndex
+          KeySchema:
+            - AttributeName: progress
+              KeyType: HASH
+            - AttributeName: dateIncidentId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   # AppSync が obw-incidents テーブルを読み書きするための IAM ロール
   AppSyncIncidentsRole:
@@ -45,7 +56,9 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Query
                   - dynamodb:UpdateItem
-                Resource: !GetAtt IncidentsTable.Arn
+                Resource:
+                  - !GetAtt IncidentsTable.Arn
+                  - !Sub "${IncidentsTable.Arn}/index/*"
 
   IncidentsDataSource:
     Type: AWS::AppSync::DataSource
@@ -134,6 +147,29 @@ Resources:
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)
+
+  ListIncidentsByProgressResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !ImportValue Obw-AppSyncApiId
+      TypeName: Query
+      FieldName: listIncidentsByProgress
+      DataSourceName: !GetAtt IncidentsDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "ProgressIndex",
+          "query": {
+            "expression": "progress = :p",
+            "expressionValues": {
+              ":p": $util.dynamodb.toDynamoDBJson($ctx.args.progress)
+            }
+          },
+          "scanIndexForward": false
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
 
 Outputs:
   IncidentsTableName:
