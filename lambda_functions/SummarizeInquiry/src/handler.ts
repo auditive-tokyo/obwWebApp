@@ -1,9 +1,14 @@
 import { Handler } from 'aws-lambda';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
 // 環境変数（既存のnotify_adminと同じ）
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const TELEGRAM_TOPIC_ID_EMERGENCY = process.env.TELEGRAM_TOPIC_ID_EMERGENCY || '';
+const INCIDENTS_TABLE_NAME = process.env.INCIDENTS_TABLE_NAME || 'obw-incidents';
+
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 // ユーザー情報の型定義
 interface UserInfo {
@@ -22,9 +27,9 @@ interface TelegramNotificationEvent {
 }
 
 /**
- * Telegram APIにメッセージを送信
+ * Telegram APIにメッセージを送信し、message_id を返す
  */
-async function sendTelegram(text: string, topicID?: string): Promise<void> {
+async function sendTelegram(text: string, topicID?: string): Promise<number> {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
         throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set');
     }
@@ -56,11 +61,41 @@ async function sendTelegram(text: string, topicID?: string): Promise<void> {
             throw new Error(`Telegram API error: ${response.status} ${errorBody}`);
         }
 
-        console.info('✅ Telegram message sent successfully');
+        const data = await response.json() as { ok: boolean; result: { message_id: number } };
+        console.info('✅ Telegram message sent successfully, message_id:', data.result.message_id);
+        return data.result.message_id;
     } catch (error) {
         console.error('❌ Failed to send Telegram message:', error);
         throw error;
     }
+}
+
+/**
+ * 緊急対応履歴を DynamoDB に保存
+ */
+async function saveIncident(event: TelegramNotificationEvent, userInfo: UserInfo, telegramMessageId: number): Promise<void> {
+    const incidentId = String(telegramMessageId);
+    // JST (UTC+9) で日付を算出（日本時間23:30がUTC前日にならないように）
+    const jstDate = new Date(new Date(event.timestamp).getTime() + 9 * 60 * 60 * 1000);
+    const date = jstDate.toISOString().slice(0, 10); // YYYY-MM-DD (JST)
+    const ts = new Date(event.timestamp).toISOString(); // ソート用タイムスタンプ
+    const dateIncidentId = `${date}#${ts}#${incidentId}`;
+
+    const item: Record<string, unknown> = {
+        entityType: 'INCIDENT',
+        dateIncidentId,
+        date,
+        incidentId,
+        roomId: event.roomId,
+        issue: event.inquirySummary,
+        progress: 'open',
+        createdAt: new Date().toISOString(),
+    };
+    if (userInfo.representativeName) item.guestName = userInfo.representativeName;
+    if (userInfo.currentLocation) item.currentLocation = userInfo.currentLocation;
+
+    await ddb.send(new PutCommand({ TableName: INCIDENTS_TABLE_NAME, Item: item }));
+    console.info('✅ Incident saved to DynamoDB:', dateIncidentId);
 }
 
 /**
@@ -99,8 +134,15 @@ export const handler: Handler<TelegramNotificationEvent, { success: boolean }> =
 
         const messageText = lines.join('\n');
 
-        // Telegram送信（Emergencyトピックへ）
-        await sendTelegram(messageText, TELEGRAM_TOPIC_ID_EMERGENCY);
+        // Telegram送信（Emergencyトピックへ）— 最重要なので先に実行
+        const messageId = await sendTelegram(messageText, TELEGRAM_TOPIC_ID_EMERGENCY);
+
+        // DynamoDB に緊急対応履歴を保存（失敗してもTelegram通知は成功済み）
+        try {
+            await saveIncident(event, userInfo, messageId);
+        } catch (dbError) {
+            console.error('⚠️ DynamoDB save failed (Telegram notification was sent):', dbError);
+        }
 
         console.info('✅ Notification processed successfully');
         return { success: true };

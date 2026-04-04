@@ -255,6 +255,33 @@ Resources:
           endMinute: Int!
         }
 
+        type Incident @aws_cognito_user_pools {
+          entityType: String!
+          dateIncidentId: String!
+          date: String!
+          incidentId: String!
+          roomId: String
+          guestName: String
+          issue: String
+          currentLocation: String
+          progress: String!
+          staff: String
+          timeSpent: String
+          resolutionDate: String
+          solution: String
+          createdAt: AWSDateTime
+          updatedAt: AWSDateTime
+        }
+
+        input UpdateIncidentInput {
+          dateIncidentId: String!
+          staff: String
+          timeSpent: String
+          resolutionDate: String
+          solution: String
+          progress: String
+        }
+
         type Mutation {
           createGuest(input: CreateGuestInput!): Guest
           updateGuest(input: UpdateGuestInput!): Guest @aws_cognito_user_pools @aws_iam
@@ -264,6 +291,7 @@ Resources:
           adminApproveGuest(roomNumber: String!, guestId: String!): Guest @aws_cognito_user_pools
           transferRoomGuests(input: TransferRoomInput!): TransferRoomResult @aws_cognito_user_pools
           updateOperationalHours(startHour: Int!, startMinute: Int!, endHour: Int!, endMinute: Int!): OperationalHours @aws_cognito_user_pools
+          updateIncident(input: UpdateIncidentInput!): Incident @aws_cognito_user_pools
         }
 
         type Query {
@@ -272,6 +300,7 @@ Resources:
           listGuestsByBooking(bookingId: String!): [Guest]
           listGuestsByApprovalStatus(approvalStatus: String!): [Guest] @aws_cognito_user_pools
           getOperationalHours: OperationalHours @aws_cognito_user_pools
+          listIncidents(dateFrom: String!, dateTo: String!): [Incident] @aws_cognito_user_pools
         }
 
   GuestTableDataSource:
@@ -930,6 +959,8 @@ Outputs:
   AppSyncApiId:
     Description: "AppSync API ID"
     Value: !GetAtt AppSyncApi.ApiId
+    Export:
+      Name: Obw-AppSyncApiId
   CognitoIdentityPoolId:
     Description: "Cognito Identity Pool ID"
     Value: !Ref IdentityPool

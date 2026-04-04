@@ -125,6 +125,7 @@ Resources:
           TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
           TELEGRAM_CHAT_ID: !Ref TelegramChatId
           TELEGRAM_TOPIC_ID_EMERGENCY: "5"
+          INCIDENTS_TABLE_NAME: "obw-incidents"
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -134,6 +135,10 @@ Resources:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
               Resource: "*"
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/obw-incidents"
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

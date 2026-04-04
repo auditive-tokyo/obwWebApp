@@ -237,64 +237,44 @@ DynamoDB / SNS / S3
   - ただし実装コスト（mutation 定義・resolver・template・IAM 変更）が高く、現状の誤通知リスクが低いため優先度は低い
   - 同 Lambda で宿泊人数変更通知も将来的に統合できる
 
-### 機能 C: 緊急対応履歴の CSV 出力
+### 機能 C: 緊急対応履歴の DynamoDB 管理
 
-- [ ] Telegram に届いた緊急対応内容を集計して CSV に出力する機能を実装する
-  - 対象データ: 緊急メッセージの本文、受信日時、対処者（未定）、対処ステータスなど
-  - 出力形式: CSV（BOM 付き UTF-8 推奨、Excel での開きやすさのため）
-  - 出力手段: Admin ページからダウンロード or S3 経由（要検討）
+> S3+CSV 案から DynamoDB 方針に変更。Admin 画面でステータス管理・後追い更新が可能。
+
+**DynamoDB テーブル設計 (`obw-incidents`)**
+
+| 項目 | 内容 |
+| --- | --- |
+| PK | `entityType` = `"INCIDENT"`（固定） |
+| SK | `dateIncidentId` = `"YYYY-MM-DD#<uuid>"` |
+| Lambda 自動入力 | `roomId`, `guestName`, `issue`, `currentLocation`, `progress="open"`, `createdAt` |
+| Admin 更新可能 | `staff`, `timeSpent`, `resolutionDate`, `solution`, `progress` |
+
+SK を `date#uuid` 形式にすることで、`BETWEEN "2026-04-01#" AND "2026-04-30~"` の1クエリで日付範囲取得が可能。
+
+**実装方針**
+
+- 新規 Lambda 不要（既存 SummarizeInquiry に DynamoDB PutItem を追加）
+- AppSync スキーマ拡張は `template-infra-appsync.yaml`（1 ファイルに 1 `GraphQLSchema` 制約）
+- テーブル・DataSource・Resolver は新規 `template-incidents-appsync.yaml` に分離
+
+**フロー**
+
+```
+SummarizeInquiry Lambda
+  ├── Telegram 送信（既存・Emergency topic 5）
+  └── DynamoDB PutItem（Lambda 自動入力項目のみ、progress="open"）
+
+Admin フロントエンド
+  ├── 一覧: listIncidents(dateFrom, dateTo) → AppSync → Query BETWEEN
+  └── 更新: updateIncident(date, incidentId, staff, solution, ...) → AppSync → UpdateItem
+```
+
+**実装ステップ**
+
+- [x] **C-1**: `template-infra-appsync.yaml` に `Incident` 型・`listIncidents`・`updateIncident` をスキーマ追加、`AppSyncApiId` を Export
+- [x] **C-2**: `template-incidents-appsync.yaml` を新規作成（`obw-incidents` テーブル・DataSource・Resolver）
+- [x] **C-3**: `SummarizeInquiry/src/handler.ts` に DynamoDB PutItem 追加、`template-responseapi-function.yaml` に権限追加
+- [ ] **C-4**: Admin フロントエンド（一覧表示・UpdateItem フォーム）
 
 ---
-
-## 🗂️ TODO — Telegram 設定・拡張
-
-> Telegram 側の設定作業 → コード実装の順で進める。
-
-### Step 1: カスタム絵文字スタンプセットの作成（Telegram アプリ上）
-
-- [ ] Telegram アプリで `@Stickers` と**個人チャット**を開く
-- [ ] `/newemojipack` を送信してカスタム絵文字パックを作成する
-  - 担当者ごとのアイコン画像（100×100px 推奨、PNG/WebP）を用意して送信
-  - 各画像に対して絵文字（例: 👤）を関連づける
-  - `/publish` で公開して絵文字パック ID を控える
-
-### Step 2: 既存グループをスーパーグループ（フォーラムモード）に変換（Telegram アプリ上）
-
-- [x] Admin Telegram グループを開く → 「グループ設定を編集」
-- [x] 「トピック」をオンにする（自動的にスーパーグループに昇格）
-  - ⚠️ 既存メッセージはそのまま残る。chat_id は変わらない場合が多いが念のため確認する
-
-### Step 3: トピックを 3 つ作成して ID を控える（Telegram アプリ上）
-
-- [x] 以下の 3 トピックを手動で作成する
-
-  | トピック名 | 用途 | 環境変数名 | message_thread_id |
-  |-----------|------|-----------|-------------------|
-  | `Approval` | `approvalStatus → pending` 遷移時の通知 | `TELEGRAM_TOPIC_ID_APPROVAL` | `3` |
-  | `Emergency` | Twilio 経由の緊急電話通知 | `TELEGRAM_TOPIC_ID_EMERGENCY` | `5` |
-  | `Change Requests` | ゲストによる宿泊日変更通知 | `TELEGRAM_TOPIC_ID_DATE_CHANGE` | `8` |
-  | （共通） | chat_id | `TELEGRAM_CHAT_ID` | `-1003740916969` |
-
-- [x] 各トピックの `message_thread_id` を確認する（Telegram Web URL の `_` 以降の数字で確認済み）
-
-### Step 4: カスタム絵文字をグループのリアクション許可リストに追加（Telegram アプリ上）
-
-- [ ] グループ設定 → 「リアクション」→ 「カスタム絵文字」から Step 1 で作成したパックを追加する
-  - これにより **非 Premium メンバー全員**がそのカスタム絵文字でリアクション可能になる
-  - 緊急メッセージへの対処完了時に、担当者が自分の絵文字でリアクションする運用で「誰が対処したか」を記録できる
-
-### Step 5: SAM テンプレートに環境変数を追加（コード）
-
-- [x] `template-dynamostreams-actions.yaml` の `NotifyAdminOnPendingFunction` に以下を追加した
-  ```yaml
-  TELEGRAM_TOPIC_ID_APPROVAL: "3"
-  TELEGRAM_TOPIC_ID_EMERGENCY: "5"
-  TELEGRAM_TOPIC_ID_DATE_CHANGE: "8"
-  ```
-
-### Step 6: notify_admin/main.go のトピック別送信対応（コード）
-
-- [x] `sendTelegram()` 関数に `topicID string` 引数を追加した
-- [x] `topicID != ""` の場合のみ `message_thread_id` を HTTP リクエストボディに含めるようにした
-- [x] `notifyApprovalPending()` → `telegramTopicApproval`（トピックID: 3）トピックへ送信
-- [x] `notifyDateChange()` → `telegramTopicDateChange`（トピックID: 8）トピックへ送信

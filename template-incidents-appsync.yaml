@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  obw-incidents DynamoDB table, AppSync DataSource, and Resolvers.
+  Depends on template-infra-appsync.yaml being deployed first
+  (imports Obw-AppSyncApiId export).
+
+Resources:
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: obw-incidents
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      AttributeDefinitions:
+        - AttributeName: entityType
+          AttributeType: S
+        - AttributeName: dateIncidentId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: entityType
+          KeyType: HASH
+        - AttributeName: dateIncidentId
+          KeyType: RANGE
+
+  # AppSync が obw-incidents テーブルを読み書きするための IAM ロール
+  AppSyncIncidentsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AppSyncIncidentsTableAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt IncidentsTable.Arn
+
+  IncidentsDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !ImportValue Obw-AppSyncApiId
+      Name: obw_incidents_table
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: !GetAtt AppSyncIncidentsRole.Arn
+      DynamoDBConfig:
+        TableName: !Ref IncidentsTable
+        AwsRegion: !Ref AWS::Region
+
+  ListIncidentsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !ImportValue Obw-AppSyncApiId
+      TypeName: Query
+      FieldName: listIncidents
+      DataSourceName: !GetAtt IncidentsDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "entityType = :et AND dateIncidentId BETWEEN :from AND :to",
+            "expressionValues": {
+              ":et": { "S": "INCIDENT" },
+              ":from": $util.dynamodb.toDynamoDBJson("$ctx.args.dateFrom#"),
+              ":to": $util.dynamodb.toDynamoDBJson("$ctx.args.dateTo~")
+            }
+          },
+          "scanIndexForward": false
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result.items)
+
+  UpdateIncidentResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !ImportValue Obw-AppSyncApiId
+      TypeName: Mutation
+      FieldName: updateIncident
+      DataSourceName: !GetAtt IncidentsDataSource.Name
+      RequestMappingTemplate: |
+        #set($setExp = "SET #updatedAt = :updatedAt")
+        #set($names = { "#updatedAt": "updatedAt" })
+        #set($values = { ":updatedAt": { "S": "$util.time.nowISO8601()" } })
+
+        #if(!$util.isNullOrEmpty($ctx.args.input.staff))
+          #set($setExp = $setExp + ", #staff = :staff")
+          $util.qr($names.put("#staff","staff"))
+          $util.qr($values.put(":staff", { "S": "$ctx.args.input.staff" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.timeSpent))
+          #set($setExp = $setExp + ", #timeSpent = :timeSpent")
+          $util.qr($names.put("#timeSpent","timeSpent"))
+          $util.qr($values.put(":timeSpent", { "S": "$ctx.args.input.timeSpent" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.resolutionDate))
+          #set($setExp = $setExp + ", #resolutionDate = :resolutionDate")
+          $util.qr($names.put("#resolutionDate","resolutionDate"))
+          $util.qr($values.put(":resolutionDate", { "S": "$ctx.args.input.resolutionDate" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.solution))
+          #set($setExp = $setExp + ", #solution = :solution")
+          $util.qr($names.put("#solution","solution"))
+          $util.qr($values.put(":solution", { "S": "$ctx.args.input.solution" }))
+        #end
+        #if(!$util.isNullOrEmpty($ctx.args.input.progress))
+          #set($setExp = $setExp + ", #progress = :progress")
+          $util.qr($names.put("#progress","progress"))
+          $util.qr($values.put(":progress", { "S": "$ctx.args.input.progress" }))
+        #end
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "entityType": $util.dynamodb.toDynamoDBJson("INCIDENT"),
+            "dateIncidentId": $util.dynamodb.toDynamoDBJson($ctx.args.input.dateIncidentId)
+          },
+          "update": {
+            "expression": "$setExp",
+            "expressionNames": $util.toJson($names),
+            "expressionValues": $util.toJson($values)
+          },
+          "returnValues": "ALL_NEW"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+
+Outputs:
+  IncidentsTableName:
+    Description: "DynamoDB incidents table name"
+    Value: !Ref IncidentsTable

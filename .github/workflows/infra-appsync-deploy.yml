@@ -5,6 +5,7 @@ on:
     branches: [main, feature/*]
     paths:
       - 'template-infra-appsync.yaml'
+      - 'template-incidents-appsync.yaml'
       - '.github/workflows/infra-appsync-deploy.yml'
   workflow_dispatch:
 
@@ -71,9 +72,19 @@ jobs:
               --no-fail-on-empty-changeset
           fi
 
+      - name: Deploy Incidents-AppSync
+        run: |
+          aws cloudformation deploy \
+            --template-file template-incidents-appsync.yaml \
+            --stack-name obw-incidents-appsync \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
       - name: Show stack events on failure
         if: failure()
-        run: aws cloudformation describe-stack-events --stack-name obw-infra-appsync --max-items 50
+        run: |
+          aws cloudformation describe-stack-events --stack-name obw-infra-appsync --max-items 50
+          aws cloudformation describe-stack-events --stack-name obw-incidents-appsync --max-items 50
 
       - name: List AppSync data sources (debug)
         run: |
