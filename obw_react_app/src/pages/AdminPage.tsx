@@ -24,6 +24,12 @@ import { updateGuest } from "./handlers/updateGuest";
 // AdminはUser Pool固定（ここで明示）
 const client = generateClient({ authMode: "userPool" });
 
+const TAB_LABEL: Record<"guests" | "incidents" | "hours", string> = {
+  guests: "ゲスト管理",
+  incidents: "緊急対応履歴",
+  hours: "有人対応時間",
+};
+
 // Props interface を追加
 interface AdminPageProps {
   roomId?: string;
@@ -124,7 +130,9 @@ export default function AdminPage({
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"guests" | "incidents">("guests");
+  const [activeTab, setActiveTab] = useState<"guests" | "incidents" | "hours">(
+    "guests",
+  );
 
   // 部屋番号のオプション（FiltersBarと同じロジック）
   const roomOptions = useMemo(() => {
@@ -259,7 +267,7 @@ export default function AdminPage({
           borderBottom: "2px solid #e5e7eb",
         }}
       >
-        {(["guests", "incidents"] as const).map((tab) => (
+        {(["guests", "incidents", "hours"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -278,12 +286,18 @@ export default function AdminPage({
               fontSize: "0.95rem",
             }}
           >
-            {tab === "guests" ? "ゲスト管理" : "緊急対応履歴"}
+            {TAB_LABEL[tab]}
           </button>
         ))}
       </div>
 
       {activeTab === "incidents" && <IncidentList />}
+
+      {activeTab === "hours" && (
+        <div style={{ maxWidth: 600, marginTop: 8 }}>
+          <OperationalHoursSettings />
+        </div>
+      )}
 
       {activeTab === "guests" && (
         <>
@@ -339,9 +353,6 @@ export default function AdminPage({
                 setTransferModalOpen(true);
               }}
             />
-
-            {/* 有人稼働時間設定 */}
-            <OperationalHoursSettings />
 
             {/* Bulk change modal */}
             {bulkModalOpen && (
