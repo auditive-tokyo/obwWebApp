@@ -10,6 +10,7 @@ type Props = {
   handleCompositionStart: () => void;
   handleCompositionEnd: () => void;
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 const AVATAR_URL = "https://osakabaywheel.com/img/logo_color.svg";
@@ -57,24 +58,6 @@ function getMessageImages(msg: Message): string[] {
   return extractImages(msg.text);
 }
 
-// ローディング中のメッセージコンポーネント
-const LoadingMessage: React.FC<{ msg: Message }> = ({ msg }) => (
-  <div
-    key={msg.id}
-    className={`message new ${msg.text ? "" : "loading"} ${msg.personal ? "message-personal" : "message-ai"}`}
-    data-testid={msg.personal ? "user-msg-loading" : "ai-msg-loading"}
-  >
-    <figure className="avatar">
-      <img src={AVATAR_URL} alt="avatar" />
-    </figure>
-    {msg.text ? (
-      <span dangerouslySetInnerHTML={{ __html: getProcessedHtml(msg.text) }} />
-    ) : (
-      <span></span>
-    )}
-  </div>
-);
-
 // リファレンスリンクコンポーネント
 const ReferenceLinks: React.FC<{ sources: string[] }> = ({ sources }) => (
   <div className="reference-files">
@@ -118,41 +101,56 @@ const AiImages: React.FC<{ images: string[] }> = ({ images }) => (
   </div>
 );
 
-// 完了済みメッセージコンポーネント
-const CompletedMessage: React.FC<{ msg: Message }> = ({ msg }) => {
-  const images = msg.personal ? [] : getMessageImages(msg);
+// 統合メッセージアイテムコンポーネント
+// loading→completed の遷移で DOM ノードを維持し、bounce アニメーションの再発動を防ぐ
+const MessageItem: React.FC<{ msg: Message }> = ({ msg }) => {
+  const isLoading = Boolean(msg.loading);
+  const hasText = Boolean(msg.text);
+  const images = msg.personal || isLoading ? [] : getMessageImages(msg);
   const hasReferences =
+    !isLoading &&
+    !msg.personal &&
     typeof msg.text === "object" &&
     msg.text?.reference_sources &&
     msg.text.reference_sources.length > 0;
 
+  const className = [
+    "message",
+    "new",
+    isLoading && !hasText ? "loading" : "",
+    msg.personal ? "message-personal" : "message-ai",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
-      key={msg.id}
-      className={`message new ${msg.personal ? "message-personal" : "message-ai"}`}
-      data-testid={msg.personal ? "user-msg" : "ai-msg"}
+      className={className}
+      data-testid={
+        msg.personal
+          ? isLoading ? "user-msg-loading" : "user-msg"
+          : isLoading ? "ai-msg-loading" : "ai-msg"
+      }
     >
       {!msg.personal && (
         <figure className="avatar">
           <img src={AVATAR_URL} alt="avatar" />
         </figure>
       )}
-      <span dangerouslySetInnerHTML={{ __html: getProcessedHtml(msg.text) }} />
+      {hasText ? (
+        <span dangerouslySetInnerHTML={{ __html: getProcessedHtml(msg.text) }} />
+      ) : (
+        <span></span>
+      )}
       {hasReferences && typeof msg.text === "object" && (
         <ReferenceLinks sources={msg.text.reference_sources!} />
       )}
       {images.length > 0 && <AiImages images={images} />}
-      {msg.timestamp && <div className="timestamp">{msg.timestamp}</div>}
+      {!isLoading && msg.timestamp && (
+        <div className="timestamp">{msg.timestamp}</div>
+      )}
     </div>
   );
-};
-
-// メッセージアイテムコンポーネント
-const MessageItem: React.FC<{ msg: Message }> = ({ msg }) => {
-  if (msg.loading) {
-    return <LoadingMessage msg={msg} />;
-  }
-  return <CompletedMessage msg={msg} />;
 };
 
 const ChatInterfaceView: React.FC<Props> = ({
@@ -164,6 +162,7 @@ const ChatInterfaceView: React.FC<Props> = ({
   handleCompositionStart,
   handleCompositionEnd,
   inputRef,
+  messagesContainerRef,
 }) => {
   return (
     <>
@@ -178,7 +177,7 @@ const ChatInterfaceView: React.FC<Props> = ({
           <h1>OSAKA BAY WHEEL AI</h1>
           <h2>OBW</h2>
         </div>
-        <div className="messages">
+        <div className="messages" ref={messagesContainerRef}>
           <div className="messages-content">
             {messages.map((msg) => (
               <MessageItem key={msg.id} msg={msg} />
