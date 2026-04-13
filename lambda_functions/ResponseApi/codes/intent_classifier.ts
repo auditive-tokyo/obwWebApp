@@ -67,7 +67,7 @@ export async function classifyIntent(
       model: CLASSIFIER_MODEL,
       instructions: INTENT_SYSTEM_PROMPT,
       input: [{ role: "user", content: userMessage }],
-      reasoning: { effort: "medium" },
+      reasoning: { effort: "low" },
       text: {
         format: RESPONSE_SCHEMA,
       },

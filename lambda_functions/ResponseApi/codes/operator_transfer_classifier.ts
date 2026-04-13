@@ -57,7 +57,7 @@ export async function classifyOperatorTransferNeeded(
       model: CLASSIFIER_MODEL,
       instructions: SYSTEM_PROMPT,
       input: [{ role: "user", content: userMessage }],
-      reasoning: { effort: "medium" },
+      reasoning: { effort: "low" },
       text: {
         format: RESPONSE_SCHEMA,
       },
