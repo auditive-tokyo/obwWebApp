@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Twilio Lambda functions for obwWebApp
 
@@ -6,9 +6,9 @@ Parameters:
   OpenAiApiKey:
     Type: String
     NoEcho: true
-  OpenAiVectorStoreId:
+  OpenAiVectorStoreIdFacility:
     Type: String
-    Description: "OpenAI Vector Store ID"
+    Description: "OpenAI Vector Store ID for facility/FAQ"
     NoEcho: true
   TwilioAccountSid:
     Type: String
@@ -65,7 +65,7 @@ Resources:
         - python3.13
       CompatibleArchitectures:
         - x86_64
-      LicenseInfo: 'Available under the MIT license.'
+      LicenseInfo: "Available under the MIT license."
       RetentionPolicy: Retain
     Metadata:
       BuildMethod: python3.13
@@ -92,9 +92,9 @@ Resources:
       FunctionUrlConfig:
         AuthType: NONE
         Cors:
-          AllowOrigins: [ "*" ]
-          AllowMethods: [ "POST" ]
-          AllowHeaders: [ "Content-Type" ]
+          AllowOrigins: ["*"]
+          AllowMethods: ["POST"]
+          AllowHeaders: ["Content-Type"]
       Environment:
         Variables:
           AI_PROCESSING_LAMBDA_NAME: !Ref AiProcessingLambdaFunctionName
@@ -109,7 +109,7 @@ Resources:
 
   # TwilioのLambda2
   AiProcessingFunction:
-    Type: AWS::Serverless::Function
+    Type: AWS::Serverless::Function # NOSONAR
     DependsOn: AiProcessingFunctionLogGroup
     Properties:
       Layers:
@@ -125,7 +125,7 @@ Resources:
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
-          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+          OPENAI_VECTOR_STORE_ID_FACILITY: !Ref OpenAiVectorStoreIdFacility
           TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
           TWILIO_AUTH_TOKEN: !Ref TwilioAuthToken
           LAMBDA1_FUNCTION_URL: !Ref ImmediateResponseFunctionUrlParam

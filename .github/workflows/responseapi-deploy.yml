@@ -38,7 +38,8 @@ jobs:
       - name: SAM Deploy
         env:
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
+          OPENAI_VECTOR_STORE_ID_FACILITY_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID_FACILITY }}
+          OPENAI_VECTOR_STORE_ID_TRANSPORT_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID_TRANSPORT }}
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           CLOUDFRONT_SECRET_FROM_SECRET: ${{ secrets.CLOUDFRONT_SECRET }}
@@ -51,7 +52,8 @@ jobs:
             --no-confirm-changeset \
             --parameter-overrides \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
-              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
+              OpenAiVectorStoreIdFacility="$OPENAI_VECTOR_STORE_ID_FACILITY_FROM_SECRET" \
+              OpenAiVectorStoreIdTransport="$OPENAI_VECTOR_STORE_ID_TRANSPORT_FROM_SECRET" \
               TelegramBotToken="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
               TelegramChatId="$TELEGRAM_CHAT_ID_FROM_SECRET" \
               CloudFrontSecret="$CLOUDFRONT_SECRET_FROM_SECRET" \

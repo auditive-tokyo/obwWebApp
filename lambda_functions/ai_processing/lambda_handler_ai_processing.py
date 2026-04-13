@@ -17,7 +17,7 @@ ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
 LAMBDA1_FUNCTION_URL = os.environ.get('LAMBDA1_FUNCTION_URL')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-OPENAI_VECTOR_STORE_ID = os.environ.get('OPENAI_VECTOR_STORE_ID')
+OPENAI_VECTOR_STORE_ID_FACILITY = os.environ.get('OPENAI_VECTOR_STORE_ID_FACILITY')
 OPERATOR_PHONE_NUMBER = os.environ.get('OPERATOR_PHONE_NUMBER', '+15005550006')  # デフォルトはTwilioのテスト番号
 
 validate_essential_env_vars()
@@ -166,7 +166,7 @@ async def _handle_general_inquiry(call_sid: str, language: str, voice: str, spee
     # 並行処理
     announce_task = update_twilio_call_async(twilio_client, call_sid, str(announce_twiml))
     search_task = openai_vector_search_with_file_search_tool(
-        openai_async_client, speech_result, language, OPENAI_VECTOR_STORE_ID, previous_response_id, guest_info
+        openai_async_client, speech_result, language, OPENAI_VECTOR_STORE_ID_FACILITY, previous_response_id, guest_info
     )
     
     print("Announcement and vector search tasks created, starting them in parallel...")

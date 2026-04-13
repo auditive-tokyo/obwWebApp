@@ -6,9 +6,13 @@ Parameters:
   OpenAiApiKey:
     Type: String
     NoEcho: true
-  OpenAiVectorStoreId:
+  OpenAiVectorStoreIdFacility:
     Type: String
-    Description: "OpenAI Vector Store ID"
+    Description: "OpenAI Vector Store ID for facility/FAQ"
+    NoEcho: true
+  OpenAiVectorStoreIdTransport:
+    Type: String
+    Description: "OpenAI Vector Store ID for transport/access"
     NoEcho: true
   TelegramBotToken:
     Type: String
@@ -67,7 +71,8 @@ Resources:
       Environment:
         Variables:
           OPENAI_API_KEY: !Ref OpenAiApiKey
-          OPENAI_VECTOR_STORE_ID: !Ref OpenAiVectorStoreId
+          OPENAI_VECTOR_STORE_ID_FACILITY: !Ref OpenAiVectorStoreIdFacility
+          OPENAI_VECTOR_STORE_ID_TRANSPORT: !Ref OpenAiVectorStoreIdTransport
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
           CLOUDFRONT_SECRET: !Ref CloudFrontSecret
           DEBUG: 'false'

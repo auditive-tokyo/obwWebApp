@@ -1,13 +1,38 @@
-import { getOperationalHours, type OperationalHours } from "./operational_hours";
+import {
+  getOperationalHours,
+  type OperationalHours,
+} from "./operational_hours";
+import { type Intent } from "./intent_classifier";
 
 const operatorPhoneNumber = "+81-50-1726-4224";
 
-const TOOL_USAGE_INSTRUCTION = `
-**ツール使用ルール**:
-- 施設に関連した内容は**File Search**を使用する  
-- **web search**は、天気予報、施設周辺のイベント情報、施設周辺の飲食店、タクシー料金、ルート案内などの質問に使用する
-- **web search使用時の注意**: ドメインに google.com、maps.app.goo.gl、goo.gl、または maps を含むURLは表示しない。代わりに店舗名・住所・行き方を提示し、ユーザーにリンク表示の許可を確認する。
+const FILE_SEARCH_NOTE = `**File Search**: 施設情報はFile Searchの検索結果を優先し、知識での補完は最小限にとどめる。`;
+
+const WEB_SEARCH_NOTE = `**web search使用時の注意**: google map のURLは表示しない。代わりに店舗名・住所・行き方をテキストで提示する。`;
+
+const EMERGENCY_INSTRUCTION = `
+**緊急対応ルール**:
+- 原因の推測やDIY修理のアドバイスは絶対にしない
+- 状況を簡潔に確認したら、すぐにオペレーター転送を案内する
+- 緊急時はオペレーターの電話番号 ${operatorPhoneNumber} を積極的に開示してよい（ユーザーを待たせない）
+- 回答は短く、具体的な行動指示に絞る
 `;
+
+function getToolUsageInstruction(intent: Intent): string {
+  switch (intent) {
+    case "facility":
+      return `\n${FILE_SEARCH_NOTE}\n`;
+    case "transport_tourism":
+      return `\n${WEB_SEARCH_NOTE}\n`;
+    case "combined":
+      return `\n${FILE_SEARCH_NOTE}\n${WEB_SEARCH_NOTE}\n`;
+    case "emergency":
+      return `\n${EMERGENCY_INSTRUCTION}\n`;
+    case "conversation":
+    case "unknown":
+      return "";
+  }
+}
 
 const OPERATOR_CALL_INSTRUCTION = `
 **オペレーター電話対応のルール**:
@@ -27,18 +52,11 @@ const JSON_OUTPUT_INSTRUCTION = `
   "inquiry_summary_for_operator": "オペレーター向け問い合わせサマリー（needs_human_operatorがfalseの場合は空文字列）"
 }
 
-**オペレーター判断ルール**:
-- 解決困難な場合や緊急性が高い問題（例: 鍵が開かない、設備の故障、緊急のトラブル）の場合は「オペレーターにお問い合わせを転送しますか？」と確認する
-- **重要**: needs_human_operatorがtrueになると、Telegram経由でオペレーターに通知が送られるため、「オペレーターにお問い合わせを転送しますか？」の質問前には絶対にtrueにしない
-- needs_human_operatorをtrueにするのは、ユーザーが「オペレーターにお問い合わせを転送しますか？」の質問に「はい」と答えた場合のみ
-- **重要**: このアシスタントは外部メール/SMS/電話を送信できない。メール送信、SMS送信、電話連絡を示唆する場合は、必ず「オペレーターに依頼しますか？」と確認し、ユーザーが同意した場合のみneeds_human_operatorをtrueにする
-- inquiry_summary_for_operator
-    - ユーザーが同意した場合のみ、問題の種類、状況、緊急度を簡潔にまとめる
-    - **お客様情報**に名前/電話/メールが含まれている場合: お客様情報は後続でDBから参照されて管理者に通知されるので、ここでは含めない
-    - **お客様情報**が含まれていない場合: ユーザーの連絡先（電話番号またはメールアドレス）を確認してここに含める
-- **電話番号開示とneeds_human_operatorの違い**:
-    - 電話番号開示: ユーザーが「今すぐ電話したい」場合（即座対応）
-    - needs_human_operator=true: ユーザーが「転送に同意」した場合（Telegram通知）
+**オペレーター転送ルール**（needs_human_operatorフィールドが存在する場合のみ適用）:
+- ユーザーに「オペレーターにお問い合わせを転送しますか？」と確認してから転送する
+- needs_human_operator=trueにするのは、ユーザーがオペレーター転送に合意した場合のみ
+- **重要**: このアシスタントは外部メール/SMS/電話を送信できない。それらを求められた場合は「オペレーターに依頼しますか？」と確認する
+- inquiry_summary_for_operator: ユーザーが同意した場合のみ記入。**お客様情報**に名前/電話/メールが含まれている場合は含めない（DBから参照される）。含まれていない場合はユーザーの連絡先を確認してここに含める
 `;
 
 const POLICY_INSTRUCTION = `
@@ -72,10 +90,14 @@ function getOperationalTimeContext(operationalHours: OperationalHours): string {
   }).format(now);
   const jstHour = Number.parseInt(hourPart, 10);
 
-  const startTotalMinutes = operationalHours.start * 60 + operationalHours.startMinute;
-  const endTotalMinutes = operationalHours.end * 60 + operationalHours.endMinute;
+  const startTotalMinutes =
+    operationalHours.start * 60 + operationalHours.startMinute;
+  const endTotalMinutes =
+    operationalHours.end * 60 + operationalHours.endMinute;
   const currentTotalMinutes = jstHour * 60 + now.getMinutes();
-  const isWithinHours = currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes;
+  const isWithinHours =
+    currentTotalMinutes >= startTotalMinutes &&
+    currentTotalMinutes < endTotalMinutes;
 
   const startLabel = `${operationalHours.start}:${String(operationalHours.startMinute).padStart(2, "0")}`;
   const endLabel = `${operationalHours.end}:${String(operationalHours.endMinute).padStart(2, "0")}`;
@@ -126,7 +148,7 @@ function buildCustomerInfo(
   representativePhone?: string | null,
   currentLocation?: string,
   checkInDate?: string,
-  checkOutDate?: string
+  checkOutDate?: string,
 ): string {
   const customerLines: string[] = [];
   if (representativeName) customerLines.push(`- お名前: ${representativeName}`);
@@ -155,14 +177,16 @@ ${customerLines.join("\n")}
 function getUnapprovedSystemPrompt(
   roomId: string,
   customerInfo: string,
-  operationalContext: string
+  operationalContext: string,
+  toolInstruction: string,
+  needsOperatorCheck: boolean,
 ): string {
   return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 あなたの担当は${roomId}号室です。
 ${operationalContext}
 ${customerInfo}
-${TOOL_USAGE_INSTRUCTION}
-${OPERATOR_CALL_INSTRUCTION}
+${toolInstruction}
+${needsOperatorCheck ? OPERATOR_CALL_INSTRUCTION : ""}
 ${JSON_OUTPUT_INSTRUCTION}
 ${POLICY_INSTRUCTION}`;
 }
@@ -175,7 +199,9 @@ ${POLICY_INSTRUCTION}`;
 function getApprovedSystemPrompt(
   roomId: string,
   customerInfo: string,
-  operationalContext: string
+  operationalContext: string,
+  toolInstruction: string,
+  needsOperatorCheck: boolean,
 ): string {
   const keyCode = calculateKeyCode(roomId);
 
@@ -185,8 +211,8 @@ function getApprovedSystemPrompt(
 ${roomId}号室のキーボックスの暗証番号のダイヤル4桁（**Key Box Code**）の番号は : ${keyCode}
 ${operationalContext}
 ${customerInfo}
-${TOOL_USAGE_INSTRUCTION}
-${OPERATOR_CALL_INSTRUCTION}
+${toolInstruction}
+${needsOperatorCheck ? OPERATOR_CALL_INSTRUCTION : ""}
 ${JSON_OUTPUT_INSTRUCTION}
 ${POLICY_INSTRUCTION}`;
 }
@@ -213,7 +239,9 @@ export type GuestInfo = {
 export async function getSystemPrompt(
   roomId: string,
   approved: boolean,
-  guestInfo: GuestInfo = {}
+  guestInfo: GuestInfo = {},
+  intent: Intent = "unknown",
+  needsOperatorCheck: boolean = true,
 ): Promise<string> {
   const {
     representativeName,
@@ -226,12 +254,14 @@ export async function getSystemPrompt(
   // 対応時間コンテキストを生成（DynamoDB からの値を使用、60秒 TTL キャッシュ）
   const operationalHours = await getOperationalHours();
   const operationalContext = getOperationalTimeContext(operationalHours);
+  const toolInstruction = getToolUsageInstruction(intent);
 
   if (!roomId) {
     // roomIdがない場合（グローバルチャット）
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 ${operationalContext}
-${TOOL_USAGE_INSTRUCTION}
+${toolInstruction}
+${needsOperatorCheck ? OPERATOR_CALL_INSTRUCTION : ""}
 ${JSON_OUTPUT_INSTRUCTION}
 ${POLICY_INSTRUCTION}`;
   }
@@ -243,13 +273,13 @@ ${POLICY_INSTRUCTION}`;
     representativePhone,
     currentLocation,
     checkInDate,
-    checkOutDate
+    checkOutDate,
   );
 
   // 承認状態のみで分岐（お客様情報は両方に含まれる）
   if (approved) {
-    return getApprovedSystemPrompt(roomId, customerInfo, operationalContext);
+    return getApprovedSystemPrompt(roomId, customerInfo, operationalContext, toolInstruction, needsOperatorCheck);
   } else {
-    return getUnapprovedSystemPrompt(roomId, customerInfo, operationalContext);
+    return getUnapprovedSystemPrompt(roomId, customerInfo, operationalContext, toolInstruction, needsOperatorCheck);
   }
 }

@@ -71,7 +71,7 @@ jobs:
       - name: SAM Deploy
         env:
           OPENAI_API_KEY_FROM_SECRET: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_VECTOR_STORE_ID_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID }}
+          OPENAI_VECTOR_STORE_ID_FACILITY_FROM_SECRET: ${{ secrets.OPENAI_VECTOR_STORE_ID_FACILITY }}
           TWILIO_ACCOUNT_SID_FROM_SECRET: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN_FROM_SECRET: ${{ secrets.TWILIO_AUTH_TOKEN }}
           OPERATOR_PHONE_NUMBER_FROM_SECRET: ${{ secrets.OPERATOR_PHONE_NUMBER }}
@@ -86,7 +86,7 @@ jobs:
             --parameter-overrides \
               ImmediateResponseFunctionUrlParam="${{ steps.get_cloudfront_url.outputs.cloudfront_url }}" \
               OpenAiApiKey="$OPENAI_API_KEY_FROM_SECRET" \
-              OpenAiVectorStoreId="$OPENAI_VECTOR_STORE_ID_FROM_SECRET" \
+              OpenAiVectorStoreIdFacility="$OPENAI_VECTOR_STORE_ID_FACILITY_FROM_SECRET" \
               TwilioAccountSid="$TWILIO_ACCOUNT_SID_FROM_SECRET" \
               TwilioAuthToken="$TWILIO_AUTH_TOKEN_FROM_SECRET" \
               OperatorPhoneNumber="$OPERATOR_PHONE_NUMBER_FROM_SECRET" \

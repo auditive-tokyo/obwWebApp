@@ -11,7 +11,7 @@ def validate_essential_env_vars():
         'TWILIO_AUTH_TOKEN': "Twilio Auth Token",
         'LAMBDA1_FUNCTION_URL': "Lambda 1 Function URL",
         'OPENAI_API_KEY': "OpenAI API Key",
-        'OPENAI_VECTOR_STORE_ID': "OpenAI Vector Store ID"
+        'OPENAI_VECTOR_STORE_ID_FACILITY': "OpenAI Vector Store ID (Facility)"
     }
     
     missing = []

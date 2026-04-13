@@ -1,4 +1,6 @@
 import { generateStreamResponse } from "./stream_response";
+import { classifyIntent } from "./intent_classifier";
+import { classifyOperatorTransferNeeded } from "./operator_transfer_classifier";
 import { LambdaFunctionURLEvent, Context } from "aws-lambda";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
@@ -307,6 +309,20 @@ export const handler = awslambda.streamifyResponse(
 
       const notificationState: TelegramNotificationState = { sent: false };
 
+      const [intent, classifierOperatorCheck] = await Promise.all([
+        classifyIntent(
+          requestData.userMessage,
+          requestData.previousResponseId,
+        ),
+        classifyOperatorTransferNeeded(
+          requestData.userMessage,
+          requestData.previousResponseId,
+        ),
+      ]);
+
+      // emergencyの場合はclassifierの結果に関わらず必ず転送スキーマを含める
+      const needsOperatorCheck = intent === "emergency" || classifierOperatorCheck;
+
       for await (const chunk of generateStreamResponse({
         userMessage: requestData.userMessage,
         previousResponseId: requestData.previousResponseId,
@@ -318,6 +334,8 @@ export const handler = awslambda.streamifyResponse(
         currentLocation: requestData.currentLocation,
         checkInDate: requestData.checkInDate,
         checkOutDate: requestData.checkOutDate,
+        intent,
+        needsOperatorCheck,
       })) {
         processStreamChunk(
           chunk,
