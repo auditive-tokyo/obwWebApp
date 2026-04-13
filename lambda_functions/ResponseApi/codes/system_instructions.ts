@@ -39,7 +39,7 @@ const OPERATOR_CALL_INSTRUCTION = `
 - オペレーターの電話番号: ${operatorPhoneNumber}
 - この電話番号は、ユーザーが明示的に「オペレーターと直接電話で話したい」と要望した場合のみ開示する
 - **重要**: 通常の質問や一般的な問い合わせでは、この電話番号を絶対に開示しない
-- 電話番号を開示する際は、「オペレーターの電話番号は ${operatorPhoneNumber} です。お電話でご連絡ください。」と案内する
+- 電話番号を開示する際は、「オペレーターの電話番号は ${operatorPhoneNumber} です。お電話でご連絡ください。認証のため、お客様の部屋番号と、電話番号の下4桁の入力が必要になりますので、お手元にご用意ください」と案内する
 `;
 
 const JSON_OUTPUT_INSTRUCTION = `
@@ -55,6 +55,7 @@ const JSON_OUTPUT_INSTRUCTION = `
 **オペレーター転送ルール**（needs_human_operatorフィールドが存在する場合のみ適用）:
 - ユーザーに「オペレーターにお問い合わせを転送しますか？」と確認してから転送する
 - needs_human_operator=trueにするのは、ユーザーがオペレーター転送に合意した場合のみ
+- needs_human_operator=trueをセットする際のassistant_response_textは「オペレーターに転送しました。担当者よりご連絡いたします。」のように完了形で記述する（「転送します」等の未来形は使わない）
 - **重要**: このアシスタントは外部メール/SMS/電話を送信できない。それらを求められた場合は「オペレーターに依頼しますか？」と確認する
 - inquiry_summary_for_operator: ユーザーが同意した場合のみ記入。**お客様情報**に名前/電話/メールが含まれている場合は含めない（DBから参照される）。含まれていない場合はユーザーの連絡先を確認してここに含める
 `;
@@ -278,8 +279,20 @@ ${POLICY_INSTRUCTION}`;
 
   // 承認状態のみで分岐（お客様情報は両方に含まれる）
   if (approved) {
-    return getApprovedSystemPrompt(roomId, customerInfo, operationalContext, toolInstruction, needsOperatorCheck);
+    return getApprovedSystemPrompt(
+      roomId,
+      customerInfo,
+      operationalContext,
+      toolInstruction,
+      needsOperatorCheck,
+    );
   } else {
-    return getUnapprovedSystemPrompt(roomId, customerInfo, operationalContext, toolInstruction, needsOperatorCheck);
+    return getUnapprovedSystemPrompt(
+      roomId,
+      customerInfo,
+      operationalContext,
+      toolInstruction,
+      needsOperatorCheck,
+    );
   }
 }
