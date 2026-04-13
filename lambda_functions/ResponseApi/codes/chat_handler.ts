@@ -3,6 +3,7 @@ import { classifyIntent } from "./intent_classifier";
 import { classifyOperatorTransferNeeded } from "./operator_transfer_classifier";
 import { LambdaFunctionURLEvent, Context } from "aws-lambda";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import { summarizeForOperator } from "./operator_summarizer";
 
 const DEBUG = process.env.DEBUG === "true";
 const TELEGRAM_LAMBDA_FUNCTION_NAME =
@@ -48,8 +49,9 @@ interface ParsedRequestData {
   checkOutDate?: string;
 }
 
-interface TelegramNotificationState {
-  sent: boolean;
+interface StreamState {
+  needsHumanOperator: boolean;
+  responseId: string | null;
 }
 
 // AWS Lambdaランタイムが提供するグローバル変数に型を適用
@@ -147,54 +149,12 @@ function logRequestData(data: ParsedRequestData): void {
 }
 
 /**
- * AIレスポンスからオペレーター支援が必要か判定し、必要ならTelegram通知を送信
- */
-function handleOperatorNotification(
-  text: string,
-  roomId: string | undefined,
-  userInfo: UserInfo,
-  notificationState: TelegramNotificationState,
-): void {
-  if (notificationState.sent) {
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    if (typeof parsed !== "object" || parsed === null) {
-      return;
-    }
-
-    const pr = parsed as Record<string, unknown>;
-    const needsHumanOperator = pr.needs_human_operator === true;
-    const summary = pr.inquiry_summary_for_operator;
-    const hasValidSummary = typeof summary === "string" && summary.length > 0;
-
-    if (needsHumanOperator && hasValidSummary) {
-      console.info("🚨 オペレーター支援が必要 - Telegram Lambda呼び出し開始");
-      notificationState.sent = true;
-      invokeTelegramLambda({
-        roomId: roomId || "unknown",
-        inquirySummary: summary,
-        userInfo,
-      }).catch((error) => {
-        console.error("Telegram Lambda呼び出しエラー:", error);
-      });
-    }
-  } catch (parseError) {
-    console.warn("AI レスポンスのJSON解析に失敗:", parseError);
-  }
-}
-
-/**
  * content_part.done チャンクを処理
  */
 function handleContentPartDone(
   chunk: Record<string, unknown>,
   responseStream: ResponseStream,
-  roomId: string | undefined,
-  userInfo: UserInfo,
-  notificationState: TelegramNotificationState,
+  streamState: StreamState,
 ): void {
   const part = chunk.part as Record<string, unknown> | undefined;
   if (part?.type !== "output_text" || typeof part?.text !== "string") {
@@ -202,7 +162,16 @@ function handleContentPartDone(
   }
 
   console.info("🤖 AI最終レスポンス:", part.text);
-  handleOperatorNotification(part.text, roomId, userInfo, notificationState);
+
+  // needs_human_operator フラグを捕捉（サマリーはストリーム完了後に別途生成）
+  try {
+    const parsed = JSON.parse(part.text) as Record<string, unknown>;
+    if (parsed.needs_human_operator === true) {
+      streamState.needsHumanOperator = true;
+    }
+  } catch {
+    // 構造化JSONでない場合は無視
+  }
 
   // 既存フロントが扱える形式（response.output_text.done）に正規化
   responseStream.write(
@@ -221,14 +190,20 @@ function handleContentPartDone(
 function handleOutputTextDone(
   chunk: Record<string, unknown>,
   responseStream: ResponseStream,
-  roomId: string | undefined,
-  userInfo: UserInfo,
-  notificationState: TelegramNotificationState,
+  streamState: StreamState,
 ): void {
   const text = chunk.text as string | undefined;
   if (text) {
     console.info("🤖 AI最終レスポンス:", text);
-    handleOperatorNotification(text, roomId, userInfo, notificationState);
+    // needs_human_operator フラグを捕捉
+    try {
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      if (parsed.needs_human_operator === true) {
+        streamState.needsHumanOperator = true;
+      }
+    } catch {
+      // 構造化JSONでない場合は無視
+    }
   }
   responseStream.write("\n" + JSON.stringify(chunk) + "\n");
 }
@@ -239,9 +214,11 @@ function handleOutputTextDone(
 function handleResponseCompleted(
   chunk: Record<string, unknown>,
   responseStream: ResponseStream,
+  streamState: StreamState,
 ): void {
   const resp = chunk.response as Record<string, unknown> | undefined;
   if (resp && typeof resp.id === "string") {
+    streamState.responseId = resp.id;
     responseStream.write("\n" + JSON.stringify({ responseId: resp.id }) + "\n");
   }
 }
@@ -252,9 +229,7 @@ function handleResponseCompleted(
 function processStreamChunk(
   chunk: unknown,
   responseStream: ResponseStream,
-  roomId: string | undefined,
-  userInfo: UserInfo,
-  notificationState: TelegramNotificationState,
+  streamState: StreamState,
 ): void {
   if (DEBUG) {
     console.debug("OpenAI chunk:", chunk);
@@ -270,25 +245,13 @@ function processStreamChunk(
       responseStream.write(JSON.stringify(chunk) + "\n");
       break;
     case "response.content_part.done":
-      handleContentPartDone(
-        c,
-        responseStream,
-        roomId,
-        userInfo,
-        notificationState,
-      );
+      handleContentPartDone(c, responseStream, streamState);
       break;
     case "response.output_text.done":
-      handleOutputTextDone(
-        c,
-        responseStream,
-        roomId,
-        userInfo,
-        notificationState,
-      );
+      handleOutputTextDone(c, responseStream, streamState);
       break;
     case "response.completed":
-      handleResponseCompleted(c, responseStream);
+      handleResponseCompleted(c, responseStream, streamState);
       break;
   }
 }
@@ -307,7 +270,7 @@ export const handler = awslambda.streamifyResponse(
 
       logRequestData(requestData);
 
-      const notificationState: TelegramNotificationState = { sent: false };
+      const streamState: StreamState = { needsHumanOperator: false, responseId: null };
 
       const [intent, classifierOperatorCheck] = await Promise.all([
         classifyIntent(
@@ -337,15 +300,24 @@ export const handler = awslambda.streamifyResponse(
         intent,
         needsOperatorCheck,
       })) {
-        processStreamChunk(
-          chunk,
-          responseStream,
-          requestData.roomId,
-          requestData.userInfo,
-          notificationState,
-        );
+        processStreamChunk(chunk, responseStream, streamState);
       }
       responseStream.end();
+
+      // Post-stream: ストリーム完了後にサマリーを生成してTelegram送信
+      if (streamState.needsHumanOperator && streamState.responseId) {
+        try {
+          console.info("🚨 オペレーター支援が必要 - サマリー生成開始");
+          const summary = await summarizeForOperator(streamState.responseId);
+          await invokeTelegramLambda({
+            roomId: requestData.roomId || "unknown",
+            inquirySummary: summary,
+            userInfo: requestData.userInfo,
+          });
+        } catch (error) {
+          console.error("Post-stream operator notification failed:", error);
+        }
+      }
     } catch (e) {
       console.error("Error in handler:", e);
       responseStream.write(JSON.stringify({ error: String(e) }));

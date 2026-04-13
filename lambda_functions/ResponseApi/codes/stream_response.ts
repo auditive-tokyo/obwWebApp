@@ -136,11 +136,6 @@ export async function* generateStreamResponse({
         description:
           "Set to true ONLY when the user answers 'yes' to the question 'Would you like to transfer your inquiry to an operator?' (オペレーターにお問い合わせを転送しますか？). NEVER set to true before asking this confirmation question. This triggers a Telegram notification to the operator.",
       },
-      inquiry_summary_for_operator: {
-        type: "string",
-        description:
-          "A concise summary of the guest's inquiry for the human operator. If guest information IS available in the system prompt, DO NOT include it here. If NOT available, include the guest's contact info obtained during the conversation. Return empty string \"\" if needs_human_operator is false.",
-      },
     };
 
     const schemaProperties = needsOperatorCheck
@@ -148,7 +143,7 @@ export async function* generateStreamResponse({
       : baseProperties;
 
     const schemaRequired = needsOperatorCheck
-      ? ["assistant_response_text", "reference_sources", "images", "needs_human_operator", "inquiry_summary_for_operator"]
+      ? ["assistant_response_text", "reference_sources", "images", "needs_human_operator"]
       : ["assistant_response_text", "reference_sources", "images"];
 
     const requestPayload: Record<string, unknown> = {
