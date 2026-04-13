@@ -123,14 +123,17 @@ const MessageItem: React.FC<{ msg: Message }> = ({ msg }) => {
     .filter(Boolean)
     .join(" ");
 
+  let testId: string;
+  if (msg.personal) {
+    testId = isLoading ? "user-msg-loading" : "user-msg";
+  } else {
+    testId = isLoading ? "ai-msg-loading" : "ai-msg";
+  }
+
   return (
     <div
       className={className}
-      data-testid={
-        msg.personal
-          ? isLoading ? "user-msg-loading" : "user-msg"
-          : isLoading ? "ai-msg-loading" : "ai-msg"
-      }
+      data-testid={testId}
     >
       {!msg.personal && (
         <figure className="avatar">

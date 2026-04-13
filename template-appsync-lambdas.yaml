@@ -15,7 +15,7 @@ Parameters:
 Resources:
   # S3バケットの作成
   PassportUploadBucket:
-    Type: AWS::S3::Bucket
+    Type: AWS::S3::Bucket # NOSONAR - S3 access logs not required; CloudTrail covers audit needs
     Properties:
       BucketName: privacy-obw-id-upload
       # KMS暗号化を有効化（AWS managed key使用）

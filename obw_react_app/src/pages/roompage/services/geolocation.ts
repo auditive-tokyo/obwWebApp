@@ -8,7 +8,7 @@ type SyncGeoResult = { fix: GeoFix; addressText: string }
 function getCurrentPositionOnce(opts?: PositionOptions): Promise<GeoFix> {
   return new Promise((resolve, reject) => {
     if (!('geolocation' in navigator)) return reject(new Error('Geolocation unsupported'))
-    navigator.geolocation.getCurrentPosition(
+    navigator.geolocation.getCurrentPosition( // NOSONAR - geolocation is required to save guest location for emergency response
       (pos) =>
         resolve({
           lat: pos.coords.latitude,
