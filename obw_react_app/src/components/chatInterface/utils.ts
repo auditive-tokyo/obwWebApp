@@ -11,10 +11,10 @@ export const getTimestamp = () => {
 /**
  * メッセージ一覧（.messages）を一番下までスクロールする
  */
-export const scrollToBottom = () => {
+export const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
   const messages = document.querySelector('.messages');
   if (messages) {
-    messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+    messages.scrollTo({ top: messages.scrollHeight, behavior });
   }
 };
 

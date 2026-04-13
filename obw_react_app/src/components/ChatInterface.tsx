@@ -63,7 +63,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    const isStreaming = messages.some(m => m.loading);
+    scrollToBottom(isStreaming ? 'instant' : 'smooth');
   }, [messages])
 
   const handleSendMessage = async () => {
