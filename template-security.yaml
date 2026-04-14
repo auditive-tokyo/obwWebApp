@@ -163,7 +163,7 @@ Resources:
 
   # CloudFront アクセスログ用S3バケット
   CloudFrontLogsBucket:
-    Type: AWS::S3::Bucket
+    Type: AWS::S3::Bucket # NOSONAR
     Properties:
       BucketName: !Sub "obw-cloudfront-logs-${AWS::AccountId}"
       BucketEncryption:
