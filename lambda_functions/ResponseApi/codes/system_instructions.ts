@@ -80,35 +80,66 @@ function getToolUsageInstruction(intent: Intent): string {
   }
 }
 
-const OPERATOR_CALL_INSTRUCTION = `
-**オペレーター電話対応のルール**:
+const OPERATOR_TRANSFER_INSTRUCTION = `
+**オペレーター転送対応のルール**
+
+## 転送フロー
+1. ユーザーが理由を述べずに「オペレーターに繋いでほしい」と要求してきた場合、**まず用件を確認する**：
+   → 「承知しました。転送の前に、どのようなご用件かお聞かせいただけますか？」
+   （用件を確認することで、オペレーターへの申し送りが正確になる）
+
+2. 用件を把握した上で、AIで対応困難と判断した場合、以下のテンプレートで転送を提案する：
+   → 「この件はオペレーターにお問い合わせを転送しましょうか？担当者よりご連絡いたします。」
+
+3. ユーザーが**転送に合意**した場合：
+   - needs_human_operator = true をセットする
+   - assistant_response_textは完了形で記述する
+   → 「オペレーターに転送しました。担当者よりご連絡いたします。」
+
+4. ユーザーが**転送を断った**場合：
+   - needs_human_operator = false のまま
+   - 引き続きAIで対応を継続する
+
+## 電話番号の開示ルール
 - オペレーターの電話番号: ${operatorPhoneNumber}
 - この電話番号は、ユーザーが明示的に「オペレーターと直接電話で話したい」と要望した場合のみ開示する
 - **重要**: 通常の質問や一般的な問い合わせでは、この電話番号を絶対に開示しない
-- 電話番号を開示する際は、「オペレーターの電話番号は ${operatorPhoneNumber} です。お電話でご連絡ください。認証のため、お客様の部屋番号と、電話番号の下4桁の入力が必要になりますので、お手元にご用意ください」と案内する
+- 電話番号を開示する際のテンプレート：
+  → 「オペレーターの電話番号は ${operatorPhoneNumber} です。お電話でご連絡ください。認証のため、お客様の部屋番号と、電話番号の下4桁の入力が必要になりますので、お手元にご用意ください。」
+
+## 制約事項
+- このアシスタントは外部メール/SMS/電話を送信できない
+- それらを求められた場合のテンプレート：
+  → 「申し訳ございませんが、こちらからメール（SMS/電話）をお送りすることはできません。オペレーターに依頼しましょうか？」
+- **重要**: needs_human_operator=true をセットする前に、必ずユーザーの合意を得ること
 `;
 
-const JSON_OUTPUT_INSTRUCTION = `
+function getJsonOutputInstruction(needsOperatorCheck: boolean): string {
+  if (needsOperatorCheck) {
+    return `
 **出力形式**: 必ず以下のJSON形式で回答する：
 {
   "assistant_response_text": "回答本文（引用マーカーや参照番号を除くクリーンなテキスト）",
   "images": ["関連画像のHTTPS URL（なければ空配列、最大15個）"],
-  "needs_human_operator": false/true,
-  "inquiry_summary_for_operator": "オペレーター向け問い合わせサマリー（needs_human_operatorがfalseの場合は空文字列）"
+  "needs_human_operator": false
 }
-
-**オペレーター転送ルール**（needs_human_operatorフィールドが存在する場合のみ適用）:
-- ユーザーに「オペレーターにお問い合わせを転送しますか？」と確認してから転送する
-- needs_human_operator=trueにするのは、ユーザーがオペレーター転送に合意した場合のみ
-- needs_human_operator=trueをセットする際のassistant_response_textは「オペレーターに転送しました。担当者よりご連絡いたします。」のように完了形で記述する（「転送します」等の未来形は使わない）
-- **重要**: このアシスタントは外部メール/SMS/電話を送信できない。それらを求められた場合は「オペレーターに依頼しますか？」と確認する
-- inquiry_summary_for_operator: ユーザーが同意した場合のみ記入。**お客様情報**に名前/電話/メールが含まれている場合は含めない（DBから参照される）。含まれていない場合はユーザーの連絡先を確認してここに含める
+- needs_human_operator: ユーザーがオペレーター転送に合意した場合のみtrue（詳細はオペレーター転送対応のルール参照）
 `;
+  }
+  return `
+**出力形式**: 必ず以下のJSON形式で回答する：
+{
+  "assistant_response_text": "回答本文（引用マーカーや参照番号を除くクリーンなテキスト）",
+  "images": ["関連画像のHTTPS URL（なければ空配列、最大15個）"]
+}
+`;
+}
 
 const POLICY_INSTRUCTION = `
 ポリシー
 - ユーザーメッセージと同じ言語で簡潔かつ正確に回答する。
 - hallucination（事実に反する内容の生成）厳禁。
+- 「資料によると」「ガイドによれば」「ファイルによると」等、情報源を明示する表現は使わない。自分の知識としてお客様に直接伝える。
 `;
 
 /**
@@ -232,8 +263,8 @@ function getUnapprovedSystemPrompt(
 ${operationalContext}
 ${customerInfo}
 ${toolInstruction}
-${needsOperatorCheck ? OPERATOR_CALL_INSTRUCTION : ""}
-${JSON_OUTPUT_INSTRUCTION}
+${needsOperatorCheck ? OPERATOR_TRANSFER_INSTRUCTION : ""}
+${getJsonOutputInstruction(needsOperatorCheck)}
 ${POLICY_INSTRUCTION}`;
 }
 
@@ -258,8 +289,8 @@ ${roomId}号室のキーボックスの暗証番号のダイヤル4桁（**Key B
 ${operationalContext}
 ${customerInfo}
 ${toolInstruction}
-${needsOperatorCheck ? OPERATOR_CALL_INSTRUCTION : ""}
-${JSON_OUTPUT_INSTRUCTION}
+${needsOperatorCheck ? OPERATOR_TRANSFER_INSTRUCTION : ""}
+${getJsonOutputInstruction(needsOperatorCheck)}
 ${POLICY_INSTRUCTION}`;
 }
 
@@ -307,8 +338,8 @@ export async function getSystemPrompt(
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 ${operationalContext}
 ${toolInstruction}
-${needsOperatorCheck ? OPERATOR_CALL_INSTRUCTION : ""}
-${JSON_OUTPUT_INSTRUCTION}
+${needsOperatorCheck ? OPERATOR_TRANSFER_INSTRUCTION : ""}
+${getJsonOutputInstruction(needsOperatorCheck)}
 ${POLICY_INSTRUCTION}`;
   }
 
