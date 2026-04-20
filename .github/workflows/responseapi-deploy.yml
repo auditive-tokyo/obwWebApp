@@ -43,6 +43,7 @@ jobs:
           TELEGRAM_BOT_TOKEN_FROM_SECRET: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID_FROM_SECRET: ${{ secrets.TELEGRAM_CHAT_ID }}
           CLOUDFRONT_SECRET_FROM_SECRET: ${{ secrets.CLOUDFRONT_SECRET }}
+          OPERATOR_PHONE_NUMBER_FROM_SECRET: ${{ secrets.OPERATOR_PHONE_NUMBER }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
@@ -57,4 +58,5 @@ jobs:
               TelegramBotToken="$TELEGRAM_BOT_TOKEN_FROM_SECRET" \
               TelegramChatId="$TELEGRAM_CHAT_ID_FROM_SECRET" \
               CloudFrontSecret="$CLOUDFRONT_SECRET_FROM_SECRET" \
+              OperatorPhoneNumber="$OPERATOR_PHONE_NUMBER_FROM_SECRET" \
             --no-fail-on-empty-changeset

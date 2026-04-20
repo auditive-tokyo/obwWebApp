@@ -8,7 +8,7 @@
  */
 export type Message = {
   id: number;
-  text: string | { assistant_response_text: string; reference_sources?: string[] };
+  text: string | { assistant_response_text: string };
   personal: boolean;
   loading?: boolean;
   timestamp?: string;

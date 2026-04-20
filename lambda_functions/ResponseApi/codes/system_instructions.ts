@@ -4,7 +4,7 @@ import {
 } from "./operational_hours";
 import { type Intent } from "./intent_classifier";
 
-const operatorPhoneNumber = "+81-50-1726-4224";
+const operatorPhoneNumber = process.env.OPERATOR_PHONE_NUMBER ?? "+15005550006"; // デフォルトはTwilioのテスト番号
 
 const FILE_SEARCH_NOTE = `**File Search**: 施設情報はFile Searchの検索結果を優先し、知識での補完は最小限にとどめる。`;
 
@@ -46,7 +46,6 @@ const JSON_OUTPUT_INSTRUCTION = `
 **出力形式**: 必ず以下のJSON形式で回答する：
 {
   "assistant_response_text": "回答本文（引用マーカーや参照番号を除くクリーンなテキスト）",
-  "reference_sources": ["参照したファイル名やURL（なければ空配列）"],
   "images": ["関連画像のHTTPS URL（なければ空配列、最大15個）"],
   "needs_human_operator": false/true,
   "inquiry_summary_for_operator": "オペレーター向け問い合わせサマリー（needs_human_operatorがfalseの場合は空文字列）"

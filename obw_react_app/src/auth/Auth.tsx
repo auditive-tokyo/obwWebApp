@@ -86,7 +86,7 @@ function getAuthParams(): {
   token: string | null;
   source: string | null;
 } {
-  const url = new URL(window.location.href);
+  const url = new URL(globalThis.location.href);
   return {
     guestId: url.searchParams.get("guestId"),
     token: url.searchParams.get("token"),
@@ -105,7 +105,7 @@ function buildNavigateState(
 ) {
   return {
     smsAccess: source === "sms",
-    originalUrl: `${window.location.origin}/room/${roomId}?guestId=${guestId}&token=${token}`,
+    originalUrl: `${globalThis.location.origin}/room/${roomId}?guestId=${guestId}&token=${token}`,
   };
 }
 

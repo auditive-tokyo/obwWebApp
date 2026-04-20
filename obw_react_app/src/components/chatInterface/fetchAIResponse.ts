@@ -12,7 +12,6 @@ type OptionalUserInfo = {
 
 type FinalPayload = {
   assistant_response_text: string;
-  reference_sources: string[];
   images: string[];
 };
 
@@ -20,7 +19,6 @@ type OnDeltaCallback = (text: string | FinalPayload, isDone?: boolean) => void;
 
 type ParsedResult = {
   assistant_response_text?: unknown;
-  reference_sources?: unknown;
   images?: unknown;
 };
 
@@ -44,7 +42,6 @@ function buildFinalPayload(rawText: string): FinalPayload {
 
   return {
     assistant_response_text: assistantText,
-    reference_sources: filterStrings(result?.reference_sources),
     images: filterStrings(result?.images),
   };
 }

@@ -116,12 +116,6 @@ export async function* generateStreamResponse({
         description:
           "Clean assistant response text, excluding citation markers, reference numbers, and metadata annotations like 'citeturn0forecast0'.",
       },
-      reference_sources: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "Sources referenced by the assistant (database files, web URLs, etc.). Empty array [] if no external sources were used.",
-      },
       images: {
         type: "array",
         items: { type: "string" },
@@ -143,8 +137,8 @@ export async function* generateStreamResponse({
       : baseProperties;
 
     const schemaRequired = needsOperatorCheck
-      ? ["assistant_response_text", "reference_sources", "images", "needs_human_operator"]
-      : ["assistant_response_text", "reference_sources", "images"];
+      ? ["assistant_response_text", "images", "needs_human_operator"]
+      : ["assistant_response_text", "images"];
 
     const requestPayload: Record<string, unknown> = {
       model: MODEL,

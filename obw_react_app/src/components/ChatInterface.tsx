@@ -10,7 +10,6 @@ type StreamPayload =
   | string
   | {
       assistant_response_text: string;
-      reference_sources?: string[];
       images?: string[];
     };
 

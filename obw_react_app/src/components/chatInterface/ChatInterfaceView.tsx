@@ -18,13 +18,14 @@ const AVATAR_URL = "https://osakabaywheel.com/img/logo_color.svg";
 // URLを自動的にリンクに変換する関数
 const convertUrlsToLinks = (text: string): string => {
   // 先にマークダウンリンク [text](url) を処理
+  // 量指定子を上限付きにしてReDoSを防ぐ (S5852)
   let result = text.replaceAll(
-    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    /\[([^\]]{1,500})\]\((https?:\/\/[^)]{1,2000})\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
   );
   // 次にベアURLを処理（既にリンク化されたhref内のURLはスキップ）
   result = result.replaceAll(
-    /(?<!href=")(https?:\/\/[^\s<>"{}|\\^`[\]()（）]+)/g,
+    /(?<!href=")(https?:\/\/[^\s<>"{}|\\^`[\]()（）]{1,2000})/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
   );
   return result;
@@ -64,34 +65,6 @@ function getMessageImages(msg: Message): string[] {
   return extractImages(msg.text);
 }
 
-// リファレンスリンクコンポーネント
-const ReferenceLinks: React.FC<{ sources: string[] }> = ({ sources }) => (
-  <div className="reference-files">
-    <strong>Reference(s):</strong>
-    <ul>
-      {sources.map((file) => {
-        const isUrl = file.startsWith("https://") || file.startsWith("http://");
-        return (
-          <li key={file}>
-            {isUrl ? (
-              <a
-                href={file}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#4fc3f7", textDecoration: "underline" }}
-              >
-                {file}
-              </a>
-            ) : (
-              file
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  </div>
-);
-
 // AI画像コンポーネント
 const AiImages: React.FC<{ images: string[] }> = ({ images }) => (
   <div className="ai-images">
@@ -113,12 +86,6 @@ const MessageItem: React.FC<{ msg: Message }> = ({ msg }) => {
   const isLoading = Boolean(msg.loading);
   const hasText = Boolean(msg.text);
   const images = msg.personal || isLoading ? [] : getMessageImages(msg);
-  const hasReferences =
-    !isLoading &&
-    !msg.personal &&
-    typeof msg.text === "object" &&
-    msg.text?.reference_sources &&
-    msg.text.reference_sources.length > 0;
 
   const className = [
     "message",
@@ -149,9 +116,6 @@ const MessageItem: React.FC<{ msg: Message }> = ({ msg }) => {
         />
       ) : (
         <span></span>
-      )}
-      {hasReferences && typeof msg.text === "object" && (
-        <ReferenceLinks sources={msg.text.reference_sources!} />
       )}
       {images.length > 0 && <AiImages images={images} />}
       {!isLoading && msg.timestamp && (

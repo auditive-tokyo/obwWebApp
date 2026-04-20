@@ -27,6 +27,10 @@ Parameters:
     Description: "Secret for CloudFront origin custom header verification"
     NoEcho: true
     Default: ""
+  OperatorPhoneNumber:
+    Type: String
+    Description: "Operator phone number for guest support"
+    NoEcho: true
 
 Resources:
   # CloudWatch Logs - ResponseApiFunction
@@ -75,6 +79,7 @@ Resources:
           OPENAI_VECTOR_STORE_ID_TRANSPORT: !Ref OpenAiVectorStoreIdTransport
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
           CLOUDFRONT_SECRET: !Ref CloudFrontSecret
+          OPERATOR_PHONE_NUMBER: !Ref OperatorPhoneNumber
           DEBUG: "false"
           SETTINGS_TABLE_NAME: "obw-settings"
       Policies:
