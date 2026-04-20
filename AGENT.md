@@ -167,3 +167,23 @@ DynamoDB / SNS / S3
 4. 実装と文書のズレを解消
 
 ---
+
+## 🔮 将来の改善候補
+
+### オペレーター転送フローの3値化
+
+**現状**: `operator_transfer_classifier.ts` は `boolean` を返す（転送提案が必要か否か）。  
+プロンプトで「理由を先に確認する」よう指示しているが、AI任せの部分がある。
+
+**改善案**: 分類結果を3値の enum に拡張する：
+- `"none"` — 転送不要。通常のAI対応
+- `"ask_reason"` — ユーザーが理由不明のままオペレーター要求。用件を聞き出すプロンプトを適用
+- `"transfer"` — 問題が明確で転送提案が適切
+
+**メリット**: 転送フローの状態がバックエンドで明示的になる。`needsOperatorCheck` の型を `boolean` → union type に変更し、`system_instructions.ts` / `stream_response.ts` も3パターン分岐に対応する形。
+
+**変更が必要なファイル**: `operator_transfer_classifier.ts`, `chat_handler.ts`, `system_instructions.ts`, `stream_response.ts`
+
+**実装タイミング**: プロンプトベースの現行実装でAIが理由を聞かずに転送するケースが確認されてから対応でよい。
+
+---

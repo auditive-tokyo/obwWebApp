@@ -80,6 +80,8 @@ function getToolUsageInstruction(intent: Intent): string {
   }
 }
 
+const OPERATOR_TRANSFER_INSTRUCTION_NOINFO = `お客様の名前・電話番号・メールアドレスなどの連絡先を必ず聞き出すこと。`;
+
 const OPERATOR_TRANSFER_INSTRUCTION = `
 **オペレーター転送対応のルール**
 
@@ -338,6 +340,7 @@ export async function getSystemPrompt(
     return `あなたは、〒552-0021 大阪府大阪市港区築港4-2-24にある、Osaka Bay Wheel民泊のWebアプリに設置されたAIアシスタントです。
 ${operationalContext}
 ${toolInstruction}
+${needsOperatorCheck ? OPERATOR_TRANSFER_INSTRUCTION_NOINFO : ""}
 ${needsOperatorCheck ? OPERATOR_TRANSFER_INSTRUCTION : ""}
 ${getJsonOutputInstruction(needsOperatorCheck)}
 ${POLICY_INSTRUCTION}`;
