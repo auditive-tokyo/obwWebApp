@@ -8,7 +8,52 @@ const operatorPhoneNumber = process.env.OPERATOR_PHONE_NUMBER ?? "+15005550006";
 
 const FILE_SEARCH_NOTE = `**File Search**: 施設情報はFile Searchの検索結果を優先し、知識での補完は最小限にとどめる。`;
 
-const WEB_SEARCH_NOTE = `**web search使用時の注意**: google map のURLは表示しない。代わりに店舗名・住所・行き方をテキストで提示する。`;
+const TRANSPORT_NOTE = `**交通・観光案内のルール**
+
+## 1. 回答の優先順位
+1. **File Search（AccessMap.md）を最優先**: アクセス経路・観光地・近隣施設はまずFile Searchで検索し、その結果を使用する。
+2. **File Searchで情報が得られない場合**: 下記「マップ検索テンプレート」を参照し、ユーザーに検索方法をテキストで案内する。
+3. **リアルタイム情報（営業時間・混雑・天気等）**: 「公式サイトまたはGoogleマップ/Yahooマップでご確認ください」と案内する。
+
+## 2. 近隣施設メモ（AccessMap.mdより確認済み）
+ホテル周辺に以下が存在することがAccessMap.mdで確認されているため、積極的に案内してよい：
+- **コンビニ**: セブンイレブン（大阪港駅からホテルへの徒歩経路上・目印にもなっている）
+- **スーパー**: ホテル隣接（建物の目印）
+- **ドラッグストア**: 大阪港駅からホテルへの徒歩経路上に1店舗あり
+詳細な営業時間・最新情報はGoogleマップでの確認を促すこと。
+
+## 3. マップ検索テンプレート
+File Searchで情報が得られない場合は、以下のテンプレートを参照してユーザーへ検索キーワードを提示する：
+
+| カテゴリ | Googleマップ / Yahooマップ 検索ワード例 |
+|---|---|
+| コンビニ・スーパー | 「築港 コンビニ」「天保山 スーパー」 |
+| 飲食店（ランチ） | 「天保山 ランチ」「海遊館 レストラン」「築港 定食」 |
+| 飲食店（ディナー） | 「天保山 ディナー」「港区 居酒屋」「築港 夕食」 |
+| カフェ | 「天保山 カフェ」「海遊館 カフェ」 |
+| ドラッグストア・薬局 | 「築港 ドラッグストア」「大阪港 薬局」 |
+| ATM | 「築港 ATM」「大阪港駅 コンビニATM」 |
+| 病院・クリニック | 「港区 病院」「築港 クリニック」 |
+| タクシー | 「大阪港駅 タクシー」 |
+| 駐車場 | 「天保山 駐車場」「築港 パーキング」 |
+| お土産・ショッピング | 「天保山マーケットプレース」「海遊館 ショップ」 |
+
+**案内文テンプレート**（ユーザーへの返答に使う）:
+- 「周辺の飲食店はこちらから検索できます: https://www.google.com/maps/search/天保山+ランチ 　現在地をオンにするとさらに便利です。」
+- 「最寄りのATMはこちらで確認できます: https://www.google.com/maps/search/築港+ATM」
+- Google Maps URL形式: https://www.google.com/maps/search/[検索ワードをスペースで連結]
+- 検索ワードにスペースが含まれる場合はそのまま使用してよい（ブラウザが自動エンコード）
+
+## 4. 禁止事項
+- 営業時間・定休日・料金を断言しない（変更されている可能性があるため）
+- File Searchで確認できないアクセス経路の詳細を創作しない（hallucination厳禁）`;
+
+const CONVERSATION_NOTE = `**会話・雑談時のweb search利用ルール**:
+- 今日の日付・曜日・現在時刻はシステムプロンプトの現在時刻情報を参照し、web searchは使わない
+- 天気予報（今日・明日・週間）はweb searchを使用してよい。大阪港（築港エリア）の天気として検索する
+- イベント・祝日・ニュース等のリアルタイム情報はweb searchを使用してよい
+- 上記以外の雑談・挨拶・感謝などはweb searchを使わず、自然に会話する
+- web searchの結果はそのまま引用せず、ゲスト向けに簡潔にまとめて伝える`;
 
 const EMERGENCY_INSTRUCTION = `
 **緊急対応ルール**:
@@ -23,12 +68,13 @@ function getToolUsageInstruction(intent: Intent): string {
     case "facility":
       return `\n${FILE_SEARCH_NOTE}\n`;
     case "transport_tourism":
-      return `\n${WEB_SEARCH_NOTE}\n`;
+      return `\n${TRANSPORT_NOTE}\n`;
     case "combined":
-      return `\n${FILE_SEARCH_NOTE}\n${WEB_SEARCH_NOTE}\n`;
+      return `\n${FILE_SEARCH_NOTE}\n${TRANSPORT_NOTE}\n`;
     case "emergency":
       return `\n${EMERGENCY_INSTRUCTION}\n`;
     case "conversation":
+      return `\n${CONVERSATION_NOTE}\n`;
     case "unknown":
       return "";
   }

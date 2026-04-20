@@ -46,7 +46,9 @@ function resolveVectorStoreIds(intent: Intent): string[] {
 
 /** intentに応じてweb_searchを有効にするかを返す */
 function shouldUseWebSearch(intent: Intent): boolean {
-  return intent === "transport_tourism" || intent === "combined";
+  // conversation: 今日の天気・イベント等のリアルタイム情報が必要な場合に使用
+  // transport_tourism / combined はVector Store + 検索テンプレートで対応するためweb_searchは使わない
+  return intent === "conversation";
 }
 
 export async function* generateStreamResponse({
