@@ -17,11 +17,17 @@ const AVATAR_URL = "https://osakabaywheel.com/img/logo_color.svg";
 
 // URLを自動的にリンクに変換する関数
 const convertUrlsToLinks = (text: string): string => {
-  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]()（）]+)/g;
-  return text.replaceAll(
-    urlRegex,
+  // 先にマークダウンリンク [text](url) を処理
+  let result = text.replaceAll(
+    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
+  );
+  // 次にベアURLを処理
+  result = result.replaceAll(
+    /(https?:\/\/[^\s<>"{}|\\^`[\]()（）]+)/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
   );
+  return result;
 };
 
 // テキスト処理関数（改行 + URLリンク化）
