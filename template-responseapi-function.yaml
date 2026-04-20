@@ -75,8 +75,8 @@ Resources:
           OPENAI_VECTOR_STORE_ID_TRANSPORT: !Ref OpenAiVectorStoreIdTransport
           TELEGRAM_LAMBDA_FUNCTION_NAME: !Ref TelegramNotifierFunction
           CLOUDFRONT_SECRET: !Ref CloudFrontSecret
-          DEBUG: 'false'
-          SETTINGS_TABLE_NAME: 'obw-settings'
+          DEBUG: "false"
+          SETTINGS_TABLE_NAME: "obw-settings"
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -87,7 +87,7 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:GetItem
-              Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/obw-settings'
+              Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/obw-settings"
       Layers:
         - !Ref LayerForResponseAPI
     Metadata:
@@ -108,9 +108,13 @@ Resources:
       AuthType: NONE
       InvokeMode: RESPONSE_STREAM
       Cors:
-        AllowOrigins: ["*"]
-        AllowMethods: ["POST"]
-        AllowHeaders: ["content-type"]
+        AllowOrigins:
+          - https://app.osakabaywheel.com
+        AllowMethods:
+          - POST
+        AllowHeaders:
+          - content-type
+          - accept
         MaxAge: 300
 
   TelegramNotifierFunction:
