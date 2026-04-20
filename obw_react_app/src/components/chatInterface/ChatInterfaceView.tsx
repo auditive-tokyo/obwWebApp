@@ -22,9 +22,9 @@ const convertUrlsToLinks = (text: string): string => {
     /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
   );
-  // 次にベアURLを処理
+  // 次にベアURLを処理（既にリンク化されたhref内のURLはスキップ）
   result = result.replaceAll(
-    /(https?:\/\/[^\s<>"{}|\\^`[\]()（）]+)/g,
+    /(?<!href=")(https?:\/\/[^\s<>"{}|\\^`[\]()（）]+)/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #4fc3f7; text-decoration: underline;">$1</a>',
   );
   return result;
@@ -137,17 +137,16 @@ const MessageItem: React.FC<{ msg: Message }> = ({ msg }) => {
   }
 
   return (
-    <div
-      className={className}
-      data-testid={testId}
-    >
+    <div className={className} data-testid={testId}>
       {!msg.personal && (
         <figure className="avatar">
           <img src={AVATAR_URL} alt="avatar" />
         </figure>
       )}
       {hasText ? (
-        <span dangerouslySetInnerHTML={{ __html: getProcessedHtml(msg.text) }} />
+        <span
+          dangerouslySetInnerHTML={{ __html: getProcessedHtml(msg.text) }}
+        />
       ) : (
         <span></span>
       )}
