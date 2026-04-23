@@ -28,7 +28,7 @@ lingual_mgr = LingualManager()
 openai_async_client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 
-def _build_action_url(language: str, room_number: str = None, phone_last4: str = None, response_id: str = None, source: str = None) -> str:
+def _build_action_url(language: str, room_number: str | None = None, phone_last4: str | None = None, response_id: str | None = None, source: str | None = None) -> str:
     """GatherのアクションURLを構築"""
     url = f"{LAMBDA1_FUNCTION_URL}?language={language}"
     if source:
@@ -101,7 +101,7 @@ async def _handle_end_conversation(call_sid: str, language: str, voice: str, ass
 
 
 async def _handle_operator_choice(call_sid: str, language: str, voice: str, assistant_text: str, 
-                                   response_id: str, room_number: str, phone_last4: str) -> dict:
+                                   response_id: str | None, room_number: str, phone_last4: str) -> dict:
     """オペレーター転送の選択肢を提示"""
     twiml = VoiceResponse()
     twiml.say(wrap_with_prosody(assistant_text), language=language, voice=voice)
@@ -126,7 +126,7 @@ async def _handle_operator_choice(call_sid: str, language: str, voice: str, assi
 
 
 async def _handle_search_results_response(call_sid: str, language: str, voice: str, assistant_text: str,
-                                           response_id: str, room_number: str, phone_last4: str) -> dict:
+                                           response_id: str | None, room_number: str, phone_last4: str) -> dict:
     """検索結果を返して次の質問を促す"""
     twiml = VoiceResponse()
     twiml.say(wrap_with_prosody(assistant_text), language=language, voice=voice)
@@ -155,7 +155,7 @@ async def _handle_search_results_response(call_sid: str, language: str, voice: s
 
 
 async def _handle_general_inquiry(call_sid: str, language: str, voice: str, speech_result: str,
-                                   previous_response_id: str, guest_info: dict, room_number: str, phone_last4: str) -> dict:
+                                   previous_response_id: str | None, guest_info: dict, room_number: str, phone_last4: str) -> dict:
     """一般的な問い合わせの処理"""
     # 検索中アナウンス
     announce_msg = lingual_mgr.get_message(language, "general_inquiry")
@@ -253,7 +253,7 @@ async def _handle_classification_error(call_sid: str, language: str, voice: str)
         return {'status': 'error', 'message': f"Twilio API error during error hangup: {str(e)}"}
 
 
-async def _classify_user_message(speech_result: str, previous_response_id: str) -> tuple[str, bool]:
+async def _classify_user_message(speech_result: str, previous_response_id: str | None) -> tuple[str, bool]:
     """ユーザーメッセージを分類"""
     if previous_response_id:
         print(f"Continuing conversation with previous_response_id: {previous_response_id}")
@@ -265,7 +265,7 @@ async def _classify_user_message(speech_result: str, previous_response_id: str) 
         openai_async_client, speech_result
     )
     print(f"Classification result: {classification_result}")
-    urgency = classification_result.get('urgency')
+    urgency: str = classification_result.get('urgency') or "error"
     should_hangup = urgency == "error"
     
     if should_hangup:
@@ -294,7 +294,7 @@ async def _handle_missing_speech_result(call_sid: str, language: str, voice: str
 
 
 async def _dispatch_by_urgency(urgency: str, should_hangup: bool, call_sid: str, language: str, voice: str,
-                                speech_result: str, previous_response_id: str, guest_info: dict,
+                                speech_result: str, previous_response_id: str | None, guest_info: dict,
                                 room_number: str, phone_last4: str) -> dict:
     """緊急度に応じて適切なハンドラにディスパッチ"""
     if urgency == "general":

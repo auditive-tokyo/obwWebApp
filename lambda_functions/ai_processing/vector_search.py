@@ -4,7 +4,7 @@ from typing import Optional
 from utils.system_instructions import get_vector_search_instructions
 
 
-def _create_error_response(message: str, response_id: str = None) -> str:
+def _create_error_response(message: str, response_id: str | None = None) -> str:
     """エラーレスポンスのJSON文字列を生成"""
     return json.dumps({
         "assistant_response_text": message,
@@ -37,7 +37,7 @@ def _get_response_format_schema() -> dict:
     }
 
 
-def _build_request_payload(system_instructions: str, query_text: str, vector_store_id: str, previous_response_id: str = None) -> dict:
+def _build_request_payload(system_instructions: str, query_text: str, vector_store_id: str, previous_response_id: str | None = None) -> dict:
     """APIリクエストペイロードを構築"""
     payload = {
         "model": "gpt-5-mini",
@@ -133,7 +133,7 @@ def _parse_model_output(text: str) -> dict:
         }
 
 
-def _extract_final_output(response, response_id: str) -> dict:
+def _extract_final_output(response, response_id: str | None) -> dict:
     """レスポンスから最終出力を抽出"""
     default_output = {
         "assistant_response_text": "検索結果に基づく応答の抽出に失敗しました。",
@@ -175,9 +175,9 @@ async def openai_vector_search_with_file_search_tool(
     openai_async_client: openai.AsyncOpenAI,
     query_text: str,
     language: str,
-    vector_store_id: str = None,
-    previous_response_id: str = None,
-    guest_info: dict = None
+    vector_store_id: str | None = None,
+    previous_response_id: str | None = None,
+    guest_info: dict | None = None
 ) -> str:
     
     print(f"Previous Response ID: {previous_response_id}")

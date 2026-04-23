@@ -57,7 +57,7 @@ COMMON_NEEDS_OPERATOR_INSTRUCTIONS = """
 """
 
 
-def get_vector_search_instructions(guest_info: dict, language: str) -> str:
+def get_vector_search_instructions(guest_info: dict | None, language: str) -> str:
     """
     ベクトル検索用の基本システムインストラクション
     
@@ -71,7 +71,6 @@ def get_vector_search_instructions(guest_info: dict, language: str) -> str:
     # ゲスト情報から各変数を取得
     guest_name = guest_info.get('guestName') if guest_info else None
     room_number = guest_info.get('roomNumber') if guest_info else None
-    # phone = guest_info.get('phone') if guest_info else None
     check_in_date = guest_info.get('checkInDate') if guest_info else None
     check_out_date = guest_info.get('checkOutDate') if guest_info else None
     approval_status = guest_info.get('approvalStatus') if guest_info else None
