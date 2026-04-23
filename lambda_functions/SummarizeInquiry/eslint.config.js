@@ -1,7 +1,8 @@
+import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 
-export default tseslint.config(
+export default eslint.config(
   // グローバルに無視するファイル/ディレクトリを指定
   {
     ignores: ['dist/', 'node_modules/', '.aws-sam/'],
